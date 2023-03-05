@@ -1,0 +1,18 @@
+appId: "openiap.agent"
+publish:
+  provider: "github"
+asar: true
+directories:
+  output: release
+dmg:
+win:
+  icon: "open_rpa256.png"
+  target:
+  - nsis
+linux:
+  icon: "open_rpa256.png"
+  target:
+  - AppImage
+  # - deb
+  # - rpm
+  category: Network

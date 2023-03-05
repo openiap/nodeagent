@@ -1,0 +1,39 @@
+{
+  "name": "nodeagent",
+  "version": "0.0.1",
+  "description": "Desktop agent for OpenIAP",
+  "main": "main.js",
+  "keywords": [],
+  "scripts": {
+    "updateapidev": "npm uninstall @openiap/nodeapi && npm i openiap/nodeapi",
+    "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi",
+    "start": "electron-forge start",
+    "dir": "electron-builder --dir",
+    "build": "electron-builder"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/openiap/nodeagent.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": {
+    "name": "OpenIAP ApS / Allan Zimmermann",
+    "email": "info@openiap.io"
+  },
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://community.openiap.io/"
+  },
+  "homepage": "https://github.com/openiap/nodeagent",
+  "funding": "https://github.com/sponsors/skadefro",
+  "devDependencies": {
+    "electron": "^23.1.2",
+    "electron-builder": "^23.6.0"
+  },
+  "dependencies": {
+    "@openiap/nodeapi": "github:openiap/nodeapi",
+    "adm-zip": "^0.5.10"
+  }
+}
