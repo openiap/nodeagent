@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+      "experimentalDecorators": true,
+      "emitDecoratorMetadata": true,
+      "declaration": true,
+      "outDir": "./dist/",
+      "inlineSourceMap": true,
+      "noImplicitAny": true,
+      "module": "CommonJS",
+      "target": "es5",
+      "moduleResolution": "node"
+      // "jsx": "react",
+      // "allowJs": true,
+      // "noEmitOnError": true      
+    },
+    "include": [
+      "./src/"
+    ]
+  }

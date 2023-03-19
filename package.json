@@ -1,0 +1,32 @@
+{
+    "name": "@openiap/nodeagent",
+    "version": "0.0.1",
+    "description": "",
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "scripts": {
+        "watch": "tsc -w",
+        "updateapidev": "npm uninstall @openiap/nodeapi && npm i openiap/nodeapi",
+        "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi"
+    },
+    "keywords": [],
+    "publishConfig": {
+        "access": "public"
+    },
+    "author": "OpenIAP ApS / Allan Zimmermann",
+    "license": "MPL-2.0",
+    "homepage": "https://github.com/openiap",
+    "funding": "https://github.com/sponsors/skadefro",
+    "devDependencies": {
+        "@types/adm-zip": "^0.5.0",
+        "@types/tar": "^6.1.4",
+        "ts-proto": "^1.138.0",
+        "typescript": "^4.9.4"
+    },
+    "dependencies": {
+        "@openiap/nodeapi": "github:openiap/nodeapi",
+        "adm-zip": "^0.5.10",
+        "tar": "^6.1.13"
+    }
+}
