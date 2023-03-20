@@ -7,7 +7,7 @@ import * as fs from "fs"
 import { Stream } from 'stream';
 
 const client: openiap = new openiap()
-client.agent = "assistent"
+client.agent = "nodeagent"
 var myproject = require(path.join(__dirname, "..", "package.json"));
 client.version = myproject.version;
 var assistentConfig: any = { "apiurl": "wss://app.openiap.io", jwt: "", agentid: "" };
