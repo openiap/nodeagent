@@ -29,7 +29,7 @@ export class runner {
     public static notifyStream(streamid: string, message: Buffer | string) {
         const s = this.ensurestream(streamid);
         if(message != null && !Buffer.isBuffer(message)) {
-            message = Buffer.from(message);
+            message = Buffer.from(message + "\n");
         }
         s.stream.push(message);
     }
@@ -54,23 +54,28 @@ export class runner {
     public static async runit(packagepath:string, streamid:string, command:string, clearstream: boolean) {
         return new Promise((resolve, reject) => {
             try {
-                const childProcess = spawn(command.split(" ")[0], command.split(" ").slice(1), { cwd: packagepath })
+                // , stdio: ['pipe', 'pipe', 'pipe']
+                // , stdio: 'pipe'
+                const childProcess = spawn(command.split(" ")[0], command.split(" ").slice(1), { cwd: packagepath , stdio: 'pipe' })
                 const pid = childProcess.pid;
                 const p:runner_process = { id: streamid, pid, p: childProcess, forcekilled: false }
                 runner.notifyStream(streamid, `Child process started as pid ${pid}`);
                 runner.processs.push(p);
-                childProcess.stdout.on('data', (data) => {
-                    runner.notifyStream(streamid, data)
-                });
-                childProcess.stderr.on('data', (data) => {
-                    runner.notifyStream(streamid, data)
-                });
-                childProcess.stdout.on('error', (data) => {
+                const catchoutput = (data: any) => {
                     if(data != null) {
-                        err(data.toString());
-                        runner.notifyStream(streamid, data.toString());
+                        var s:string = data.toString();
+                        if(s.startsWith("Debugger listening")) return;
+                        if(s.startsWith("Debugger attached")) return;
+                        if(s.startsWith("Waiting for the debugger to")) return;
                     }
-                });
+                    console.log(data.toString())
+                    runner.notifyStream(streamid, data)
+                };
+                childProcess.stdio[1]?.on('data', catchoutput);
+                childProcess.stdio[2]?.on('data', catchoutput);
+                childProcess.stdio[3]?.on('data', catchoutput);
+                // childProcess.stdout.on('data', catchoutput);
+                // childProcess.stderr.on('data', catchoutput);
                 childProcess.stdout.on('close', (code: any) => {
                     if (code == false || code == null) {
                         runner.notifyStream(streamid, `Child process ${pid} exited`);
