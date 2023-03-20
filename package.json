@@ -14,6 +14,12 @@
     "publishConfig": {
         "access": "public"
     },
+    "bin": {
+        "nodeagent": "./dist/cli.js",
+        "openiap": "./dist/cli.js",
+        "flow": "./dist/cli.js",
+        "openflow": "./dist/cli.js"
+    },
     "author": "OpenIAP ApS / Allan Zimmermann",
     "license": "MPL-2.0",
     "homepage": "https://github.com/openiap",
@@ -25,7 +31,7 @@
         "typescript": "^4.9.4"
     },
     "dependencies": {
-        "@openiap/nodeapi": "github:openiap/nodeapi",
+        "@openiap/nodeapi": "^0.0.5",
         "adm-zip": "^0.5.10",
         "tar": "^6.1.13"
     }

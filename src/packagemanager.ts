@@ -79,7 +79,7 @@ export class packagemanager {
     if (fs.existsSync(path.join(packagepath, "index.py"))) return path.join(packagepath, "index.py");
   }
   public static async runpackage(id: string, streamid: string, remote: boolean) {
-    if (streamid == null || streamid == "") return new Error("streamid is null or empty");
+    if (streamid == null || streamid == "") throw new Error("streamid is null or empty");
     try {
       var packagepath = packagemanager.getpackagepath(path.join(packagemanager.packagefolder, id));
       if (fs.existsSync(packagepath)) {
