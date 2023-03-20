@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 declare const os: any;
 declare const path: any;
 declare const fs: any;
