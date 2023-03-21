@@ -56,7 +56,7 @@ export class runner {
             try {
                 // , stdio: ['pipe', 'pipe', 'pipe']
                 // , stdio: 'pipe'
-                const childProcess = spawn(command.split(" ")[0], command.split(" ").slice(1), { cwd: packagepath , stdio: 'pipe' })
+                const childProcess = spawn(command.split(" ")[0], command.split(" ").slice(1), { cwd: packagepath  })
                 const pid = childProcess.pid;
                 const p:runner_process = { id: streamid, pid, p: childProcess, forcekilled: false }
                 runner.notifyStream(streamid, `Child process started as pid ${pid}`);

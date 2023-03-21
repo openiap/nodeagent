@@ -175,15 +175,20 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
     if (user == null || jwt == null || jwt == "") {
       return { "command": "error", error: "not authenticated" };
     }
-    var queuename = msg.replyto;
-    if(queuename == null ) queuename = "";
+    var commandqueue = msg.replyto;
+    var streamqueue = msg.replyto;
+    if (payload.queuename != null && payload.queuename != "") {
+      streamqueue = payload.queuename;
+    }
+    var dostream = true;
+    if(payload.stream == "false" || payload.stream == false) {
+      dostream = false;
+    }
+    console.log("commandqueue: " + commandqueue + " streamqueue: " + streamqueue + " dostream: " + dostream)
+    if(commandqueue == null) commandqueue = "";
+    if(streamqueue == null) streamqueue = "";
     if (payload.command == "runpackage") {
       if(payload.id == null || payload.id == "") throw new Error("id is required");
-      if(payload.stream == "false" || payload.stream == false) {
-        queuename = "";
-      } else if (payload.queuename != null && payload.queuename != "") {
-        queuename = payload.queuename;        
-      }
       var packagepath = packagemanager.getpackagepath(path.join(os.homedir(), ".openiap", "packages", payload.id));
       if (packagepath == "") {
         console.log("package not found");
@@ -194,28 +199,39 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       });
       var buffer = "";
       stream.on('data', async (data) => {
-        if(queuename == null || queuename == "") {
+        if(dostream) {
+          try {
+            await client.QueueMessage({ queuename: streamqueue, data: {"command": "stream", "data": data} });
+          } catch (error) {
+            console.error(error);
+            dostream = false;
+          }
+        } else {
           if(data != null) buffer += data.toString();
-          return;
-        }
-        try {
-          if(data != null) {
-            await client.QueueMessage({ queuename, data: {"command": "stream", "data": data} });
-          }          
-        } catch (error) {
-          console.error(error);
-          payload.stream = "";
         }
       });
       stream.on('end', async () => {
-        if(queuename == null || queuename == "") {
-          await client.QueueMessage({ queuename, data: {"command": "completed", "data": buffer} });
-        } else {
-          await client.QueueMessage({ queuename, data: {"command": "completed"} });
+        var data = {"command": "completed", "data": buffer};
+        if(buffer == "") delete data.data;
+        try {
+          if(commandqueue != "") await client.QueueMessage({ queuename: commandqueue, data });
+        } catch (error) {
+          console.error(error);
+        }
+        try {
+          if(dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data });
+        } catch (error) {
+          console.error(error);
         }
       });
       runner.addstream(streamid, stream);  
       await packagemanager.runpackage(payload.id, streamid, true);
+      try {
+        if(dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "success" } });
+      } catch (error) {
+        console.error(error);
+        dostream = false;
+      }
       return { "command": "success" };
     }  
   } catch (error) {
