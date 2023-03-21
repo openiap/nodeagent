@@ -5,5 +5,6 @@ export declare class packagemanager {
     static getpackagepath(packagepath: string, first?: boolean): string;
     static getscriptpath(packagepath: string): string;
     static runpackage(id: string, streamid: string, remote: boolean): Promise<void>;
+    static removepackage(id: string): Promise<void>;
     static deleteDirectoryRecursiveSync(dirPath: string): void;
 }

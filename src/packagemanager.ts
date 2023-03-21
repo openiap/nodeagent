@@ -108,6 +108,11 @@ export class packagemanager {
       runner.removestream(streamid);
     }
   }
+  public static async removepackage(id: string) {
+    var ppath = path.join(packagemanager.packagefolder, id);
+    packagemanager.deleteDirectoryRecursiveSync(ppath);
+
+  }
   public static deleteDirectoryRecursiveSync(dirPath: string) {
     if (fs.existsSync(dirPath)) {
       fs.readdirSync(dirPath).forEach((file, index) => {

@@ -68,7 +68,6 @@ export class runner {
                         if(s.startsWith("Debugger attached")) return;
                         if(s.startsWith("Waiting for the debugger to")) return;
                     }
-                    console.log(data.toString())
                     runner.notifyStream(streamid, data)
                 };
                 childProcess.stdio[1]?.on('data', catchoutput);

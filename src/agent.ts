@@ -76,10 +76,26 @@ async function onConnected(client: openiap) {
   var watchid = await client.Watch({ paths: [], collectionname: "agents" }, async (operation: string, document: any) => {
     try {
       if (document._type == "package") {
-        await reloadpackages()
-      }
-      if (document._type == "agent" && document._id == agentid) {
-        await RegisterAgent()
+        if(operation == "insert") {
+          console.log("package " + document.name + " inserted, reload packages");
+          await reloadpackages()
+        } else if(operation == "replace") {
+          console.log("package " + document.name + " updated, delete and reload");
+          packagemanager.removepackage(document._id);
+          await packagemanager.getpackage(client, document.fileid, document._id);
+        } else if (operation == "delete") {
+          console.log("package " + document.name + " deleted, cleanup after package");
+          packagemanager.removepackage(document._id);
+        }
+      } else if (document._type == "agent") {
+        if(document._id == agentid)  {
+          console.log("agent changed, reload config");
+          await RegisterAgent()
+        } else {
+          console.log("Another agent was changed, do nothing");
+        }        
+      } else {
+        console.log("unknown type " + document._type + " changed, do nothing");
       }
     } catch (error) {
       console.error(error);
@@ -118,18 +134,21 @@ async function RegisterAgent() {
     if (res != null) res = JSON.parse(res);
     if (res != null && res.slug != "" && res._id != null && res._id != "") {
       localqueue = await client.RegisterQueue({ queuename: res.slug }, onQueueMessage);
-      if (agentid != res._id || (res.jwt != null && res.jwt != "")) {
-        agentid = res._id;
-        var config = require(path.join(os.homedir(), ".openiap", "config.json"));
-        config.agentid = agentid;
-        if(res.jwt != null && res.jwt != "") {
-          config.jwt = res.jwt;
-          process.env.jwt = res.jwt;
-        }
-        fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(config));
-        console.log("Registed agent as " + agentid + " and queue " + localqueue + " ( from " + res.slug + " )");
+      agentid = res._id;
+      var config = require(path.join(os.homedir(), ".openiap", "config.json"));
+      config.agentid = agentid;
+      if(res.jwt != null && res.jwt != "") {
+        config.jwt = res.jwt;
+        process.env.jwt = res.jwt;
+      }
+      fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(config));
+      console.log("Registed agent as " + agentid + " and queue " + localqueue + " ( from " + res.slug + " )");
+    } else {
+      console.log("Registrering agent seems to have failed without an error !?!");
+      if(res == null) {
+        console.log("res is null");
       } else {
-        console.log("Registrering agent seems to have failed without an error !?!");
+        console.log(JSON.stringify(res, null, 2));
       }
     }
     if (res.jwt != null && res.jwt != "") {
@@ -150,14 +169,21 @@ async function RegisterAgent() {
 async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: string) {
   try {
     const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    console.log("onQueueMessage");
     if(payload != null && payload.payload != null) payload = payload.payload;
-    console.log(payload);
+    // console.log("onQueueMessage");
+    // console.log(payload);
     if (user == null || jwt == null || jwt == "") {
       return { "command": "error", error: "not authenticated" };
     }
+    var queuename = msg.replyto;
+    if(queuename == null ) queuename = "";
     if (payload.command == "runpackage") {
       if(payload.id == null || payload.id == "") throw new Error("id is required");
+      if(payload.stream == "false" || payload.stream == false) {
+        queuename = "";
+      } else if (payload.queuename != null && payload.queuename != "") {
+        queuename = payload.queuename;        
+      }
       var packagepath = packagemanager.getpackagepath(path.join(os.homedir(), ".openiap", "packages", payload.id));
       if (packagepath == "") {
         console.log("package not found");
@@ -166,22 +192,29 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       var stream = new Stream.Readable({
         read(size) { }
       });
+      var buffer = "";
       stream.on('data', async (data) => {
+        if(queuename == null || queuename == "") {
+          if(data != null) buffer += data.toString();
+          return;
+        }
         try {
-          if(payload.stream != null && payload.stream != "") {
-            if(data != null) {
-              await client.QueueMessage({ queuename: payload.stream, data: data.toString() });
-            }          
-          }
+          if(data != null) {
+            await client.QueueMessage({ queuename, data: {"command": "stream", "data": data} });
+          }          
         } catch (error) {
           console.error(error);
           payload.stream = "";
         }
       });
-      stream.on('end', () => {
+      stream.on('end', async () => {
+        if(queuename == null || queuename == "") {
+          await client.QueueMessage({ queuename, data: {"command": "completed", "data": buffer} });
+        } else {
+          await client.QueueMessage({ queuename, data: {"command": "completed"} });
+        }
       });
-      runner.addstream(streamid, stream);
-  
+      runner.addstream(streamid, stream);  
       await packagemanager.runpackage(payload.id, streamid, true);
       return { "command": "success" };
     }  
