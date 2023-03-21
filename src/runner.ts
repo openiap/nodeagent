@@ -51,12 +51,12 @@ export class runner {
         }
         return s;
     }    
-    public static async runit(packagepath:string, streamid:string, command:string, clearstream: boolean) {
+    public static async runit(packagepath:string, streamid:string, command:string, parameters:string[], clearstream: boolean) {
         return new Promise((resolve, reject) => {
             try {
                 // , stdio: ['pipe', 'pipe', 'pipe']
                 // , stdio: 'pipe'
-                const childProcess = spawn(command.split(" ")[0], command.split(" ").slice(1), { cwd: packagepath  })
+                const childProcess = spawn(command, parameters, { cwd: packagepath  })
                 const pid = childProcess.pid;
                 const p:runner_process = { id: streamid, pid, p: childProcess, forcekilled: false }
                 runner.notifyStream(streamid, `Child process started as pid ${pid}`);
@@ -134,7 +134,7 @@ export class runner {
         if (fs.existsSync(path.join(packagepath, "requirements.txt.done"))) return;
         if (fs.existsSync(path.join(packagepath, "requirements.txt"))) {
             runner.notifyStream(streamid, "Running pip install");
-            if ((await runner.runit(packagepath, streamid, pythonpath + " -m pip install -r " + path.join(packagepath, "requirements.txt"), false)) == true) {
+            if ((await runner.runit(packagepath, streamid, pythonpath, ["-m", "pip", "install", "-r", path.join(packagepath, "requirements.txt")], false)) == true) {
                 fs.writeFileSync(path.join(packagepath, "requirements.txt.done"), "done");
             }
         }
@@ -147,7 +147,7 @@ export class runner {
             runner.notifyStream(streamid, "**** Running npm install");
             runner.notifyStream(streamid, "************************");
             const child = (process.platform === 'win32' ? 'npm.cmd' : 'npm')
-            if ((await runner.runit(packagepath, streamid, child + " install", false)) == true) {
+            if ((await runner.runit(packagepath, streamid, child, ["install"], false)) == true) {
                 fs.writeFileSync(path.join(packagepath, "npm.install.done"), "done");
                 return true;
             }

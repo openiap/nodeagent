@@ -20,7 +20,7 @@ export declare class runner {
     static notifyStream(streamid: string, message: Buffer | string): void;
     static removestream(streamid: string): void;
     static ensurestream(streamid: string): runner_stream;
-    static runit(packagepath: string, streamid: string, command: string, clearstream: boolean): Promise<unknown>;
+    static runit(packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean): Promise<unknown>;
     static findInPath(exec: string): string | null;
     static kill(streamid: string): void;
     static findPythonPath(): string;

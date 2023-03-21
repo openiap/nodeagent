@@ -88,16 +88,16 @@ export class packagemanager {
         if (command.endsWith(".py")) {
           var python = runner.findPythonPath();
           await runner.pipinstall(packagepath, streamid, python)
-          runner.runit(packagepath, streamid, python + " " + command, true)
+          runner.runit(packagepath, streamid, python, [command], true)
         } else if (command.endsWith(".js") || command == "npm run start") {
           // const nodePath = path.join(app.getAppPath(), 'node_modules', '.bin', 'node');
           // const nodePath = "node"
           const nodePath = runner.findInPath("node");
           await runner.npminstall(packagepath, streamid);
-          runner.runit(packagepath, streamid, nodePath + " " + command, true)
+          runner.runit(packagepath, streamid, nodePath, [command], true)
         } else {
           var dotnet = runner.findDotnetPath();
-          runner.runit(packagepath, streamid, dotnet + " run ", true)
+          runner.runit(packagepath, streamid, dotnet, ["run"], true)
         }
       } else {
         runner.notifyStream(streamid, "Package not found in " + packagepath);
