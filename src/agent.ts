@@ -7,14 +7,15 @@ import * as fs from "fs"
 import { Stream } from 'stream';
 
 const client: openiap = new openiap()
+client.allowconnectgiveup = false;
 client.agent = "nodeagent"
 var myproject = require(path.join(__dirname, "..", "package.json"));
 client.version = myproject.version;
-var assistentConfig: any = { "apiurl": "wss://app.openiap.io", jwt: "", agentid: "" };
+var assistentConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
 var agentid = "";
 var localqueue = "";
 var languages = ["nodejs"];
-function reloadAndParseConfig() {
+function reloadAndParseConfig():boolean {
   config.doDumpStack = true
   if (fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
     assistentConfig = require(path.join(os.homedir(), ".openiap", "config.json"));
@@ -30,12 +31,18 @@ function reloadAndParseConfig() {
     if (assistentConfig.agentid != null && assistentConfig.agentid != "") {
       agentid = assistentConfig.agentid;
     }
+    return true;
+  } else {
+    console.log("failed locating config to load from " + path.join(os.homedir(), ".openiap", "config.json"))
   }
+  return false;
 }
 function init() {
   // var client = new openiap();
   config.doDumpStack = true
-  reloadAndParseConfig();
+  if(!reloadAndParseConfig()) {
+    return;
+  }
   try {
     var pypath = runner.findPythonPath();
     if (pypath != null && pypath != "") {
@@ -59,12 +66,12 @@ function init() {
 }
 async function onConnected(client: openiap) {
   var u = new URL(client.url);
+  process.env.apiurl = client.url;
+  await RegisterAgent()
   if (client.client == null || client.client.user == null) {
     console.log('connected, but not signed in, close connection again');
     return client.Close();
   }
-  process.env.apiurl = client.url;
-  await RegisterAgent()
   await reloadpackages()
   var watchid = await client.Watch({ paths: [], collectionname: "agents" }, async (operation: string, document: any) => {
     try {
@@ -102,28 +109,32 @@ async function reloadpackages() {
 async function RegisterAgent() {
   try {
     var u = new URL(client.url);
+    console.log("Registering agent with " + u.hostname + " as " + client.client.user.username);
     var data = JSON.stringify({ hostname: os.hostname(), os: os.platform(), arch: os.arch(), username: os.userInfo().username, version: myproject.version, "languages": languages, "chrome": true, "chromium": true, "maxpackages": 50 })
     var res: any = await client.CustomCommand({
       id: agentid, command: "registeragent",
       data
     });
     if (res != null) res = JSON.parse(res);
-    if (res != null && res.queue != "" && res._id != null && res._id != "") {
-      localqueue = await client.RegisterQueue({ queuename: res.queue }, onQueueMessage);
-      if(localqueue != "") console.log("Registered queue " + localqueue);
+    if (res != null && res.slug != "" && res._id != null && res._id != "") {
+      localqueue = await client.RegisterQueue({ queuename: res.slug }, onQueueMessage);
       if (agentid != res._id || (res.jwt != null && res.jwt != "")) {
-        agentid = res._id
+        agentid = res._id;
         var config = require(path.join(os.homedir(), ".openiap", "config.json"));
-        config.agentid = agentid
-        config.jwt = res.jwt
-        process.env.jwt = res.jwt
+        config.agentid = agentid;
+        if(res.jwt != null && res.jwt != "") {
+          config.jwt = res.jwt;
+          process.env.jwt = res.jwt;
+        }
         fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(config));
+        console.log("Registed agent as " + agentid + " and queue " + localqueue + " ( from " + res.slug + " )");
+      } else {
+        console.log("Registrering agent seems to have failed without an error !?!");
       }
     }
     if (res.jwt != null && res.jwt != "") {
       await client.Signin({ jwt: res.jwt });
-
-      console.log('connected to ' + u.hostname + ' as ' + client.client.user.username);
+      console.log('Re-authenticated to ' + u.hostname + ' as ' + client.client.user.username);
     }
     reloadAndParseConfig();
   } catch (error) {

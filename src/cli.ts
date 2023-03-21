@@ -1,9 +1,17 @@
 #!/usr/bin/env node
+
+import { agenttools } from "./agenttools";
+
 const os = require('os');
 const path = require('path');
+const prompts = require('./prompt-sync')();
+// @ts-ignore
 const fs = require('fs');
 const childProcess = require('child_process');
-
+const readline = require('readline').createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
 const args = process.argv.slice(2);
 
 let serviceName = "";
@@ -23,20 +31,7 @@ for (let i = 0; i < args.length; i++) {
   } else if (!serviceName) {
     serviceName = arg;
   }
-
-
 }
-if(serviceName == "" || serviceName == null) {
-  serviceName = "nodeagent"
-}
-if (command === 'install' || command == "") {
-  console.log(`Installing service "${serviceName}"...`);
-  installService(serviceName, serviceName, 'agent.js');
-} else if (command === 'uninstall') {
-  console.log(`Uninstalling service "${serviceName}"...`);
-  UninstallService(serviceName, serviceName);
-}
-
 
 function installService(svcName: string, serviceName: string, script: string): void {
   let scriptPath = path.join(__dirname, script);
@@ -95,7 +90,7 @@ function installService(svcName: string, serviceName: string, script: string): v
 
 
     console.log(`Service "${serviceName}" installed successfully.`);
-    console.log(`to validate use\nsudo systemctl status ${svcName}.service`)
+    console.log(`to validate use\nsudo systemctl status ${svcName}.service\nsudo journalctl -efu ${svcName}`)
   }
 }
 
@@ -132,3 +127,45 @@ function UninstallService(svcName:string, serviceName:string):void {
     console.log(`Service "${serviceName}" uninstalled successfully.`);
   }
 }
+
+async function main() {
+  if(serviceName == "" || serviceName == null) {
+    serviceName = "nodeagent"
+  }
+  if (command === 'install' || command == "") {
+    var configfile = path.join(os.homedir(), ".openiap", "config.json");
+    console.log("Working with " + configfile)
+    var assistentConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
+    if (fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
+      assistentConfig = require(path.join(os.homedir(), ".openiap", "config.json"));
+    }
+    assistentConfig.apiurl = prompts(`apiurl (Enter for ${assistentConfig.apiurl})? `, assistentConfig.apiurl);
+    if(assistentConfig.apiurl == null) process.exit(0);
+
+    if(assistentConfig.jwt != null && assistentConfig.jwt != "") {
+      var reuse = prompts(`Reuse existing token (Enter for yes)? (yes/no) `, {value: "yes", autocomplete: ()=> ["yes", "no"]});
+      if(reuse == null) process.exit(0);
+      if(reuse == "no") {
+        assistentConfig.jwt = "";
+      }
+  
+    }
+
+    if(assistentConfig.jwt == null || assistentConfig.jwt == "") {
+      const [tokenkey, signinurl] = await agenttools.AddRequestToken(assistentConfig.apiurl)
+      console.log(`Please open ${signinurl} in your browser and login with your OpenIAP account`)
+      const jwt = await agenttools.WaitForToken(assistentConfig.apiurl, tokenkey);
+      assistentConfig.jwt = jwt;
+    }
+    if (!fs.existsSync(path.join(os.homedir(), ".openiap"))) fs.mkdirSync(path.join(os.homedir(), ".openiap"));
+    fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(assistentConfig));
+  
+    console.log(`Installing service "${serviceName}"...`);
+    installService(serviceName, serviceName, 'agent.js');
+  } else if (command === 'uninstall') {
+    console.log(`Uninstalling service "${serviceName}"...`);
+    UninstallService(serviceName, serviceName);
+  }
+  process.exit(0);
+}
+main();
