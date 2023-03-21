@@ -133,7 +133,10 @@ export class runner {
     public static async pipinstall(packagepath:string, streamid:string, pythonpath:string) {
         if (fs.existsSync(path.join(packagepath, "requirements.txt.done"))) return;
         if (fs.existsSync(path.join(packagepath, "requirements.txt"))) {
-            runner.notifyStream(streamid, "Running pip install");
+            runner.notifyStream(streamid, "************************");
+            runner.notifyStream(streamid, "**** Running pip install");
+            runner.notifyStream(streamid, "************************");
+
             if ((await runner.runit(packagepath, streamid, pythonpath, ["-m", "pip", "install", "-r", path.join(packagepath, "requirements.txt")], false)) == true) {
                 fs.writeFileSync(path.join(packagepath, "requirements.txt.done"), "done");
             }
