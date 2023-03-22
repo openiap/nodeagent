@@ -9,7 +9,7 @@ import { Stream } from 'stream';
 const client: openiap = new openiap()
 client.allowconnectgiveup = false;
 client.agent = "nodeagent"
-var myproject = require(path.join(__dirname, "..", "package.json"));
+var myproject = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
 client.version = myproject.version;
 var assistentConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
 var agentid = "";
@@ -18,7 +18,7 @@ var languages = ["nodejs"];
 function reloadAndParseConfig():boolean {
   config.doDumpStack = true
   if (fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
-    assistentConfig = require(path.join(os.homedir(), ".openiap", "config.json"));
+    assistentConfig = JSON.parse(fs.readFileSync(path.join(os.homedir(), ".openiap", "config.json"), "utf8"));
     process.env["NODE_ENV"] = "production";
     if (assistentConfig.apiurl) {
       process.env["apiurl"] = assistentConfig.apiurl;
@@ -36,7 +36,7 @@ function reloadAndParseConfig():boolean {
     assistentConfig = {};
     assistentConfig.apiurl = process.env["apiurl"];
     assistentConfig.jwt = process.env["jwt"];
-    if(assistentConfig.apiurl != null && assistentConfig.apiurl != "" && assistentConfig.jwt != null && assistentConfig.jwt != "") {
+    if(assistentConfig.apiurl != null && assistentConfig.apiurl != "") {
       return true;
     }
     console.log("failed locating config to load from " + path.join(os.homedir(), ".openiap", "config.json"))
@@ -146,13 +146,21 @@ async function RegisterAgent() {
     if (res != null && res.slug != "" && res._id != null && res._id != "") {
       localqueue = await client.RegisterQueue({ queuename: res.slug }, onQueueMessage);
       agentid = res._id;
-      var config = require(path.join(os.homedir(), ".openiap", "config.json"));
-      config.agentid = agentid;
-      if(res.jwt != null && res.jwt != "") {
-        config.jwt = res.jwt;
-        process.env.jwt = res.jwt;
+      var config = {agentid, jwt: res.jwt};
+      if(fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
+        config = JSON.parse(fs.readFileSync(path.join(os.homedir(), ".openiap", "config.json"), "utf8"));
       }
-      fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(config));
+      config.agentid = agentid;
+
+      if(process.env["apiurl"] != null && process.env["apiurl"] != "") {
+        console.log("Skip updating config.json as apiurl is set in environment variable (probably running as a service)")
+      } else {
+        if(res.jwt != null && res.jwt != "") {
+          config.jwt = res.jwt;
+          process.env.jwt = res.jwt;
+        }
+        fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(config));
+      }
       console.log("Registed agent as " + agentid + " and queue " + localqueue + " ( from " + res.slug + " )");
     } else {
       console.log("Registrering agent seems to have failed without an error !?!");

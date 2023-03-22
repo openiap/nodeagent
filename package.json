@@ -1,6 +1,6 @@
 {
     "name": "@openiap/nodeagent",
-    "version": "0.0.13",
+    "version": "0.0.14",
     "description": "",
     "main": "./dist/index.js",
     "module": "./dist/index.js",
@@ -35,5 +35,11 @@
         "@openiap/nodeapi": "^0.0.8",
         "adm-zip": "^0.5.10",
         "tar": "^6.1.13"
+    },
+    "openiap": {
+        "language": "nodejs",
+        "typescript": true,
+        "daemon": false,
+        "chromium": false
     }
 }
