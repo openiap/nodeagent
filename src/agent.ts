@@ -62,7 +62,11 @@ function init() {
 
   client.onConnected = onConnected
   client.onDisconnected = onDisconnected
-  client.connect();
+  client.connect().then(user=> {
+    console.log("connected");
+  }).catch((err) => {
+    console.error(err);
+  });
 }
 async function onConnected(client: openiap) {
   var u = new URL(client.url);

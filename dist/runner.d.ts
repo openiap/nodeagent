@@ -28,4 +28,6 @@ export declare class runner {
     static findXvfbPath(): string;
     static pipinstall(packagepath: string, streamid: string, pythonpath: string): Promise<void>;
     static npminstall(packagepath: string, streamid: string): Promise<boolean>;
+    static runpythonscript(script: string): Promise<string>;
+    static runpythoncode(code: string): Promise<string>;
 }

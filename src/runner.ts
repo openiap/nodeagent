@@ -1,6 +1,7 @@
 import { spawn, execSync, ChildProcessWithoutNullStreams } from 'child_process';
 import { Stream, Readable } from 'stream';
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import { config } from '@openiap/nodeapi';
 const { info, err } = config;
@@ -157,5 +158,33 @@ export class runner {
         }
         return false;
     }
-    
+    public static async runpythonscript(script:string): Promise<string> {
+        const pythonpath = runner.findPythonPath();
+        if (pythonpath == null) throw new Error("Python not found");
+        return new Promise((resolve, reject) => {
+            const childProcess = spawn(pythonpath, [script], { cwd: process.cwd() })
+            const pid = childProcess.pid;
+            let output = "";
+            const catchoutput = (data: any) => {
+                if(data != null) {
+                    var s:string = data.toString();
+                    output += s;
+                }
+            };
+            childProcess.stdout.on('data', catchoutput);
+            childProcess.stderr.on('data', catchoutput);
+            childProcess.stdout.on('close', (code: any) => {
+                if (code == false || code == null) {
+                    resolve(output);
+                } else {
+                    reject(output);
+                }
+            });
+        });
+    }    
+    public static async runpythoncode(code:string): Promise<string> {
+        var tempfilename = path.join(os.tmpdir(), "temp.py");
+        fs.writeFileSync(tempfilename, code);
+        return await this.runpythonscript(tempfilename);
+    }    
 }
