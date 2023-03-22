@@ -49,7 +49,7 @@ function Run(cmd: string) {
     return error.toString();
   }
 }
-function RunStreamed(command: string, args: string[]) {
+function RunStreamed(command: string, args: string[],exit:boolean) {
   const child = childProcess.spawn(command, args);
   child.stdout.on('data', (data:any) => {
     if(data == null) return;
@@ -61,6 +61,7 @@ function RunStreamed(command: string, args: string[]) {
   });
   child.on('close', (code:any) => {
     console.log(`child process exited with code ${code}`);
+    if(exit) process.exit(0);
   });
 }
 function installService(svcName: string, serviceName: string, script: string): void {
@@ -139,7 +140,7 @@ async function main() {
     let nodepath = runner.findNodePath()
     let scriptPath = path.join(__dirname, "agent.js");
     console.log("run " + scriptPath)
-    RunStreamed(nodepath,[scriptPath])
+    RunStreamed(nodepath,[scriptPath], true)
     return;
   } else {
     console.log("Not running as service")
