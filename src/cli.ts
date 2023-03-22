@@ -17,10 +17,13 @@ const args = process.argv.slice(2);
 let serviceName = "";
 let command = "";
 let verbose = false;
+let service = false;
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
   if (arg === '-v' || arg === '-verbose' || arg === '/v' || arg === '/verbose') {
     verbose = true;
+  } else if (arg === '-svc' || arg === "-svr" || arg === '-service' || arg === '/svc' || arg === '/service') {
+    service = true;
   } else if (arg === 'install' || arg === '/install' || arg === '-install' || arg === 'i' || arg === '/i' || arg === '-i') {
     command = 'install';
   } else if (arg === 'uninstall' || arg === '/uninstall' || arg === '-uninstall' || arg === 'u' || arg === '/u' || arg === '-u') {
@@ -116,6 +119,14 @@ function UninstallService(svcName: string, serviceName: string): void {
 async function main() {
   if (serviceName == "" || serviceName == null) {
     serviceName = "nodeagent"
+  }
+  if (service) {
+    let scriptPath = path.join(__dirname, "agent.js");
+    console.log("run " + scriptPath)
+    Run(`node ${scriptPath}`)
+    return;
+  } else {
+    console.log("Not running as service")
   }
   if (command === 'install' || command == "") {
     var configfile = path.join(os.homedir(), ".openiap", "config.json");
