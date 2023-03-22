@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import { agenttools } from "./agenttools";
+import { packagemanager } from "./packagemanager";
+import { runner } from "./runner";
 
 const os = require('os');
 const path = require('path');
@@ -38,7 +40,6 @@ for (let i = 0; i < args.length; i++) {
     serviceName = arg;
   }
 }
-
 function Run(cmd: string) {
   try {
     const output = childProcess.execSync(cmd).toString();
@@ -47,6 +48,20 @@ function Run(cmd: string) {
   } catch (error) {
     return error.toString();
   }
+}
+function RunStreamed(command: string, args: string[]) {
+  const child = childProcess.spawn(command, args);
+  child.stdout.on('data', (data:any) => {
+    if(data == null) return;
+    var s = data.toString().replace(/\n$/, "");
+    console.log(s);
+  });
+  child.stderr.on('data', (data:any) => {
+    console.error(data);
+  });
+  child.on('close', (code:any) => {
+    console.log(`child process exited with code ${code}`);
+  });
 }
 function installService(svcName: string, serviceName: string, script: string): void {
   let scriptPath = path.join(__dirname, script);
@@ -121,9 +136,10 @@ async function main() {
     serviceName = "nodeagent"
   }
   if (service) {
+    let nodepath = runner.findNodePath()
     let scriptPath = path.join(__dirname, "agent.js");
     console.log("run " + scriptPath)
-    Run(`node ${scriptPath}`)
+    RunStreamed(nodepath,[scriptPath])
     return;
   } else {
     console.log("Not running as service")

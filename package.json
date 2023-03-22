@@ -1,6 +1,6 @@
 {
     "name": "@openiap/nodeagent",
-    "version": "0.0.10",
+    "version": "0.0.11",
     "description": "",
     "main": "./dist/index.js",
     "module": "./dist/index.js",
@@ -8,7 +8,8 @@
     "scripts": {
         "watch": "tsc -w",
         "updateapidev": "npm uninstall @openiap/nodeapi && npm i openiap/nodeapi",
-        "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi"
+        "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi",
+        "clean": "rm -rf $(npm get cache)/_npx && sudo rm -rf /root/.npm/_npx"
     },
     "keywords": [],
     "publishConfig": {

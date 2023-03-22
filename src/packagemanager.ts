@@ -92,7 +92,7 @@ export class packagemanager {
         } else if (command.endsWith(".js") || command == "npm run start") {
           // const nodePath = path.join(app.getAppPath(), 'node_modules', '.bin', 'node');
           // const nodePath = "node"
-          const nodePath = runner.findInPath("node");
+          const nodePath = runner.findNodePath();
           await runner.npminstall(packagepath, streamid);
           runner.runit(packagepath, streamid, nodePath, [command], true)
         } else {

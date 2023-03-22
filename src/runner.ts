@@ -131,6 +131,9 @@ export class runner {
     public static findXvfbPath() {
         return runner.findInPath("xvfb-run")
     }
+    public static findNodePath() {
+        return runner.findInPath("node")
+    }
     public static async pipinstall(packagepath:string, streamid:string, pythonpath:string) {
         if (fs.existsSync(path.join(packagepath, "requirements.txt.done"))) return;
         if (fs.existsSync(path.join(packagepath, "requirements.txt"))) {

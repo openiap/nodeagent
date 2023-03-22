@@ -26,6 +26,7 @@ export declare class runner {
     static findPythonPath(): string;
     static findDotnetPath(): string;
     static findXvfbPath(): string;
+    static findNodePath(): string;
     static pipinstall(packagepath: string, streamid: string, pythonpath: string): Promise<void>;
     static npminstall(packagepath: string, streamid: string): Promise<boolean>;
     static runpythonscript(script: string): Promise<string>;
