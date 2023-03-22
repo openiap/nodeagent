@@ -33,7 +33,14 @@ function reloadAndParseConfig():boolean {
     }
     return true;
   } else {
+    assistentConfig = {};
+    assistentConfig.apiurl = process.env["apiurl"];
+    assistentConfig.jwt = process.env["jwt"];
+    if(assistentConfig.apiurl != null && assistentConfig.apiurl != "" && assistentConfig.jwt != null && assistentConfig.jwt != "") {
+      return true;
+    }
     console.log("failed locating config to load from " + path.join(os.homedir(), ".openiap", "config.json"))
+    process.exit(1);
   }
   return false;
 }
