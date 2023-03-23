@@ -100,7 +100,12 @@ export class packagemanager {
           runner.runit(packagepath, streamid, dotnet, ["run"], true)
         }
       } else {
-        runner.notifyStream(streamid, "Package not found in " + packagepath);
+        if(packagepath == null || packagepath == "") {
+          runner.notifyStream(streamid, "Package not found in " + packagemanager.packagefolder);
+        } else {
+          runner.notifyStream(streamid, "Package not found in " + packagepath);
+        }
+        
         runner.removestream(streamid);
       }
     } catch (error) {
