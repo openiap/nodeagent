@@ -11,7 +11,7 @@ export class packagemanager {
   public static packagefolder = path.join(os.homedir(), ".openiap", "packages");
   public static async getpackage(client: openiap, fileid: string, id: string) {
     const reply = await client.DownloadFile({ id: fileid });
-    if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder);
+    if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
     try {
       if (path.extname(reply.filename) == ".zip") {
         var zip = new AdmZip(reply.filename);
@@ -19,7 +19,7 @@ export class packagemanager {
       } else if (path.extname(reply.filename) == ".tar.gz" || path.extname(reply.filename) == ".tgz") {
         var dest = path.join(packagemanager.packagefolder, id);
         if (!fs.existsSync(dest)) {
-          fs.mkdirSync(dest);
+          fs.mkdirSync(dest, { recursive: true });
         }
         try {
           await tar.x({

@@ -170,7 +170,7 @@ async function main() {
       const jwt = await agenttools.WaitForToken(assistentConfig.apiurl, tokenkey);
       assistentConfig.jwt = jwt;
     }
-    if (!fs.existsSync(path.join(os.homedir(), ".openiap"))) fs.mkdirSync(path.join(os.homedir(), ".openiap"));
+    if (!fs.existsSync(path.join(os.homedir(), ".openiap"))) fs.mkdirSync(path.join(os.homedir(), ".openiap"), { recursive: true });
     fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(assistentConfig));
 
     console.log(`Installing service "${serviceName}"...`);
