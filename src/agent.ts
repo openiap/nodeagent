@@ -113,6 +113,11 @@ async function onConnected(client: openiap) {
     }
   });
   console.log("watch registered with id", watchid);
+  if(process.env.packageid != "" && process.env.packageid != null) {
+    const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    console.log("packageid is set, run package " + process.env.packageid);
+    await packagemanager.runpackage(process.env.packageid, streamid, false);
+  }
 }
 async function onDisconnected(client: openiap) {
   console.log("Disconnected");

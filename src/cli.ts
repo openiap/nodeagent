@@ -22,7 +22,9 @@ let verbose = false;
 let service = false;
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
-  if (arg === '-v' || arg === '-verbose' || arg === '/v' || arg === '/verbose') {
+  if (arg === '-noop' || arg === '/noop') {
+    process.exit(0);
+  } else if (arg === '-v' || arg === '-verbose' || arg === '/v' || arg === '/verbose') {
     verbose = true;
   } else if (arg === '-svc' || arg === "-svr" || arg === '-service' || arg === '/svc' || arg === '/service') {
     service = true;

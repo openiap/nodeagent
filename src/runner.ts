@@ -57,7 +57,26 @@ export class runner {
             try {
                 // , stdio: ['pipe', 'pipe', 'pipe']
                 // , stdio: 'pipe'
-                const childProcess = spawn(command, parameters, { cwd: packagepath  })
+                if(clearstream) {
+                    var xvfb = runner.findXvfbPath()
+                    if(xvfb != null && xvfb != "") {
+                        var shellcommand = command;
+                        var _parameters = parameters;
+                        // var shellcommand = '"' + command + '" "' + parameters.join(" ") + '"';
+                        command = xvfb;
+                        parameters = [];
+                        // parameters.push(`-e`);
+                        // parameters.push(`/tmp/xvfb.log`);
+                        parameters.push(`--server-args="-screen 0 1920x1080x24 -ac"`);
+                        // parameters.push(`--server-args="-ac"`);
+                        // xvfb-run --auto-servernum --server-num=1 
+                        parameters.push(`--auto-servernum`);
+                        parameters.push(`--server-num=1`);
+                        parameters.push(shellcommand);
+                        parameters = parameters.concat(_parameters);
+                    }
+                }
+                const childProcess = spawn(command, parameters, { cwd: packagepath,env: {...process.env, log_with_colors:"false"}  })
                 const pid = childProcess.pid;
                 const p:runner_process = { id: streamid, pid, p: childProcess, forcekilled: false }
                 runner.notifyStream(streamid, `Child process started as pid ${pid}`);
@@ -111,7 +130,8 @@ export class runner {
             const stdout = execSync(command, { stdio: 'pipe' }).toString();
             return stdout.trim() || null;
         } catch (error) {
-            throw error;
+            return "";
+            // throw error;
         }
     }
     public static kill(streamid: string) {
