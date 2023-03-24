@@ -15,6 +15,9 @@ const readline = require('readline').createInterface({
   output: process.stdout
 });
 const args = process.argv.slice(2);
+process.on('SIGINT', ()=> { process.exit(0) })
+process.on('SIGTERM', ()=> { process.exit(0) })
+process.on('SIGQUIT', ()=> { process.exit(0) })
 
 let serviceName = "";
 let command = "";

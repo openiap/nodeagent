@@ -6,6 +6,10 @@ import * as path from "path";
 import * as fs from "fs"
 import { Stream } from 'stream';
 
+process.on('SIGINT', ()=> { process.exit(0) })
+process.on('SIGTERM', ()=> { process.exit(0) })
+process.on('SIGQUIT', ()=> { process.exit(0) })
+
 const client: openiap = new openiap()
 client.allowconnectgiveup = false;
 client.agent = "nodeagent"
@@ -13,6 +17,8 @@ var myproject = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.j
 client.version = myproject.version;
 var assistentConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
 var agentid = "";
+// When injected from docker, use the injected agentid
+if(process.env.agentid != "" && process.env.agentid != null) agentid = process.env.agentid;
 var localqueue = "";
 var languages = ["nodejs"];
 function reloadAndParseConfig():boolean {
