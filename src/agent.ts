@@ -129,7 +129,9 @@ async function localrun() {
   });
   var buffer = "";
   stream.on('data', async (data) => {
-    console.log(data.toString());
+    if(data == null) return;
+    var s = data.toString().replace(/\n$/, "");
+    console.log(s);
   });
   stream.on('end', async () => {
     console.log("process ended");
