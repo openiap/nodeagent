@@ -41,6 +41,12 @@ function reloadAndParseConfig():boolean {
   } else {
     assistentConfig = {};
     assistentConfig.apiurl = process.env["apiurl"];
+    if(assistentConfig.apiurl == null || assistentConfig.apiurl == "") {
+      assistentConfig.apiurl = process.env["grpcapiurl"];
+    }
+    if(assistentConfig.apiurl == null || assistentConfig.apiurl == "") {
+      assistentConfig.apiurl = process.env["wsapiurl"];
+    }
     assistentConfig.jwt = process.env["jwt"];
     if(assistentConfig.apiurl != null && assistentConfig.apiurl != "") {
       return true;

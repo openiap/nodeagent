@@ -1,0 +1,29 @@
+# FROM node:lts-alpine
+from alpine:3.17
+
+RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
+    echo "http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
+    echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
+    apk --no-cache update && \
+    apk add --no-cache --virtual .build-deps gifsicle pngquant optipng libjpeg-turbo-utils udev ttf-opensans && \
+    apk add --no-cache nodejs npm python3 alpine-sdk chromium-chromedriver chromium xvfb udev yarn bash && \
+    npm cache clean --force && \
+    rm -rf /var/cache/apk /root/.npm/
+    
+# fake chrome and force parameters
+COPY bin/chromium-browser.sh /tmp/chromium-browser
+RUN mv /usr/bin/chromium-browser /usr/bin/chromium-browser-original \
+  && ln -sfv /tmp/chromium-browser /usr/bin/chromium-browser
+RUN chmod +x /usr/bin/chromium-browser
+RUN ln -sf /usr/bin/chromium-browser /usr/bin/google-chrome
+
+# tagui hack's 
+RUN ln -sf /usr/bin/python3 /usr/bin/python
+ENV OPENSSL_CONF=/dev/null
+
+# tell puppeteer to skip installing chrome. We'll be using the installed package.
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+
+COPY dist /tmp/dist
+RUN npx -y @openiap/nodeagent -noop
+CMD ["npx", "@openiap/nodeagent", "-service"]
