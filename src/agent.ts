@@ -114,15 +114,29 @@ async function onConnected(client: openiap) {
   });
   console.log("watch registered with id", watchid);
   if(process.env.packageid != "" && process.env.packageid != null) {
-    const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     console.log("packageid is set, run package " + process.env.packageid);
-    await packagemanager.runpackage(process.env.packageid, streamid, false);
+    await localrun();
   }
 }
 async function onDisconnected(client: openiap) {
   console.log("Disconnected");
 };
 
+async function localrun() {
+  const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  var stream = new Stream.Readable({
+    read(size) { }
+  });
+  var buffer = "";
+  stream.on('data', async (data) => {
+    console.log(data.toString());
+  });
+  stream.on('end', async () => {
+    console.log("process ended");
+  });
+  runner.addstream(streamid, stream);  
+  await packagemanager.runpackage(process.env.packageid, streamid, false);
+}
 async function reloadpackages() {
   var _packages = await client.Query<any>({ query: { "_type": "package", "language": { "$in": languages } }, collectionname: "agents" });
   if (_packages != null) {
