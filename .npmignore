@@ -4,3 +4,6 @@ package-lock.json
 /.vscode
 make
 bin
+Dockerfilechromiumold
+Dockerfilechromium
+Dockerfile

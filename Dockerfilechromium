@@ -25,5 +25,6 @@ ENV OPENSSL_CONF=/dev/null
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 COPY dist /tmp/dist
+RUN pip install openiap
 RUN npx -y @openiap/nodeagent -noop
 CMD ["npx", "@openiap/nodeagent", "-service"]
