@@ -88,6 +88,7 @@ export class packagemanager {
         if (command == "" || command == null) throw new Error("Failed locating a command to run, EXIT")
         if (command.endsWith(".py")) {
           var python = runner.findPythonPath();
+          if(python == "") throw new Error("Failed locating python, is python installed and in the path?")
           await runner.pipinstall(packagepath, streamid, python)
           if(wait) {
             await runner.runit(packagepath, streamid, python, [command], true)
@@ -98,6 +99,7 @@ export class packagemanager {
           // const nodePath = path.join(app.getAppPath(), 'node_modules', '.bin', 'node');
           // const nodePath = "node"
           const nodePath = runner.findNodePath();
+          if(nodePath == "") throw new Error("Failed locating node, is node installed and in the path?")
           await runner.npminstall(packagepath, streamid);
           if(wait) {
             await runner.runit(packagepath, streamid, nodePath, [command], true)
@@ -106,6 +108,7 @@ export class packagemanager {
           }          
         } else {
           var dotnet = runner.findDotnetPath();
+          if(dotnet == "") throw new Error("Failed locating dotnet, is dotnet installed and in the path?")
           if(wait) {
             await runner.runit(packagepath, streamid, dotnet, ["run"], true)
           } else {
