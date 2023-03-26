@@ -131,6 +131,7 @@ async function onConnected(client: openiap) {
   if(process.env.packageid != "" && process.env.packageid != null) {
     console.log("packageid is set, run package " + process.env.packageid);
     await localrun();
+    process.exit(0);
   }
 }
 async function onDisconnected(client: openiap) {
@@ -138,21 +139,26 @@ async function onDisconnected(client: openiap) {
 };
 
 async function localrun() {
-  const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  var stream = new Stream.Readable({
-    read(size) { }
-  });
-  var buffer = "";
-  stream.on('data', async (data) => {
-    if(data == null) return;
-    var s = data.toString().replace(/\n$/, "");
-    console.log(s);
-  });
-  stream.on('end', async () => {
-    console.log("process ended");
-  });
-  runner.addstream(streamid, stream);  
-  await packagemanager.runpackage(process.env.packageid, streamid, false);
+  try {
+    const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    var stream = new Stream.Readable({
+      read(size) { }
+    });
+    var buffer = "";
+    stream.on('data', async (data) => {
+      if(data == null) return;
+      var s = data.toString().replace(/\n$/, "");
+      console.log(s);
+    });
+    stream.on('end', async () => {
+      console.log("process ended");
+    });
+    runner.addstream(streamid, stream);  
+    await packagemanager.runpackage(process.env.packageid, streamid, false);
+  } catch (error) {
+    console.error(error);
+    process.exit(1);
+  }
 }
 async function reloadpackages() {
   try {

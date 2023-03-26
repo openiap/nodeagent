@@ -84,7 +84,7 @@ export class packagemanager {
       var packagepath = packagemanager.getpackagepath(path.join(packagemanager.packagefolder, id));
       if (fs.existsSync(packagepath)) {
         let command = packagemanager.getscriptpath(packagepath)
-        if (command == "") throw new Error("Failed locating a command to run, EXIT")
+        if (command == "" || command == null) throw new Error("Failed locating a command to run, EXIT")
         if (command.endsWith(".py")) {
           var python = runner.findPythonPath();
           await runner.pipinstall(packagepath, streamid, python)
