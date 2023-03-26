@@ -6,10 +6,13 @@ RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repos
     echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
     apk --no-cache update && \
     apk add --no-cache --virtual .build-deps gifsicle pngquant optipng libjpeg-turbo-utils udev ttf-opensans && \
-    apk add --no-cache nodejs npm python3 py3-pip alpine-sdk chromium-chromedriver chromium xvfb udev yarn bash musl-dev linux-headers g++ && \
+    apk add --no-cache nodejs npm python3 py3-pip alpine-sdk chromium-chromedriver chromium xvfb bash  && \
+    apk add --no-cache nodejs musl-dev linux-headers g++ gcc python3-dev && \
     npm cache clean --force && \
     rm -rf /var/cache/apk /root/.npm/
-    
+
+# apk add --no-cache   gfortran build-base wget freetype-dev libpng-dev openblas-dev && \
+
 # fake chrome and force parameters
 COPY bin/chromium-browser.sh /tmp/chromium-browser
 RUN mv /usr/bin/chromium-browser /usr/bin/chromium-browser-original \
