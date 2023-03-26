@@ -27,6 +27,7 @@ export declare class runner {
     static findDotnetPath(): string;
     static findXvfbPath(): string;
     static findNodePath(): string;
+    static findNPMPath(): string;
     static findChromiumPath(): string;
     static findChromePath(): string;
     static pipinstall(packagepath: string, streamid: string, pythonpath: string): Promise<void>;

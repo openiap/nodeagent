@@ -154,6 +154,10 @@ export class runner {
     public static findNodePath() {
         return runner.findInPath("node")
     }
+    public static findNPMPath() {
+        // const child = (process.platform === 'win32' ? 'npm.cmd' : 'npm')
+        return runner.findInPath("npm")
+    }
     public static findChromiumPath() {
         var result = runner.findInPath("chromium-browser");
         if(result == "") result = runner.findInPath("chromium");
@@ -180,11 +184,13 @@ export class runner {
         if (fs.existsSync(path.join(packagepath, "npm.install.done"))) {
             return false;
         } else if (fs.existsSync(path.join(packagepath, "package.json"))) {
+            const nodePath = runner.findNodePath();
             runner.notifyStream(streamid, "************************");
             runner.notifyStream(streamid, "**** Running npm install");
             runner.notifyStream(streamid, "************************");
-            const child = (process.platform === 'win32' ? 'npm.cmd' : 'npm')
-            if ((await runner.runit(packagepath, streamid, child, ["install"], false)) == true) {
+            const npmpath = runner.findNPMPath();
+            if(npmpath == "") throw new Error("Failed locating NPM, is it installed and in the path?")
+            if ((await runner.runit(packagepath, streamid, npmpath, ["install"], false)) == true) {
                 fs.writeFileSync(path.join(packagepath, "npm.install.done"), "done");
                 return true;
             }
