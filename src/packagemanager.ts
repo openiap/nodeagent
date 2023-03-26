@@ -78,7 +78,7 @@ export class packagemanager {
     if (fs.existsSync(path.join(packagepath, "main.py"))) return path.join(packagepath, "main.py");
     if (fs.existsSync(path.join(packagepath, "index.py"))) return path.join(packagepath, "index.py");
   }
-  public static async runpackage(id: string, streamid: string, remote: boolean) {
+  public static async runpackage(id: string, streamid: string, wait: boolean) {
     if (streamid == null || streamid == "") throw new Error("streamid is null or empty");
     try {
       var packagepath = packagemanager.getpackagepath(path.join(packagemanager.packagefolder, id));
@@ -88,24 +88,35 @@ export class packagemanager {
         if (command.endsWith(".py")) {
           var python = runner.findPythonPath();
           await runner.pipinstall(packagepath, streamid, python)
-          runner.runit(packagepath, streamid, python, [command], true)
+          if(wait) {
+            await runner.runit(packagepath, streamid, python, [command], true)
+          } else {
+            runner.runit(packagepath, streamid, python, [command], true)
+          }          
         } else if (command.endsWith(".js") || command == "npm run start") {
           // const nodePath = path.join(app.getAppPath(), 'node_modules', '.bin', 'node');
           // const nodePath = "node"
           const nodePath = runner.findNodePath();
           await runner.npminstall(packagepath, streamid);
-          runner.runit(packagepath, streamid, nodePath, [command], true)
+          if(wait) {
+            await runner.runit(packagepath, streamid, nodePath, [command], true)
+          } else {
+            runner.runit(packagepath, streamid, nodePath, [command], true)
+          }          
         } else {
           var dotnet = runner.findDotnetPath();
-          runner.runit(packagepath, streamid, dotnet, ["run"], true)
+          if(wait) {
+            await runner.runit(packagepath, streamid, dotnet, ["run"], true)
+          } else {
+            runner.runit(packagepath, streamid, dotnet, ["run"], true)
+          }          
         }
       } else {
         if(packagepath == null || packagepath == "") {
           runner.notifyStream(streamid, "Package not found in " + packagemanager.packagefolder);
         } else {
           runner.notifyStream(streamid, "Package not found in " + packagepath);
-        }
-        
+        }        
         runner.removestream(streamid);
       }
     } catch (error) {

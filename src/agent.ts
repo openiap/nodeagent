@@ -153,8 +153,10 @@ async function localrun() {
     stream.on('end', async () => {
       console.log("process ended");
     });
-    runner.addstream(streamid, stream);  
-    await packagemanager.runpackage(process.env.packageid, streamid, false);
+    runner.addstream(streamid, stream);
+    console.log("run package " + process.env.packageid);
+    await packagemanager.runpackage(process.env.packageid, streamid, true);
+    console.log("run complete");
   } catch (error) {
     console.error(error);
     process.exit(1);
@@ -164,7 +166,7 @@ async function reloadpackages() {
   try {
     console.log("reloadpackages")
     if(process.env.packageid != "" && process.env.packageid != null) {
-      packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder, process.env.packageid));
+      // packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder, process.env.packageid));
       var _packages = await client.Query<any>({ query: { "_type": "package", "_id": process.env.packageid }, collectionname: "agents" });
     } else {
       var _packages = await client.Query<any>({ query: { "_type": "package", "language": { "$in": languages } }, collectionname: "agents" });
@@ -298,7 +300,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         }
       });
       runner.addstream(streamid, stream);  
-      await packagemanager.runpackage(payload.id, streamid, true);
+      await packagemanager.runpackage(payload.id, streamid, false);
       try {
         if(dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "success" } });
       } catch (error) {
