@@ -203,6 +203,12 @@ async function RegisterAgent() {
       data
     });
     if (res != null) res = JSON.parse(res);
+    if(res != null && res.environment != null) {
+      var keys = Object.keys(res.environment);
+      for(var i = 0; i < keys.length; i++) {
+        process.env[keys[i]] = res.environment[keys[i]];
+      }
+    }
     if (res != null && res.slug != "" && res._id != null && res._id != "") {
       localqueue = await client.RegisterQueue({ queuename: res.slug }, onQueueMessage);
       agentid = res._id;
