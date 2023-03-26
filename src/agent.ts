@@ -19,10 +19,25 @@ var assistentConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", ag
 var agentid = "";
 // When injected from docker, use the injected agentid
 if(process.env.agentid != "" && process.env.agentid != null) agentid = process.env.agentid;
+var dockeragent = false;
 var localqueue = "";
 var languages = ["nodejs"];
 function reloadAndParseConfig():boolean {
   config.doDumpStack = true
+  assistentConfig = {};
+  assistentConfig.apiurl = process.env["apiurl"];
+  if(assistentConfig.apiurl == null || assistentConfig.apiurl == "") {
+    assistentConfig.apiurl = process.env["grpcapiurl"];
+  }
+  if(assistentConfig.apiurl == null || assistentConfig.apiurl == "") {
+    assistentConfig.apiurl = process.env["wsapiurl"];
+  }
+  assistentConfig.jwt = process.env["jwt"];
+  if(assistentConfig.apiurl != null && assistentConfig.apiurl != "") {
+    dockeragent = true;
+    return true;
+  }
+
   if (fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
     assistentConfig = JSON.parse(fs.readFileSync(path.join(os.homedir(), ".openiap", "config.json"), "utf8"));
     process.env["NODE_ENV"] = "production";
@@ -39,18 +54,6 @@ function reloadAndParseConfig():boolean {
     }
     return true;
   } else {
-    assistentConfig = {};
-    assistentConfig.apiurl = process.env["apiurl"];
-    if(assistentConfig.apiurl == null || assistentConfig.apiurl == "") {
-      assistentConfig.apiurl = process.env["grpcapiurl"];
-    }
-    if(assistentConfig.apiurl == null || assistentConfig.apiurl == "") {
-      assistentConfig.apiurl = process.env["wsapiurl"];
-    }
-    assistentConfig.jwt = process.env["jwt"];
-    if(assistentConfig.apiurl != null && assistentConfig.apiurl != "") {
-      return true;
-    }
     console.log("failed locating config to load from " + path.join(os.homedir(), ".openiap", "config.json"))
     process.exit(1);
   }
@@ -152,18 +155,30 @@ async function localrun() {
   await packagemanager.runpackage(process.env.packageid, streamid, false);
 }
 async function reloadpackages() {
-  var _packages = await client.Query<any>({ query: { "_type": "package", "language": { "$in": languages } }, collectionname: "agents" });
-  if (_packages != null) {
-    for (var i = 0; i < _packages.length; i++) {
-      try {
-        if (fs.existsSync(path.join(packagemanager.packagefolder, _packages[i]._id))) continue;
-        if (_packages[i].fileid != null && _packages[i].fileid != "") {
-          await packagemanager.getpackage(client, _packages[i].fileid, _packages[i]._id);
+  try {
+    console.log("reloadpackages")
+    if(process.env.packageid != "" && process.env.packageid != null) {
+      packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder, process.env.packageid));
+      var _packages = await client.Query<any>({ query: { "_type": "package", "_id": process.env.packageid }, collectionname: "agents" });
+    } else {
+      var _packages = await client.Query<any>({ query: { "_type": "package", "language": { "$in": languages } }, collectionname: "agents" });
+    }
+    console.log("Got " + _packages.length + " packages to handle")
+    if (_packages != null) {
+      for (var i = 0; i < _packages.length; i++) {
+        try {
+          if (fs.existsSync(path.join(packagemanager.packagefolder, _packages[i]._id))) continue;
+          if (_packages[i].fileid != null && _packages[i].fileid != "") {
+            console.log("get package " + _packages[i].name);
+            await packagemanager.getpackage(client, _packages[i].fileid, _packages[i]._id);
+          }
+        } catch (error) {
+          console.error(error);
         }
-      } catch (error) {
-        console.error(error);
       }
     }
+  } catch (error) {
+    console.error(error);    
   }
 }
 async function RegisterAgent() {
