@@ -193,7 +193,11 @@ async function RegisterAgent() {
   try {
     var u = new URL(client.url);
     console.log("Registering agent with " + u.hostname + " as " + client.client.user.username);
-    var data = JSON.stringify({ hostname: os.hostname(), os: os.platform(), arch: os.arch(), username: os.userInfo().username, version: myproject.version, "languages": languages, "chrome": true, "chromium": true, "maxpackages": 50 })
+    var chromium = runner.findChromiumPath() != "";
+    var chrome = runner.findChromePath() != "";
+    var daemon = undefined;
+    if(!dockeragent) daemon = true;
+    var data = JSON.stringify({ hostname: os.hostname(), os: os.platform(), arch: os.arch(), username: os.userInfo().username, version: myproject.version, "languages": languages, chrome, chromium, daemon, "maxpackages": 50 })
     var res: any = await client.CustomCommand({
       id: agentid, command: "registeragent",
       data

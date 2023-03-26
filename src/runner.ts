@@ -128,7 +128,7 @@ export class runner {
                     throw new Error(`Unsupported platform: ${process.platform}`);
             }
             const stdout = execSync(command, { stdio: 'pipe' }).toString();
-            return stdout.trim() || null;
+            return stdout.trim() || "";
         } catch (error) {
             return "";
             // throw error;
@@ -153,6 +153,16 @@ export class runner {
     }
     public static findNodePath() {
         return runner.findInPath("node")
+    }
+    public static findChromiumPath() {
+        var result = runner.findInPath("chromium-browser");
+        if(result == "") result = runner.findInPath("chromium");
+        return result
+    }
+    public static findChromePath() {
+        var result = runner.findInPath("google-chrome");
+        if(result == "") result = runner.findInPath("chrome");
+        return result
     }
     public static async pipinstall(packagepath:string, streamid:string, pythonpath:string) {
         if (fs.existsSync(path.join(packagepath, "requirements.txt.done"))) return;
