@@ -10,20 +10,21 @@ const { info, err } = config;
 export class packagemanager {
   public static packagefolder = path.join(os.homedir(), ".openiap", "packages");
   public static async getpackage(client: openiap, fileid: string, id: string) {
-    const reply = await client.DownloadFile({ id: fileid });
     if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
+    const reply = await client.DownloadFile({ id: fileid, folder: packagemanager.packagefolder });
+    const filename = path.join(packagemanager.packagefolder, reply.filename);
     try {
-      if (path.extname(reply.filename) == ".zip") {
-        var zip = new AdmZip(reply.filename);
+      if (path.extname(filename) == ".zip") {
+        var zip = new AdmZip(filename);
         zip.extractAllTo(path.join(packagemanager.packagefolder, id), true);
-      } else if (path.extname(reply.filename) == ".tar.gz" || path.extname(reply.filename) == ".tgz") {
+      } else if (path.extname(filename) == ".tar.gz" || path.extname(filename) == ".tgz") {
         var dest = path.join(packagemanager.packagefolder, id);
         if (!fs.existsSync(dest)) {
           fs.mkdirSync(dest, { recursive: true });
         }
         try {
           await tar.x({
-            file: reply.filename,
+            file: filename,
             C: dest
           })
         } catch (error) {
@@ -36,7 +37,7 @@ export class packagemanager {
       console.error(error);
       throw error
     } finally {
-      fs.unlinkSync(reply.filename);
+      fs.unlinkSync(filename);
     }
   }
   public static getpackagepath(packagepath: string, first: boolean = true): string {
