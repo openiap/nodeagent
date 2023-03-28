@@ -259,8 +259,10 @@ async function RegisterAgent() {
 }
 async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: string) {
   try {
-    const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    // const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    let streamid = msg.correlationId;
     if(payload != null && payload.payload != null) payload = payload.payload;
+    if(payload.streamid != null || payload.streamid != "") streamid = payload.streamid;
     // console.log("onQueueMessage");
     // console.log(payload);
     if (user == null || jwt == null || jwt == "") {
@@ -292,7 +294,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       stream.on('data', async (data) => {
         if(dostream) {
           try {
-            await client.QueueMessage({ queuename: streamqueue, data: {"command": "stream", "data": data} });
+            await client.QueueMessage({ queuename: streamqueue, data: {"command": "stream", "data": data}, correlationId: streamid });
           } catch (error) {
             console.error(error);
             dostream = false;
@@ -305,12 +307,12 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         var data = {"command": "completed", "data": buffer};
         if(buffer == "") delete data.data;
         try {
-          if(commandqueue != "") await client.QueueMessage({ queuename: commandqueue, data });
+          if(commandqueue != "") await client.QueueMessage({ queuename: commandqueue, data, correlationId: streamid });
         } catch (error) {
           console.error(error);
         }
         try {
-          if(dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data });
+          if(dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data, correlationId: streamid });
         } catch (error) {
           console.error(error);
         }
@@ -318,7 +320,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       runner.addstream(streamid, stream);  
       await packagemanager.runpackage(payload.id, streamid, false);
       try {
-        if(dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "success" } });
+        if(dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "success" }, correlationId: streamid });
       } catch (error) {
         console.error(error);
         dostream = false;
