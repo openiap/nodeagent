@@ -90,6 +90,7 @@ function init() {
     console.error(err);
   });
 }
+var lastreload = new Date();
 async function onConnected(client: openiap) {
   var u = new URL(client.url);
   process.env.apiurl = client.url;
@@ -115,6 +116,11 @@ async function onConnected(client: openiap) {
         }
       } else if (document._type == "agent") {
         if(document._id == agentid)  {
+          if(lastreload.getTime() + 1000 > new Date().getTime()) {
+            console.log("agent changed, but last reload was less than 1 second ago, do nothing");
+            return;
+          }
+          lastreload = new Date();
           console.log("agent changed, reload config");
           await RegisterAgent()
         } else {
