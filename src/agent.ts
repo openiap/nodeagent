@@ -262,7 +262,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
     // const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     let streamid = msg.correlationId;
     if(payload != null && payload.payload != null) payload = payload.payload;
-    if(payload.streamid != null || payload.streamid != "") streamid = payload.streamid;
+    if(payload.streamid != null && payload.streamid != "") streamid = payload.streamid;
     // console.log("onQueueMessage");
     // console.log(payload);
     if (user == null || jwt == null || jwt == "") {
@@ -318,7 +318,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         }
       });
       runner.addstream(streamid, stream);  
-      await packagemanager.runpackage(payload.id, streamid, false);
+      await packagemanager.runpackage(payload.id, streamid, true);
       try {
         if(dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "success" }, correlationId: streamid });
       } catch (error) {
@@ -326,7 +326,13 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         dostream = false;
       }
       return { "command": "success" };
-    }  
+    }
+    if (payload.command == "kill") {
+      if(payload.id == null || payload.id == "") payload.id = payload.streamid;
+      if(payload.id == null || payload.id == "") throw new Error("id is required");
+      runner.kill(payload.id);
+      return { "command": "success" };
+    }
   } catch (error) {
     return { "command": "error", error: JSON.stringify(error.message) };    
   }
