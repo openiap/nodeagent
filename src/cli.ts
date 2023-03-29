@@ -48,6 +48,7 @@ for (let i = 0; i < args.length; i++) {
 }
 function Run(cmd: string) {
   try {
+    console.log(cmd);
     const output = childProcess.execSync(cmd).toString();
     if(verbose) console.log(output);
     return output
