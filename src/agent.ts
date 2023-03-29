@@ -401,11 +401,12 @@ async function main() {
     svc.on('start', () => { log("Service started"); });
     svc.on('stop', () => { log("Service stopped"); });
     svc.on('error', () => { log("Service error"); });
-    while(svc.status != "running") {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }    
+    // while(svc.status != "running") {
+    //   await new Promise(resolve => setTimeout(resolve, 1000));
+    // }    
   }
   while (true) {
+    log("looping");
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
 }
