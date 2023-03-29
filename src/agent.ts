@@ -5,11 +5,11 @@ import * as os from "os"
 import * as path from "path";
 import * as fs from "fs"
 import { Stream } from 'stream';
-var EventLogger = require('node-windows').EventLogger;
 
 var elog:any = null;
 if (os.platform() === 'win32') {
-  elog = new EventLogger('nodeagent');
+  // var EventLogger = require('node-windows').EventLogger;
+  // elog = new EventLogger('nodeagent');
 }
 
 function log(message:string) {
