@@ -93,6 +93,14 @@ function installService(svcName: string, serviceName: string, script: string): v
       console.log(`Service "${serviceName}" installed successfully.`);
       svc.start();
     });
+    // svc.on('install', () => { console.log("Service installed"); });
+    svc.on('alreadyinstalled', () => { console.log("Service already installed"); });
+    svc.on('invalidinstallation', () => { console.log("Service invalid installation"); });
+    svc.on('uninstall', () => { console.log("Service uninstalled"); });
+    svc.on('alreadyuninstalled', () => { console.log("Service already uninstalled"); });
+    svc.on('start', () => { console.log("Service started"); });
+    svc.on('stop', () => { console.log("Service stopped"); });
+    svc.on('error', () => { console.log("Service error"); });
     svc.install();
     
   } else {
