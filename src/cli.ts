@@ -93,6 +93,7 @@ function installService(svcName: string, serviceName: string, script: string): v
     if(fs.existsSync(svcPath)) {
       UninstallService(svcName, serviceName);
     }
+    var nodepath = runner.findNodePath();
     const svcContent = `
       [Unit]
       Description=${serviceName}
@@ -100,7 +101,7 @@ function installService(svcName: string, serviceName: string, script: string): v
 
       [Service]
       Type=simple
-      ExecStart=/usr/bin/node ${scriptPath}
+      ExecStart=${nodepath} ${scriptPath}
       
       Restart=on-failure
 
