@@ -71,66 +71,76 @@ function RunStreamed(command: string, args: string[],exit:boolean) {
     if(exit) process.exit(0);
   });
 }
-function installService(svcName: string, serviceName: string, script: string): void {
-  let scriptPath = path.join(__dirname, script);
-  if (!fs.existsSync(scriptPath)) {
-    scriptPath = path.join(__dirname, "dist", script);
-  }
-  if (!fs.existsSync(scriptPath)) {
-    console.log("Failed locating " + script)
-    return;
-  }
-
-  if (os.platform() === 'win32') {
-    const Service = require('node-windows').Service;
-
-    const svc = new Service({
-      name:serviceName,
-      description: serviceName,
-      script: scriptPath
-    });
-    svc.on('install', function() {
-      console.log(`Service "${serviceName}" installed successfully.`);
-      svc.start();
-    });
-    // svc.on('install', () => { console.log("Service installed"); });
-    svc.on('alreadyinstalled', () => { console.log("Service already installed"); });
-    svc.on('invalidinstallation', () => { console.log("Service invalid installation"); });
-    svc.on('uninstall', () => { console.log("Service uninstalled"); });
-    svc.on('alreadyuninstalled', () => { console.log("Service already uninstalled"); });
-    svc.on('start', () => { console.log("Service started"); });
-    svc.on('stop', () => { console.log("Service stopped"); });
-    svc.on('error', () => { console.log("Service error"); });
-    svc.install();
-    
-  } else {
-    const svcPath = `/etc/systemd/system/${svcName}.service`;
-    if(fs.existsSync(svcPath)) {
-      UninstallService(svcName, serviceName);
+function installService(svcName: string, serviceName: string, script: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let scriptPath = path.join(__dirname, script);
+    if (!fs.existsSync(scriptPath)) {
+      scriptPath = path.join(__dirname, "dist", script);
     }
-    var nodepath = runner.findNodePath();
-    const svcContent = `
-      [Unit]
-      Description=${serviceName}
-      After=network.target
-
-      [Service]
-      Type=simple
-      ExecStart=${nodepath} ${scriptPath}
+    if (!fs.existsSync(scriptPath)) {
+      console.log("Failed locating " + script)
+      reject();
+      return;
+    }
+  
+    if (os.platform() === 'win32') {
+      const Service = require('node-windows').Service;
+  
+      const svc = new Service({
+        name:serviceName,
+        description: serviceName,
+        script: scriptPath
+      });
+      svc.on('install', function() {
+        try {
+          console.log(`Service "${serviceName}" installed successfully.`);
+          svc.start();
+            resolve();
+        } catch (error) {
+          console.error(error);
+          reject();          
+        }
+      });
+      // svc.on('install', () => { console.log("Service installed"); });
+      svc.on('alreadyinstalled', () => { console.log("Service already installed"); });
+      svc.on('invalidinstallation', () => { console.log("Service invalid installation"); });
+      svc.on('uninstall', () => { console.log("Service uninstalled"); });
+      svc.on('alreadyuninstalled', () => { console.log("Service already uninstalled"); });
+      svc.on('start', () => { console.log("Service started"); });
+      svc.on('stop', () => { console.log("Service stopped"); });
+      svc.on('error', () => { console.log("Service error"); });
+      svc.install();
       
-      Restart=on-failure
-
-      [Install]
-      WantedBy=multi-user.target
-   `;
-    fs.writeFileSync(svcPath, svcContent);
-    if(verbose) console.log(`Service file created at "${svcPath}".`);
-    Run(`systemctl enable ${serviceName}.service`)
-    Run(`systemctl start ${serviceName}.service`)
-
-    console.log(`Service "${serviceName}" installed successfully.`);
-    console.log(`sudo systemctl status ${svcName}.service\nsudo journalctl -efu ${svcName}`)
-  }
+    } else {
+      const svcPath = `/etc/systemd/system/${svcName}.service`;
+      if(fs.existsSync(svcPath)) {
+        UninstallService(svcName, serviceName);
+      }
+      var nodepath = runner.findNodePath();
+      const svcContent = `
+        [Unit]
+        Description=${serviceName}
+        After=network.target
+  
+        [Service]
+        Type=simple
+        ExecStart=${nodepath} ${scriptPath}
+        
+        Restart=on-failure
+  
+        [Install]
+        WantedBy=multi-user.target
+     `;
+      fs.writeFileSync(svcPath, svcContent);
+      if(verbose) console.log(`Service file created at "${svcPath}".`);
+      Run(`systemctl enable ${serviceName}.service`)
+      Run(`systemctl start ${serviceName}.service`)
+  
+      console.log(`Service "${serviceName}" installed successfully.`);
+      console.log(`sudo systemctl status ${svcName}.service\nsudo journalctl -efu ${svcName}`)
+      resolve();
+    }
+  });
 }
 
 function UninstallService(svcName: string, serviceName: string): void {
