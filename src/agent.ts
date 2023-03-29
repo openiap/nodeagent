@@ -10,6 +10,7 @@ process.on('SIGINT', ()=> { process.exit(0) })
 process.on('SIGTERM', ()=> { process.exit(0) })
 process.on('SIGQUIT', ()=> { process.exit(0) })
 
+console.log("Agent starting!!!")
 const client: openiap = new openiap()
 client.allowconnectgiveup = false;
 client.agent = "nodeagent"
@@ -259,6 +260,7 @@ async function RegisterAgent() {
 }
 async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: string) {
   try {
+    console.log("onQueueMessage " + msg.correlationId)
     // const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     let streamid = msg.correlationId;
     if(payload != null && payload.payload != null) payload = payload.payload;
@@ -284,7 +286,23 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       if(payload.id == null || payload.id == "") throw new Error("id is required");
       var packagepath = packagemanager.getpackagepath(path.join(os.homedir(), ".openiap", "packages", payload.id));
       if (packagepath == "") {
+        try {
+          var _packages = await client.Query<any>({ query: { "_type": "package", "_id": payload.id }, collectionname: "agents" });
+          if(_packages.length > 0) {
+            console.log("get package " + _packages[0].name);
+            await packagemanager.getpackage(client, _packages[0].fileid, payload.id);
+          } else {
+            console.log("Cannot find package with id " + payload.id);
+          }
+          
+        } catch (error) {
+          
+        }
+      }
+      if (packagepath == "") {
         console.log("package not found");
+        if(dostream) await client.QueueMessage({ queuename: streamqueue, data: {"command": "stream", "data": Buffer.from("Package " + payload.id + " not found")}, correlationId: streamid });
+        if(commandqueue != "") await client.QueueMessage({ queuename: commandqueue, data: {"command": "completed"}, correlationId: streamid });
         return { "command": "error", error: "package not found" };
       }
       var stream = new Stream.Readable({
