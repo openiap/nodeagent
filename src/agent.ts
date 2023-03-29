@@ -386,21 +386,21 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
 async function main() {
   init()
   if (os.platform() === 'win32') {
-    const Service = require('node-windows').Service;
-    let scriptPath = path.join(__dirname, "agent.js");
-    const svc = new Service({
-      name: "nodeagent",
-      description: "nodeagent",
-      script: scriptPath
-    });
-    svc.on('install', () => { log("Service installed"); });
-    svc.on('alreadyinstalled', () => { log("Service already installed"); });
-    svc.on('invalidinstallation', () => { log("Service invalid installation"); });
-    svc.on('uninstall', () => { log("Service uninstalled"); });
-    svc.on('alreadyuninstalled', () => { log("Service already uninstalled"); });
-    svc.on('start', () => { log("Service started"); });
-    svc.on('stop', () => { log("Service stopped"); });
-    svc.on('error', () => { log("Service error"); });
+    // const Service = require('node-windows').Service;
+    // let scriptPath = path.join(__dirname, "agent.js");
+    // const svc = new Service({
+    //   name: "nodeagent",
+    //   description: "nodeagent",
+    //   script: scriptPath
+    // });
+    // svc.on('install', () => { log("Service installed"); });
+    // svc.on('alreadyinstalled', () => { log("Service already installed"); });
+    // svc.on('invalidinstallation', () => { log("Service invalid installation"); });
+    // svc.on('uninstall', () => { log("Service uninstalled"); });
+    // svc.on('alreadyuninstalled', () => { log("Service already uninstalled"); });
+    // svc.on('start', () => { log("Service started"); });
+    // svc.on('stop', () => { log("Service stopped"); });
+    // svc.on('error', () => { log("Service error"); });
     // while(svc.status != "running") {
     //   await new Promise(resolve => setTimeout(resolve, 1000));
     // }    
