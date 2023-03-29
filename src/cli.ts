@@ -82,13 +82,17 @@ function installService(svcName: string, serviceName: string, script: string): v
   }
 
   if (os.platform() === 'win32') {
-    const svcDescription = `${serviceName}`;
-    const svcPath = `node ${scriptPath}`;
-    const svcRegPath = `HKLM\\SYSTEM\\CurrentControlSet\\Services\\${svcName}`;
-    
-    Run(`sc create "${svcName}" binPath="${svcPath}" DisplayName="${serviceName}" Description="${svcDescription}" start=auto`)
-    Run(`reg add ${svcRegPath} /v DependOnService /t REG_MULTI_SZ /d EventLog /f`)
-    Run(`net start ${svcName}`)
+    const Service = require('node-windows').Service;
+
+    const svc = new Service({
+      name:serviceName,
+      description: serviceName,
+      script: scriptPath
+    });
+    svc.on('install', function() {
+      svc.start();
+    });
+    svc.install();
     console.log(`Service "${serviceName}" installed successfully.`);
   } else {
     const svcPath = `/etc/systemd/system/${svcName}.service`;
@@ -122,12 +126,23 @@ function installService(svcName: string, serviceName: string, script: string): v
 
 function UninstallService(svcName: string, serviceName: string): void {
   if (os.platform() === 'win32') {
-    const svcRegPath = `HKLM\\SYSTEM\\CurrentControlSet\\Services\\${svcName}`;
+    const Service = require('node-windows').Service;
+    let scriptPath = path.join(__dirname, "agent.js");
+    if (!fs.existsSync(scriptPath)) {
+      scriptPath = path.join(__dirname, "dist", "agent.js");
+    }
+      const svc = new Service({
+      name:serviceName,
+      description: serviceName,
+      script: scriptPath
+    });
+    svc.on('uninstall',function(){
+      console.log(`Service "${serviceName}" uninstalled successfully.`);
+    });
+    
+    svc.uninstall();
 
-    Run(`net stop ${svcName}`)
-    Run(`sc delete "${svcName}"`)
-    Run(`reg delete ${svcRegPath} /f`)
-    console.log(`Service "${serviceName}" uninstalled successfully.`);
+    
   } else {
     const svcPath = `/etc/systemd/system/${svcName}.service`;
     if(fs.existsSync(svcPath)) {
@@ -136,6 +151,8 @@ function UninstallService(svcName: string, serviceName: string): void {
       fs.unlinkSync(svcPath);
       console.log(`Service file removed at "${svcPath}".`);
     }
+    
+
     console.log(`Service "${serviceName}" uninstalled successfully.`);
   }
 }

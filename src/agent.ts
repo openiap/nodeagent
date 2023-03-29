@@ -358,6 +358,15 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
 }
 async function main() {
   init()
+  if (os.platform() === 'win32') {
+    const Service = require('node-windows').Service;
+    let scriptPath = path.join(__dirname, "agent.js");
+    const svc = new Service({
+      name: "nodeagent",
+      description: "nodeagent",
+      script: scriptPath
+    });
+  }
   while (true) {
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
