@@ -291,6 +291,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
           if(_packages.length > 0) {
             console.log("get package " + _packages[0].name);
             await packagemanager.getpackage(client, _packages[0].fileid, payload.id);
+            packagepath = packagemanager.getpackagepath(path.join(os.homedir(), ".openiap", "packages", payload.id));
           } else {
             console.log("Cannot find package with id " + payload.id);
           }
@@ -300,10 +301,10 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         }
       }
       if (packagepath == "") {
-        console.log("package not found");
+        console.log("Package " + payload.id + " not found");
         if(dostream) await client.QueueMessage({ queuename: streamqueue, data: {"command": "stream", "data": Buffer.from("Package " + payload.id + " not found")}, correlationId: streamid });
         if(commandqueue != "") await client.QueueMessage({ queuename: commandqueue, data: {"command": "completed"}, correlationId: streamid });
-        return { "command": "error", error: "package not found" };
+        return { "command": "error", error: "Package " + payload.id + " not found" };
       }
       var stream = new Stream.Readable({
         read(size) { }
