@@ -91,6 +91,7 @@ function installService(svcName: string, serviceName: string, script: string): P
         description: serviceName,
         script: scriptPath
       });
+      console.log("Install using " + scriptPath)
       svc.on('alreadyinstalled', () => { 
         console.log("Service already installed"); 
         svc.start();
