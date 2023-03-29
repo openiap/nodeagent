@@ -15,9 +15,9 @@ const readline = require('readline').createInterface({
   output: process.stdout
 });
 const args = process.argv.slice(2);
-process.on('SIGINT', ()=> { process.exit(0) })
-process.on('SIGTERM', ()=> { process.exit(0) })
-process.on('SIGQUIT', ()=> { process.exit(0) })
+process.on('SIGINT', () => { process.exit(0) })
+process.on('SIGTERM', () => { process.exit(0) })
+process.on('SIGQUIT', () => { process.exit(0) })
 
 let serviceName = "";
 let command = "";
@@ -50,25 +50,25 @@ function Run(cmd: string) {
   try {
     console.log(cmd);
     const output = childProcess.execSync(cmd).toString();
-    if(verbose) console.log(output);
+    if (verbose) console.log(output);
     return output
   } catch (error) {
     return error.toString();
   }
 }
-function RunStreamed(command: string, args: string[],exit:boolean) {
+function RunStreamed(command: string, args: string[], exit: boolean) {
   const child = childProcess.spawn(command, args);
-  child.stdout.on('data', (data:any) => {
-    if(data == null) return;
+  child.stdout.on('data', (data: any) => {
+    if (data == null) return;
     var s = data.toString().replace(/\n$/, "");
     console.log(s);
   });
-  child.stderr.on('data', (data:any) => {
+  child.stderr.on('data', (data: any) => {
     console.error(data);
   });
-  child.on('close', (code:any) => {
+  child.on('close', (code: any) => {
     console.log(`child process exited with code ${code}`);
-    if(exit) process.exit(0);
+    if (exit) process.exit(0);
   });
 }
 function installService(svcName: string, serviceName: string, script: string): Promise<void> {
@@ -82,20 +82,24 @@ function installService(svcName: string, serviceName: string, script: string): P
       reject();
       return;
     }
-  
+
     if (os.platform() === 'win32') {
       const Service = require('node-windows').Service;
-  
+
       const svc = new Service({
-        name:serviceName,
+        name: serviceName,
         description: serviceName,
         script: scriptPath
       });
       console.log("Install using " + scriptPath)
-      svc.on('alreadyinstalled', () => { 
-        console.log("Service already installed"); 
+      var assistentConfig = require(path.join(os.homedir(), ".openiap", "config.json"));
+      if (!fs.existsSync(path.join("C:\\WINDOWS\\system32\\config\\systemprofile\\", ".openiap"))) fs.mkdirSync(path.join("C:\\WINDOWS\\system32\\config\\systemprofile\\", ".openiap"), { recursive: true });
+      fs.writeFileSync(path.join("C:\\WINDOWS\\system32\\config\\systemprofile\\", ".openiap", "config.json"), JSON.stringify(assistentConfig));
+  
+      svc.on('alreadyinstalled', () => {
+        console.log("Service already installed");
         svc.start();
-    });
+      });
       svc.on('install', () => {
         console.log(`Service "${serviceName}" installed successfully.`);
         svc.start();
@@ -119,10 +123,10 @@ function installService(svcName: string, serviceName: string, script: string): P
       svc.on('stop', () => { console.log("Service stopped"); });
       svc.on('error', () => { console.log("Service error"); });
       svc.install();
-      
+
     } else {
       const svcPath = `/etc/systemd/system/${svcName}.service`;
-      if(fs.existsSync(svcPath)) {
+      if (fs.existsSync(svcPath)) {
         await UninstallService(svcName, serviceName);
       }
       var nodepath = runner.findNodePath();
@@ -141,10 +145,10 @@ function installService(svcName: string, serviceName: string, script: string): P
         WantedBy=multi-user.target
      `;
       fs.writeFileSync(svcPath, svcContent);
-      if(verbose) console.log(`Service file created at "${svcPath}".`);
+      if (verbose) console.log(`Service file created at "${svcPath}".`);
       Run(`systemctl enable ${serviceName}.service`)
       Run(`systemctl start ${serviceName}.service`)
-  
+
       console.log(`Service "${serviceName}" installed successfully.`);
       console.log(`sudo systemctl status ${svcName}.service\nsudo journalctl -efu ${svcName}`)
       resolve();
@@ -160,30 +164,30 @@ function UninstallService(svcName: string, serviceName: string): Promise<void> {
       if (!fs.existsSync(scriptPath)) {
         scriptPath = path.join(__dirname, "dist", "agent.js");
       }
-        const svc = new Service({
-        name:serviceName,
+      const svc = new Service({
+        name: serviceName,
         description: serviceName,
         script: scriptPath
       });
-      svc.on('uninstall',function(){
+      svc.on('uninstall', function () {
         console.log(`Service "${serviceName}" uninstalled successfully.`);
         resolve();
       });
-      svc.on('alreadyuninstalled',function(){
+      svc.on('alreadyuninstalled', function () {
         console.log(`Service "${serviceName}" already uninstalled.`);
         resolve();
       });
-      svc.on('error',function(){
+      svc.on('error', function () {
         console.log(`Service "${serviceName}" uninstall failed.`);
         reject();
       });
-      
+
       svc.uninstall();
 
-      
+
     } else {
       const svcPath = `/etc/systemd/system/${svcName}.service`;
-      if(fs.existsSync(svcPath)) {
+      if (fs.existsSync(svcPath)) {
         Run(`systemctl stop ${serviceName}.service`)
         Run(`systemctl disable ${serviceName}.service`)
         fs.unlinkSync(svcPath);
@@ -203,7 +207,7 @@ async function main() {
     let nodepath = runner.findNodePath()
     let scriptPath = path.join(__dirname, "agent.js");
     console.log("run " + scriptPath)
-    RunStreamed(nodepath,[scriptPath], true)
+    RunStreamed(nodepath, [scriptPath], true)
     return;
   } else {
     console.log("Not running as service")
