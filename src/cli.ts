@@ -91,15 +91,23 @@ function installService(svcName: string, serviceName: string, script: string): P
         description: serviceName,
         script: scriptPath
       });
-      svc.on('install', function() {
-        try {
-          console.log(`Service "${serviceName}" installed successfully.`);
-          svc.start();
-            resolve();
-        } catch (error) {
-          console.error(error);
-          reject();          
-        }
+      svc.on('alreadyinstalled', () => { 
+        console.log("Service already installed"); 
+        svc.start();
+    });
+      svc.on('install', () => {
+        console.log(`Service "${serviceName}" installed successfully.`);
+        svc.start();
+      });
+      svc.on('start', () => {
+        console.log(`Service "${serviceName}" started successfully.`);
+        resolve();
+      });
+      svc.on('error', () => {
+        reject();
+      });
+      svc.on('stop', () => {
+        reject();
       });
       // svc.on('install', () => { console.log("Service installed"); });
       svc.on('alreadyinstalled', () => { console.log("Service already installed"); });
