@@ -218,7 +218,7 @@ async function main() {
     fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(assistentConfig));
 
     console.log(`Installing service "${serviceName}"...`);
-    installService(serviceName, serviceName, 'agent.js');
+    await installService(serviceName, serviceName, 'agent.js');
   } else if (command === 'uninstall') {
     console.log(`Uninstalling service "${serviceName}"...`);
     UninstallService(serviceName, serviceName);
