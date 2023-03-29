@@ -366,6 +366,15 @@ async function main() {
       description: "nodeagent",
       script: scriptPath
     });
+    svc.on('install', () => { console.log("Service installed"); });
+    svc.on('alreadyinstalled', () => { console.log("Service already installed"); });
+    svc.on('invalidinstallation', () => { console.log("Service invalid installation"); });
+    svc.on('uninstall', () => { console.log("Service uninstalled"); });
+    svc.on('alreadyuninstalled', () => { console.log("Service already uninstalled"); });
+    svc.on('start', () => { console.log("Service started"); });
+    svc.on('stop', () => { console.log("Service stopped"); });
+    svc.on('error', () => { console.log("Service error"); });
+    
   }
   while (true) {
     await new Promise(resolve => setTimeout(resolve, 1000));

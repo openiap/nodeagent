@@ -90,10 +90,11 @@ function installService(svcName: string, serviceName: string, script: string): v
       script: scriptPath
     });
     svc.on('install', function() {
+      console.log(`Service "${serviceName}" installed successfully.`);
       svc.start();
     });
     svc.install();
-    console.log(`Service "${serviceName}" installed successfully.`);
+    
   } else {
     const svcPath = `/etc/systemd/system/${svcName}.service`;
     if(fs.existsSync(svcPath)) {
