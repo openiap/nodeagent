@@ -5,12 +5,39 @@ import * as os from "os"
 import * as path from "path";
 import * as fs from "fs"
 import { Stream } from 'stream';
+var EventLogger = require('node-windows').EventLogger;
+
+var elog:any = null;
+if (os.platform() === 'win32') {
+  elog = new EventLogger('nodeagent');
+}
+
+function log(message:string) {
+  console.log(message);
+  if(elog != null) {
+    try {
+      elog.info(message);
+    } catch (error) {
+      
+    }
+  }
+}
+function _error(message:string|Error) {
+  console.error(message);
+  if(elog != null) {
+    try {
+      elog.error(message.toString());
+    } catch (error) {
+      
+    }
+  }
+}
 
 process.on('SIGINT', ()=> { process.exit(0) })
 process.on('SIGTERM', ()=> { process.exit(0) })
 process.on('SIGQUIT', ()=> { process.exit(0) })
 
-console.log("Agent starting!!!")
+log("Agent starting!!!")
 const client: openiap = new openiap()
 client.allowconnectgiveup = false;
 client.agent = "nodeagent"
@@ -55,7 +82,7 @@ function reloadAndParseConfig():boolean {
     }
     return true;
   } else {
-    console.log("failed locating config to load from " + path.join(os.homedir(), ".openiap", "config.json"))
+    log("failed locating config to load from " + path.join(os.homedir(), ".openiap", "config.json"))
     process.exit(1);
   }
   return false;
@@ -86,9 +113,9 @@ function init() {
   client.onConnected = onConnected
   client.onDisconnected = onDisconnected
   client.connect().then(user=> {
-    console.log("connected");
+    log("connected");
   }).catch((err) => {
-    console.error(err);
+    _error(err);
   });
 }
 var lastreload = new Date();
@@ -97,7 +124,7 @@ async function onConnected(client: openiap) {
   process.env.apiurl = client.url;
   await RegisterAgent()
   if (client.client == null || client.client.user == null) {
-    console.log('connected, but not signed in, close connection again');
+    log('connected, but not signed in, close connection again');
     return client.Close();
   }
   await reloadpackages()
@@ -105,44 +132,44 @@ async function onConnected(client: openiap) {
     try {
       if (document._type == "package") {
         if(operation == "insert") {
-          console.log("package " + document.name + " inserted, reload packages");
+          log("package " + document.name + " inserted, reload packages");
           await reloadpackages()
         } else if(operation == "replace") {
-          console.log("package " + document.name + " updated, delete and reload");
+          log("package " + document.name + " updated, delete and reload");
           packagemanager.removepackage(document._id);
           await packagemanager.getpackage(client, document.fileid, document._id);
         } else if (operation == "delete") {
-          console.log("package " + document.name + " deleted, cleanup after package");
+          log("package " + document.name + " deleted, cleanup after package");
           packagemanager.removepackage(document._id);
         }
       } else if (document._type == "agent") {
         if(document._id == agentid)  {
           if(lastreload.getTime() + 1000 > new Date().getTime()) {
-            console.log("agent changed, but last reload was less than 1 second ago, do nothing");
+            log("agent changed, but last reload was less than 1 second ago, do nothing");
             return;
           }
           lastreload = new Date();
-          console.log("agent changed, reload config");
+          log("agent changed, reload config");
           await RegisterAgent()
         } else {
-          console.log("Another agent was changed, do nothing");
+          log("Another agent was changed, do nothing");
         }        
       } else {
-        console.log("unknown type " + document._type + " changed, do nothing");
+        log("unknown type " + document._type + " changed, do nothing");
       }
     } catch (error) {
-      console.error(error);
+      _error(error);
     }
   });
-  console.log("watch registered with id", watchid);
+  log("watch registered with id " + watchid);
   if(process.env.packageid != "" && process.env.packageid != null) {
-    console.log("packageid is set, run package " + process.env.packageid);
+    log("packageid is set, run package " + process.env.packageid);
     await localrun();
     process.exit(0);
   }
 }
 async function onDisconnected(client: openiap) {
-  console.log("Disconnected");
+  log("Disconnected");
 };
 
 async function localrun() {
@@ -155,51 +182,51 @@ async function localrun() {
     stream.on('data', async (data) => {
       if(data == null) return;
       var s = data.toString().replace(/\n$/, "");
-      console.log(s);
+      log(s);
     });
     stream.on('end', async () => {
-      console.log("process ended");
+      log("process ended");
     });
     runner.addstream(streamid, stream);
-    console.log("run package " + process.env.packageid);
+    log("run package " + process.env.packageid);
     await packagemanager.runpackage(process.env.packageid, streamid, true);
-    console.log("run complete");
+    log("run complete");
   } catch (error) {
-    console.error(error);
+    _error(error);
     process.exit(1);
   }
 }
 async function reloadpackages() {
   try {
-    console.log("reloadpackages")
+    log("reloadpackages")
     if(process.env.packageid != "" && process.env.packageid != null) {
       // packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder, process.env.packageid));
       var _packages = await client.Query<any>({ query: { "_type": "package", "_id": process.env.packageid }, collectionname: "agents" });
     } else {
       var _packages = await client.Query<any>({ query: { "_type": "package", "language": { "$in": languages } }, collectionname: "agents" });
     }
-    console.log("Got " + _packages.length + " packages to handle")
+    log("Got " + _packages.length + " packages to handle")
     if (_packages != null) {
       for (var i = 0; i < _packages.length; i++) {
         try {
           if (fs.existsSync(path.join(packagemanager.packagefolder, _packages[i]._id))) continue;
           if (_packages[i].fileid != null && _packages[i].fileid != "") {
-            console.log("get package " + _packages[i].name);
+            log("get package " + _packages[i].name);
             await packagemanager.getpackage(client, _packages[i].fileid, _packages[i]._id);
           }
         } catch (error) {
-          console.error(error);
+          _error(error);
         }
       }
     }
   } catch (error) {
-    console.error(error);    
+    _error(error);    
   }
 }
 async function RegisterAgent() {
   try {
     var u = new URL(client.url);
-    console.log("Registering agent with " + u.hostname + " as " + client.client.user.username);
+    log("Registering agent with " + u.hostname + " as " + client.client.user.username);
     var chromium = runner.findChromiumPath() != "";
     var chrome = runner.findChromePath() != "";
     var daemon = undefined;
@@ -226,7 +253,7 @@ async function RegisterAgent() {
       config.agentid = agentid;
 
       if(process.env["apiurl"] != null && process.env["apiurl"] != "") {
-        console.log("Skip updating config.json as apiurl is set in environment variable (probably running as a service)")
+        log("Skip updating config.json as apiurl is set in environment variable (probably running as a service)")
       } else {
         if(res.jwt != null && res.jwt != "") {
           config.jwt = res.jwt;
@@ -234,22 +261,22 @@ async function RegisterAgent() {
         }
         fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(config));
       }
-      console.log("Registed agent as " + agentid + " and queue " + localqueue + " ( from " + res.slug + " )");
+      log("Registed agent as " + agentid + " and queue " + localqueue + " ( from " + res.slug + " )");
     } else {
-      console.log("Registrering agent seems to have failed without an error !?!");
+      log("Registrering agent seems to have failed without an error !?!");
       if(res == null) {
-        console.log("res is null");
+        log("res is null");
       } else {
-        console.log(JSON.stringify(res, null, 2));
+        log(JSON.stringify(res, null, 2));
       }
     }
     if (res.jwt != null && res.jwt != "") {
       await client.Signin({ jwt: res.jwt });
-      console.log('Re-authenticated to ' + u.hostname + ' as ' + client.client.user.username);
+      log('Re-authenticated to ' + u.hostname + ' as ' + client.client.user.username);
     }
     reloadAndParseConfig();
   } catch (error) {
-    console.error(error);
+    _error(error);
     process.env["apiurl"] = "";
     process.env["jwt"] = "";
     try {
@@ -260,13 +287,13 @@ async function RegisterAgent() {
 }
 async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: string) {
   try {
-    console.log("onQueueMessage " + msg.correlationId)
+    log("onQueueMessage " + msg.correlationId)
     // const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     let streamid = msg.correlationId;
     if(payload != null && payload.payload != null) payload = payload.payload;
     if(payload.streamid != null && payload.streamid != "") streamid = payload.streamid;
-    // console.log("onQueueMessage");
-    // console.log(payload);
+    // log("onQueueMessage");
+    // log(payload);
     if (user == null || jwt == null || jwt == "") {
       return { "command": "error", error: "not authenticated" };
     }
@@ -279,7 +306,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
     if(payload.stream == "false" || payload.stream == false) {
       dostream = false;
     }
-    console.log("commandqueue: " + commandqueue + " streamqueue: " + streamqueue + " dostream: " + dostream)
+    log("commandqueue: " + commandqueue + " streamqueue: " + streamqueue + " dostream: " + dostream)
     if(commandqueue == null) commandqueue = "";
     if(streamqueue == null) streamqueue = "";
     if (payload.command == "runpackage") {
@@ -289,11 +316,11 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         try {
           var _packages = await client.Query<any>({ query: { "_type": "package", "_id": payload.id }, collectionname: "agents" });
           if(_packages.length > 0) {
-            console.log("get package " + _packages[0].name);
+            log("get package " + _packages[0].name);
             await packagemanager.getpackage(client, _packages[0].fileid, payload.id);
             packagepath = packagemanager.getpackagepath(path.join(os.homedir(), ".openiap", "packages", payload.id));
           } else {
-            console.log("Cannot find package with id " + payload.id);
+            log("Cannot find package with id " + payload.id);
           }
           
         } catch (error) {
@@ -301,7 +328,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         }
       }
       if (packagepath == "") {
-        console.log("Package " + payload.id + " not found");
+        log("Package " + payload.id + " not found");
         if(dostream) await client.QueueMessage({ queuename: streamqueue, data: {"command": "stream", "data": Buffer.from("Package " + payload.id + " not found")}, correlationId: streamid });
         if(commandqueue != "") await client.QueueMessage({ queuename: commandqueue, data: {"command": "completed"}, correlationId: streamid });
         return { "command": "error", error: "Package " + payload.id + " not found" };
@@ -315,7 +342,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
           try {
             await client.QueueMessage({ queuename: streamqueue, data: {"command": "stream", "data": data}, correlationId: streamid });
           } catch (error) {
-            console.error(error);
+            _error(error);
             dostream = false;
           }
         } else {
@@ -328,12 +355,12 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         try {
           if(commandqueue != "") await client.QueueMessage({ queuename: commandqueue, data, correlationId: streamid });
         } catch (error) {
-          console.error(error);
+          _error(error);
         }
         try {
           if(dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data, correlationId: streamid });
         } catch (error) {
-          console.error(error);
+          _error(error);
         }
       });
       runner.addstream(streamid, stream);  
@@ -341,7 +368,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       try {
         if(dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "success" }, correlationId: streamid });
       } catch (error) {
-        console.error(error);
+        _error(error);
         dostream = false;
       }
       return { "command": "success" };
@@ -366,14 +393,14 @@ async function main() {
       description: "nodeagent",
       script: scriptPath
     });
-    svc.on('install', () => { console.log("Service installed"); });
-    svc.on('alreadyinstalled', () => { console.log("Service already installed"); });
-    svc.on('invalidinstallation', () => { console.log("Service invalid installation"); });
-    svc.on('uninstall', () => { console.log("Service uninstalled"); });
-    svc.on('alreadyuninstalled', () => { console.log("Service already uninstalled"); });
-    svc.on('start', () => { console.log("Service started"); });
-    svc.on('stop', () => { console.log("Service stopped"); });
-    svc.on('error', () => { console.log("Service error"); });
+    svc.on('install', () => { log("Service installed"); });
+    svc.on('alreadyinstalled', () => { log("Service already installed"); });
+    svc.on('invalidinstallation', () => { log("Service invalid installation"); });
+    svc.on('uninstall', () => { log("Service uninstalled"); });
+    svc.on('alreadyuninstalled', () => { log("Service already uninstalled"); });
+    svc.on('start', () => { log("Service started"); });
+    svc.on('stop', () => { log("Service stopped"); });
+    svc.on('error', () => { log("Service error"); });
     while(svc.status != "running") {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }    
