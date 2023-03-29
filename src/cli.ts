@@ -28,6 +28,7 @@ for (let i = 0; i < args.length; i++) {
   if (arg === '-noop' || arg === '/noop') {
     process.exit(0);
   } else if (arg === '-v' || arg === '-verbose' || arg === '/v' || arg === '/verbose') {
+    console.log("Verbose mode enabled.");
     verbose = true;
   } else if (arg === '-svc' || arg === "-svr" || arg === '-service' || arg === '/svc' || arg === '/service') {
     service = true;
@@ -83,7 +84,7 @@ function installService(svcName: string, serviceName: string, script: string): v
     const svcDescription = `${serviceName}`;
     const svcPath = `node ${scriptPath}`;
     const svcRegPath = `HKLM\\SYSTEM\\CurrentControlSet\\Services\\${svcName}`;
-
+    
     Run(`sc create "${svcName}" binPath="${svcPath}" DisplayName="${serviceName}" Description="${svcDescription}" start=auto`)
     Run(`reg add ${svcRegPath} /v DependOnService /t REG_MULTI_SZ /d EventLog /f`)
     Run(`net start ${svcName}`)
