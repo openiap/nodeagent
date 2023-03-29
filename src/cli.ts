@@ -72,7 +72,7 @@ function RunStreamed(command: string, args: string[],exit:boolean) {
   });
 }
 function installService(svcName: string, serviceName: string, script: string): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     let scriptPath = path.join(__dirname, script);
     if (!fs.existsSync(scriptPath)) {
       scriptPath = path.join(__dirname, "dist", script);
@@ -122,7 +122,7 @@ function installService(svcName: string, serviceName: string, script: string): P
     } else {
       const svcPath = `/etc/systemd/system/${svcName}.service`;
       if(fs.existsSync(svcPath)) {
-        UninstallService(svcName, serviceName);
+        await UninstallService(svcName, serviceName);
       }
       var nodepath = runner.findNodePath();
       const svcContent = `
@@ -151,37 +151,47 @@ function installService(svcName: string, serviceName: string, script: string): P
   });
 }
 
-function UninstallService(svcName: string, serviceName: string): void {
-  if (os.platform() === 'win32') {
-    const Service = require('node-windows').Service;
-    let scriptPath = path.join(__dirname, "agent.js");
-    if (!fs.existsSync(scriptPath)) {
-      scriptPath = path.join(__dirname, "dist", "agent.js");
-    }
-      const svc = new Service({
-      name:serviceName,
-      description: serviceName,
-      script: scriptPath
-    });
-    svc.on('uninstall',function(){
+function UninstallService(svcName: string, serviceName: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (os.platform() === 'win32') {
+      const Service = require('node-windows').Service;
+      let scriptPath = path.join(__dirname, "agent.js");
+      if (!fs.existsSync(scriptPath)) {
+        scriptPath = path.join(__dirname, "dist", "agent.js");
+      }
+        const svc = new Service({
+        name:serviceName,
+        description: serviceName,
+        script: scriptPath
+      });
+      svc.on('uninstall',function(){
+        console.log(`Service "${serviceName}" uninstalled successfully.`);
+        resolve();
+      });
+      svc.on('alreadyuninstalled',function(){
+        console.log(`Service "${serviceName}" already uninstalled.`);
+        resolve();
+      });
+      svc.on('error',function(){
+        console.log(`Service "${serviceName}" uninstall failed.`);
+        reject();
+      });
+      
+      svc.uninstall();
+
+      
+    } else {
+      const svcPath = `/etc/systemd/system/${svcName}.service`;
+      if(fs.existsSync(svcPath)) {
+        Run(`systemctl stop ${serviceName}.service`)
+        Run(`systemctl disable ${serviceName}.service`)
+        fs.unlinkSync(svcPath);
+        console.log(`Service file removed at "${svcPath}".`);
+      }
       console.log(`Service "${serviceName}" uninstalled successfully.`);
-    });
-    
-    svc.uninstall();
-
-    
-  } else {
-    const svcPath = `/etc/systemd/system/${svcName}.service`;
-    if(fs.existsSync(svcPath)) {
-      Run(`systemctl stop ${serviceName}.service`)
-      Run(`systemctl disable ${serviceName}.service`)
-      fs.unlinkSync(svcPath);
-      console.log(`Service file removed at "${svcPath}".`);
+      resolve();
     }
-    
-
-    console.log(`Service "${serviceName}" uninstalled successfully.`);
-  }
+  });
 }
 
 async function main() {
@@ -229,7 +239,7 @@ async function main() {
     await installService(serviceName, serviceName, 'agent.js');
   } else if (command === 'uninstall') {
     console.log(`Uninstalling service "${serviceName}"...`);
-    UninstallService(serviceName, serviceName);
+    await UninstallService(serviceName, serviceName);
   }
   process.exit(0);
 }
