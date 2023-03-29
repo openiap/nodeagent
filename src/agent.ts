@@ -374,7 +374,9 @@ async function main() {
     svc.on('start', () => { console.log("Service started"); });
     svc.on('stop', () => { console.log("Service stopped"); });
     svc.on('error', () => { console.log("Service error"); });
-    
+    while(svc.status != "running") {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }    
   }
   while (true) {
     await new Promise(resolve => setTimeout(resolve, 1000));
