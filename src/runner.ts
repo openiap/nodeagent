@@ -190,8 +190,9 @@ export class runner {
             runner.notifyStream(client, streamid, "************************");
             runner.notifyStream(client, streamid, "**** Running pip install");
             runner.notifyStream(client, streamid, "************************");
-
             if ((await runner.runit(client, packagepath, streamid, streamqueue, pythonpath, ["-m", "pip", "install", "-r", path.join(packagepath, "requirements.txt")], false)) == true) {
+                // WHY is this needed ???
+                await runner.runit(client, packagepath, streamid, streamqueue, pythonpath, ["-m", "pip", "install", "--upgrade", "protobuf"], false)
                 fs.writeFileSync(path.join(packagepath, "requirements.txt.done"), "done");
             }
         }
