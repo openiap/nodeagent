@@ -157,7 +157,9 @@ export class runner {
         }
     }
     public static findPythonPath() {
-        return runner.findInPath("python")
+        var result = runner.findInPath("python3")
+        if (result == "") result = runner.findInPath("python")
+        return result;
     }
     public static findDotnetPath() {
         return runner.findInPath("dotnet")
