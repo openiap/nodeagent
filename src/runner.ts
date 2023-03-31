@@ -3,13 +3,14 @@ import { Stream, Readable } from 'stream';
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { config } from '@openiap/nodeapi';
+import { config, openiap } from '@openiap/nodeapi';
 const { info, err } = config;
 export class runner_process {
     id: string;
     pid: number;
     p: ChildProcessWithoutNullStreams;
     forcekilled: boolean;
+    streamqueue: string;
 }
 export class runner_stream {
     id: string;
@@ -27,39 +28,52 @@ export class runner {
         runner.streams.push(s);
         return s;
     }
-    public static notifyStream(streamid: string, message: Buffer | string) {
+    public static async notifyStream(client: openiap, streamid: string, message: Buffer | string): Promise<void> {
         const s = this.ensurestream(streamid);
-        if(message != null && !Buffer.isBuffer(message)) {
+        if (message != null && !Buffer.isBuffer(message)) {
             message = Buffer.from(message + "\n");
         }
         s.stream.push(message);
+        const p = this.processs.find(x => x.id == streamid);
+        if (p != null && p.streamqueue != null && p.streamqueue != "") {
+            try {
+                if (message == null) {
+                    await client.QueueMessage({ queuename: p.streamqueue, data: { "command": "completed", "data": message }, correlationId: streamid });
+                } else {
+                    await client.QueueMessage({ queuename: p.streamqueue, data: { "command": "stream", "data": message }, correlationId: streamid });
+                }
+            } catch (error) {
+                console.error(error.message);
+                p.streamqueue = "";
+            }
+        }
     }
     public static removestream(streamid: string) {
         let s = runner.streams.find(x => x.id == streamid)
-        if(s != null) {
+        if (s != null) {
             s.stream.push(null);
             runner.streams = runner.streams.filter(x => x.id != streamid);
         }
-    }    
+    }
     public static ensurestream(streamid: string) {
         let s = runner.streams.find(x => x.id == streamid)
         if (s == null) {
             s = new runner_stream();
             s.stream = new Stream.Readable();
-            s.stream.read = function () {};
+            s.stream.read = function () { };
             s.id = streamid;
             runner.streams.push(s);
         }
         return s;
-    }    
-    public static async runit(packagepath:string, streamid:string, command:string, parameters:string[], clearstream: boolean) {
+    }
+    public static async runit(client: openiap, packagepath: string, streamid: string, streamqueue: string, command: string, parameters: string[], clearstream: boolean) {
         return new Promise((resolve, reject) => {
             try {
                 // , stdio: ['pipe', 'pipe', 'pipe']
                 // , stdio: 'pipe'
-                if(clearstream) {
+                if (clearstream) {
                     var xvfb = runner.findXvfbPath()
-                    if(xvfb != null && xvfb != "") {
+                    if (xvfb != null && xvfb != "") {
                         var shellcommand = command;
                         var _parameters = parameters;
                         // var shellcommand = '"' + command + '" "' + parameters.join(" ") + '"';
@@ -76,19 +90,19 @@ export class runner {
                         parameters = parameters.concat(_parameters);
                     }
                 }
-                const childProcess = spawn(command, parameters, { cwd: packagepath,env: {...process.env, log_with_colors:"false"}  })
+                const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, log_with_colors: "false" } })
                 const pid = childProcess.pid;
-                const p:runner_process = { id: streamid, pid, p: childProcess, forcekilled: false }
-                runner.notifyStream(streamid, `Child process started as pid ${pid}`);
+                const p: runner_process = { id: streamid, pid, p: childProcess, forcekilled: false, streamqueue }
+                runner.notifyStream(client, streamid, `Child process started as pid ${pid}`);
                 runner.processs.push(p);
                 const catchoutput = (data: any) => {
-                    if(data != null) {
-                        var s:string = data.toString();
-                        if(s.startsWith("Debugger listening")) return;
-                        if(s.startsWith("Debugger attached")) return;
-                        if(s.startsWith("Waiting for the debugger to")) return;
+                    if (data != null) {
+                        var s: string = data.toString();
+                        if (s.startsWith("Debugger listening")) return;
+                        if (s.startsWith("Debugger attached")) return;
+                        if (s.startsWith("Waiting for the debugger to")) return;
                     }
-                    runner.notifyStream(streamid, data)
+                    runner.notifyStream(client, streamid, data)
                 };
                 childProcess.stdio[1]?.on('data', catchoutput);
                 childProcess.stdio[2]?.on('data', catchoutput);
@@ -97,9 +111,9 @@ export class runner {
                 // childProcess.stderr.on('data', catchoutput);
                 childProcess.stdout.on('close', (code: any) => {
                     if (code == false || code == null) {
-                        runner.notifyStream(streamid, `Child process ${pid} exited`);
+                        runner.notifyStream(client, streamid, `Child process ${pid} exited`);
                     } else {
-                        runner.notifyStream(streamid, `Child process ${pid} exited with code ${code}`);
+                        runner.notifyStream(client, streamid, `Child process ${pid} exited with code ${code}`);
                         p.forcekilled = true;
                     }
                     runner.processs = runner.processs.filter(x => x.pid != pid);
@@ -113,7 +127,7 @@ export class runner {
             }
         });
     }
-    public static findInPath(exec:string):string | null {
+    public static findInPath(exec: string): string | null {
         try {
             let command;
             switch (process.platform) {
@@ -134,10 +148,10 @@ export class runner {
             // throw error;
         }
     }
-    public static kill(streamid: string) {
+    public static kill(client: openiap, streamid: string) {
         const p = runner.processs.filter(x => x.id == streamid);
-        for(var i=0;i<p.length;i++) {
-            runner.notifyStream(streamid, "Sent kill signal to process " + p[i].p.pid);
+        for (var i = 0; i < p.length; i++) {
+            runner.notifyStream(client, streamid, "Sent kill signal to process " + p[i].p.pid);
             p[i].forcekilled = true;
             p[i].p.kill();
         }
@@ -160,44 +174,44 @@ export class runner {
     }
     public static findChromiumPath() {
         var result = runner.findInPath("chromium-browser");
-        if(result == "") result = runner.findInPath("chromium");
+        if (result == "") result = runner.findInPath("chromium");
         return result
     }
     public static findChromePath() {
         var result = runner.findInPath("google-chrome");
-        if(result == "") result = runner.findInPath("chrome");
+        if (result == "") result = runner.findInPath("chrome");
         return result
     }
-    public static async pipinstall(packagepath:string, streamid:string, pythonpath:string) {
+    public static async pipinstall(client: openiap, packagepath: string, streamid: string, streamqueue: string, pythonpath: string) {
         if (fs.existsSync(path.join(packagepath, "requirements.txt.done"))) return;
         if (fs.existsSync(path.join(packagepath, "requirements.txt"))) {
-            runner.notifyStream(streamid, "************************");
-            runner.notifyStream(streamid, "**** Running pip install");
-            runner.notifyStream(streamid, "************************");
+            runner.notifyStream(client, streamid, "************************");
+            runner.notifyStream(client, streamid, "**** Running pip install");
+            runner.notifyStream(client, streamid, "************************");
 
-            if ((await runner.runit(packagepath, streamid, pythonpath, ["-m", "pip", "install", "-r", path.join(packagepath, "requirements.txt")], false)) == true) {
+            if ((await runner.runit(client, packagepath, streamid, streamqueue, pythonpath, ["-m", "pip", "install", "-r", path.join(packagepath, "requirements.txt")], false)) == true) {
                 fs.writeFileSync(path.join(packagepath, "requirements.txt.done"), "done");
             }
         }
     }
-    public static async npminstall(packagepath:string, streamid:string): Promise<boolean> {
+    public static async npminstall(client: openiap, packagepath: string, streamid: string, streamqueue: string): Promise<boolean> {
         if (fs.existsSync(path.join(packagepath, "npm.install.done"))) {
             return false;
         } else if (fs.existsSync(path.join(packagepath, "package.json"))) {
             const nodePath = runner.findNodePath();
-            runner.notifyStream(streamid, "************************");
-            runner.notifyStream(streamid, "**** Running npm install");
-            runner.notifyStream(streamid, "************************");
+            runner.notifyStream(client, streamid, "************************");
+            runner.notifyStream(client, streamid, "**** Running npm install");
+            runner.notifyStream(client, streamid, "************************");
             const npmpath = runner.findNPMPath();
-            if(npmpath == "") throw new Error("Failed locating NPM, is it installed and in the path?")
-            if ((await runner.runit(packagepath, streamid, npmpath, ["install"], false)) == true) {
+            if (npmpath == "") throw new Error("Failed locating NPM, is it installed and in the path?")
+            if ((await runner.runit(client, packagepath, streamid, streamqueue, npmpath, ["install"], false)) == true) {
                 fs.writeFileSync(path.join(packagepath, "npm.install.done"), "done");
                 return true;
             }
         }
         return false;
     }
-    public static async runpythonscript(script:string): Promise<string> {
+    public static async runpythonscript(script: string): Promise<string> {
         const pythonpath = runner.findPythonPath();
         if (pythonpath == null) throw new Error("Python not found");
         return new Promise((resolve, reject) => {
@@ -205,8 +219,8 @@ export class runner {
             const pid = childProcess.pid;
             let output = "";
             const catchoutput = (data: any) => {
-                if(data != null) {
-                    var s:string = data.toString();
+                if (data != null) {
+                    var s: string = data.toString();
                     output += s;
                 }
             };
@@ -220,10 +234,10 @@ export class runner {
                 }
             });
         });
-    }    
-    public static async runpythoncode(code:string): Promise<string> {
+    }
+    public static async runpythoncode(code: string): Promise<string> {
         var tempfilename = path.join(os.tmpdir(), "temp.py");
         fs.writeFileSync(tempfilename, code);
         return await this.runpythonscript(tempfilename);
-    }    
+    }
 }

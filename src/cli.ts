@@ -4,6 +4,7 @@ import { agenttools } from "./agenttools";
 import { packagemanager } from "./packagemanager";
 import { runner } from "./runner";
 
+console.log(JSON.stringify(process.env.PATH, null, 2));
 const os = require('os');
 const path = require('path');
 const prompts = require('./prompt-sync')();
@@ -95,7 +96,7 @@ function installService(svcName: string, serviceName: string, script: string): P
       var assistentConfig = require(path.join(os.homedir(), ".openiap", "config.json"));
       if (!fs.existsSync(path.join("C:\\WINDOWS\\system32\\config\\systemprofile\\", ".openiap"))) fs.mkdirSync(path.join("C:\\WINDOWS\\system32\\config\\systemprofile\\", ".openiap"), { recursive: true });
       fs.writeFileSync(path.join("C:\\WINDOWS\\system32\\config\\systemprofile\\", ".openiap", "config.json"), JSON.stringify(assistentConfig));
-  
+
       svc.on('alreadyinstalled', () => {
         console.log("Service already installed");
         svc.start();
@@ -138,6 +139,8 @@ function installService(svcName: string, serviceName: string, script: string): P
         [Service]
         Type=simple
         ExecStart=${nodepath} ${scriptPath}
+        Environment=NODE_ENV=production
+        Environment=PATH=${process.env.PATH}
         
         Restart=on-failure
   

@@ -79,7 +79,7 @@ export class packagemanager {
     if (fs.existsSync(path.join(packagepath, "main.py"))) return path.join(packagepath, "main.py");
     if (fs.existsSync(path.join(packagepath, "index.py"))) return path.join(packagepath, "index.py");
   }
-  public static async runpackage(id: string, streamid: string, wait: boolean) {
+  public static async runpackage(client: openiap, id: string, streamid: string, streamqueue: string, wait: boolean) {
     if (streamid == null || streamid == "") throw new Error("streamid is null or empty");
     try {
       var packagepath = packagemanager.getpackagepath(path.join(packagemanager.packagefolder, id));
@@ -88,43 +88,43 @@ export class packagemanager {
         if (command == "" || command == null) throw new Error("Failed locating a command to run, EXIT")
         if (command.endsWith(".py")) {
           var python = runner.findPythonPath();
-          if(python == "") throw new Error("Failed locating python, is python installed and in the path?")
-          await runner.pipinstall(packagepath, streamid, python)
-          if(wait) {
-            await runner.runit(packagepath, streamid, python, [command], true)
+          if (python == "") throw new Error("Failed locating python, is python installed and in the path?")
+          await runner.pipinstall(client, packagepath, streamid, streamqueue, python)
+          if (wait) {
+            await runner.runit(client, packagepath, streamid, streamqueue, python, [command], true)
           } else {
-            runner.runit(packagepath, streamid, python, [command], true)
-          }          
+            runner.runit(client, packagepath, streamid, streamqueue, python, [command], true)
+          }
         } else if (command.endsWith(".js") || command == "npm run start") {
           // const nodePath = path.join(app.getAppPath(), 'node_modules', '.bin', 'node');
           // const nodePath = "node"
           const nodePath = runner.findNodePath();
-          if(nodePath == "") throw new Error("Failed locating node, is node installed and in the path?")
-          await runner.npminstall(packagepath, streamid);
-          if(wait) {
-            await runner.runit(packagepath, streamid, nodePath, [command], true)
+          if (nodePath == "") throw new Error("Failed locating node, is node installed and in the path?")
+          await runner.npminstall(client, packagepath, streamid, streamqueue);
+          if (wait) {
+            await runner.runit(client, packagepath, streamid, streamqueue, nodePath, [command], true)
           } else {
-            runner.runit(packagepath, streamid, nodePath, [command], true)
-          }          
+            runner.runit(client, packagepath, streamid, streamqueue, nodePath, [command], true)
+          }
         } else {
           var dotnet = runner.findDotnetPath();
-          if(dotnet == "") throw new Error("Failed locating dotnet, is dotnet installed and in the path?")
-          if(wait) {
-            await runner.runit(packagepath, streamid, dotnet, ["run"], true)
+          if (dotnet == "") throw new Error("Failed locating dotnet, is dotnet installed and in the path?")
+          if (wait) {
+            await runner.runit(client, packagepath, streamid, streamqueue, dotnet, ["run"], true)
           } else {
-            runner.runit(packagepath, streamid, dotnet, ["run"], true)
-          }          
+            runner.runit(client, packagepath, streamid, streamqueue, dotnet, ["run"], true)
+          }
         }
       } else {
-        if(packagepath == null || packagepath == "") {
-          runner.notifyStream(streamid, "Package not found in " + packagemanager.packagefolder);
+        if (packagepath == null || packagepath == "") {
+          runner.notifyStream(client, streamid, "Package not found in " + packagemanager.packagefolder);
         } else {
-          runner.notifyStream(streamid, "Package not found in " + packagepath);
-        }        
+          runner.notifyStream(client, streamid, "Package not found in " + packagepath);
+        }
         runner.removestream(streamid);
       }
     } catch (error) {
-      runner.notifyStream(streamid, error.message);
+      runner.notifyStream(client, streamid, error.message);
       runner.removestream(streamid);
     }
   }

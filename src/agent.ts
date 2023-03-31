@@ -6,36 +6,37 @@ import * as path from "path";
 import * as fs from "fs"
 import { Stream } from 'stream';
 
-var elog:any = null;
+var elog: any = null;
 if (os.platform() === 'win32') {
   // var EventLogger = require('node-windows').EventLogger;
   // elog = new EventLogger('nodeagent');
 }
 
-function log(message:string) {
+function log(message: string) {
   console.log(message);
-  if(elog != null) {
+  if (elog != null) {
     try {
       elog.info(message);
     } catch (error) {
-      
+
     }
   }
 }
-function _error(message:string|Error) {
+function _error(message: string | Error) {
   console.error(message);
-  if(elog != null) {
+  if (elog != null) {
     try {
       elog.error(message.toString());
     } catch (error) {
-      
+
     }
   }
 }
 
-process.on('SIGINT', ()=> { process.exit(0) })
-process.on('SIGTERM', ()=> { process.exit(0) })
-process.on('SIGQUIT', ()=> { process.exit(0) })
+process.on('SIGINT', () => { process.exit(0) })
+process.on('SIGTERM', () => { process.exit(0) })
+process.on('SIGQUIT', () => { process.exit(0) })
+console.log(JSON.stringify(process.env.PATH, null, 2));
 
 log("Agent starting!!!")
 const client: openiap = new openiap()
@@ -46,22 +47,22 @@ client.version = myproject.version;
 var assistentConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
 var agentid = "";
 // When injected from docker, use the injected agentid
-if(process.env.agentid != "" && process.env.agentid != null) agentid = process.env.agentid;
+if (process.env.agentid != "" && process.env.agentid != null) agentid = process.env.agentid;
 var dockeragent = false;
 var localqueue = "";
 var languages = ["nodejs"];
-function reloadAndParseConfig():boolean {
+function reloadAndParseConfig(): boolean {
   config.doDumpStack = true
   assistentConfig = {};
   assistentConfig.apiurl = process.env["apiurl"];
-  if(assistentConfig.apiurl == null || assistentConfig.apiurl == "") {
+  if (assistentConfig.apiurl == null || assistentConfig.apiurl == "") {
     assistentConfig.apiurl = process.env["grpcapiurl"];
   }
-  if(assistentConfig.apiurl == null || assistentConfig.apiurl == "") {
+  if (assistentConfig.apiurl == null || assistentConfig.apiurl == "") {
     assistentConfig.apiurl = process.env["wsapiurl"];
   }
   assistentConfig.jwt = process.env["jwt"];
-  if(assistentConfig.apiurl != null && assistentConfig.apiurl != "") {
+  if (assistentConfig.apiurl != null && assistentConfig.apiurl != "") {
     dockeragent = true;
     return true;
   }
@@ -90,7 +91,7 @@ function reloadAndParseConfig():boolean {
 function init() {
   // var client = new openiap();
   config.doDumpStack = true
-  if(!reloadAndParseConfig()) {
+  if (!reloadAndParseConfig()) {
     return;
   }
   try {
@@ -112,7 +113,7 @@ function init() {
 
   client.onConnected = onConnected
   client.onDisconnected = onDisconnected
-  client.connect().then(user=> {
+  client.connect().then(user => {
     log("connected");
   }).catch((err) => {
     _error(err);
@@ -131,10 +132,10 @@ async function onConnected(client: openiap) {
   var watchid = await client.Watch({ paths: [], collectionname: "agents" }, async (operation: string, document: any) => {
     try {
       if (document._type == "package") {
-        if(operation == "insert") {
+        if (operation == "insert") {
           log("package " + document.name + " inserted, reload packages");
           await reloadpackages()
-        } else if(operation == "replace") {
+        } else if (operation == "replace") {
           log("package " + document.name + " updated, delete and reload");
           packagemanager.removepackage(document._id);
           await packagemanager.getpackage(client, document.fileid, document._id);
@@ -143,8 +144,8 @@ async function onConnected(client: openiap) {
           packagemanager.removepackage(document._id);
         }
       } else if (document._type == "agent") {
-        if(document._id == agentid)  {
-          if(lastreload.getTime() + 1000 > new Date().getTime()) {
+        if (document._id == agentid) {
+          if (lastreload.getTime() + 1000 > new Date().getTime()) {
             log("agent changed, but last reload was less than 1 second ago, do nothing");
             return;
           }
@@ -153,7 +154,7 @@ async function onConnected(client: openiap) {
           await RegisterAgent()
         } else {
           log("Another agent was changed, do nothing");
-        }        
+        }
       } else {
         log("unknown type " + document._type + " changed, do nothing");
       }
@@ -162,7 +163,7 @@ async function onConnected(client: openiap) {
     }
   });
   log("watch registered with id " + watchid);
-  if(process.env.packageid != "" && process.env.packageid != null) {
+  if (process.env.packageid != "" && process.env.packageid != null) {
     log("packageid is set, run package " + process.env.packageid);
     await localrun();
     process.exit(0);
@@ -180,7 +181,7 @@ async function localrun() {
     });
     var buffer = "";
     stream.on('data', async (data) => {
-      if(data == null) return;
+      if (data == null) return;
       var s = data.toString().replace(/\n$/, "");
       log(s);
     });
@@ -189,7 +190,7 @@ async function localrun() {
     });
     runner.addstream(streamid, stream);
     log("run package " + process.env.packageid);
-    await packagemanager.runpackage(process.env.packageid, streamid, true);
+    await packagemanager.runpackage(client, process.env.packageid, streamid, "", true);
     log("run complete");
   } catch (error) {
     _error(error);
@@ -199,7 +200,7 @@ async function localrun() {
 async function reloadpackages() {
   try {
     log("reloadpackages")
-    if(process.env.packageid != "" && process.env.packageid != null) {
+    if (process.env.packageid != "" && process.env.packageid != null) {
       // packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder, process.env.packageid));
       var _packages = await client.Query<any>({ query: { "_type": "package", "_id": process.env.packageid }, collectionname: "agents" });
     } else {
@@ -220,7 +221,7 @@ async function reloadpackages() {
       }
     }
   } catch (error) {
-    _error(error);    
+    _error(error);
   }
 }
 async function RegisterAgent() {
@@ -230,32 +231,32 @@ async function RegisterAgent() {
     var chromium = runner.findChromiumPath() != "";
     var chrome = runner.findChromePath() != "";
     var daemon = undefined;
-    if(!dockeragent) daemon = true;
+    if (!dockeragent) daemon = true;
     var data = JSON.stringify({ hostname: os.hostname(), os: os.platform(), arch: os.arch(), username: os.userInfo().username, version: myproject.version, "languages": languages, chrome, chromium, daemon, "maxpackages": 50 })
     var res: any = await client.CustomCommand({
       id: agentid, command: "registeragent",
       data
     });
     if (res != null) res = JSON.parse(res);
-    if(res != null && res.environment != null) {
+    if (res != null && res.environment != null) {
       var keys = Object.keys(res.environment);
-      for(var i = 0; i < keys.length; i++) {
+      for (var i = 0; i < keys.length; i++) {
         process.env[keys[i]] = res.environment[keys[i]];
       }
     }
     if (res != null && res.slug != "" && res._id != null && res._id != "") {
       localqueue = await client.RegisterQueue({ queuename: res.slug }, onQueueMessage);
       agentid = res._id;
-      var config = {agentid, jwt: res.jwt};
-      if(fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
+      var config = { agentid, jwt: res.jwt };
+      if (fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
         config = JSON.parse(fs.readFileSync(path.join(os.homedir(), ".openiap", "config.json"), "utf8"));
       }
       config.agentid = agentid;
 
-      if(process.env["apiurl"] != null && process.env["apiurl"] != "") {
+      if (process.env["apiurl"] != null && process.env["apiurl"] != "") {
         log("Skip updating config.json as apiurl is set in environment variable (probably running as a service)")
       } else {
-        if(res.jwt != null && res.jwt != "") {
+        if (res.jwt != null && res.jwt != "") {
           config.jwt = res.jwt;
           process.env.jwt = res.jwt;
         }
@@ -264,7 +265,7 @@ async function RegisterAgent() {
       log("Registed agent as " + agentid + " and queue " + localqueue + " ( from " + res.slug + " )");
     } else {
       log("Registrering agent seems to have failed without an error !?!");
-      if(res == null) {
+      if (res == null) {
         log("res is null");
       } else {
         log(JSON.stringify(res, null, 2));
@@ -281,7 +282,7 @@ async function RegisterAgent() {
     process.env["jwt"] = "";
     try {
       client.Close();
-    } catch (error) {      
+    } catch (error) {
     }
   }
 }
@@ -290,8 +291,8 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
     log("onQueueMessage " + msg.correlationId)
     // const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     let streamid = msg.correlationId;
-    if(payload != null && payload.payload != null) payload = payload.payload;
-    if(payload.streamid != null && payload.streamid != "") streamid = payload.streamid;
+    if (payload != null && payload.payload != null) payload = payload.payload;
+    if (payload.streamid != null && payload.streamid != "") streamid = payload.streamid;
     // log("onQueueMessage");
     // log(payload);
     if (user == null || jwt == null || jwt == "") {
@@ -303,34 +304,34 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       streamqueue = payload.queuename;
     }
     var dostream = true;
-    if(payload.stream == "false" || payload.stream == false) {
+    if (payload.stream == "false" || payload.stream == false) {
       dostream = false;
     }
     log("commandqueue: " + commandqueue + " streamqueue: " + streamqueue + " dostream: " + dostream)
-    if(commandqueue == null) commandqueue = "";
-    if(streamqueue == null) streamqueue = "";
+    if (commandqueue == null) commandqueue = "";
+    if (streamqueue == null) streamqueue = "";
     if (payload.command == "runpackage") {
-      if(payload.id == null || payload.id == "") throw new Error("id is required");
+      if (payload.id == null || payload.id == "") throw new Error("id is required");
       var packagepath = packagemanager.getpackagepath(path.join(os.homedir(), ".openiap", "packages", payload.id));
       if (packagepath == "") {
         try {
           var _packages = await client.Query<any>({ query: { "_type": "package", "_id": payload.id }, collectionname: "agents" });
-          if(_packages.length > 0) {
+          if (_packages.length > 0) {
             log("get package " + _packages[0].name);
             await packagemanager.getpackage(client, _packages[0].fileid, payload.id);
             packagepath = packagemanager.getpackagepath(path.join(os.homedir(), ".openiap", "packages", payload.id));
           } else {
             log("Cannot find package with id " + payload.id);
           }
-          
+
         } catch (error) {
-          
+
         }
       }
       if (packagepath == "") {
         log("Package " + payload.id + " not found");
-        if(dostream) await client.QueueMessage({ queuename: streamqueue, data: {"command": "stream", "data": Buffer.from("Package " + payload.id + " not found")}, correlationId: streamid });
-        if(commandqueue != "") await client.QueueMessage({ queuename: commandqueue, data: {"command": "completed"}, correlationId: streamid });
+        if (dostream) await client.QueueMessage({ queuename: streamqueue, data: { "command": "stream", "data": Buffer.from("Package " + payload.id + " not found") }, correlationId: streamid });
+        if (commandqueue != "") await client.QueueMessage({ queuename: commandqueue, data: { "command": "completed" }, correlationId: streamid });
         return { "command": "error", error: "Package " + payload.id + " not found" };
       }
       var stream = new Stream.Readable({
@@ -338,35 +339,28 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       });
       var buffer = "";
       stream.on('data', async (data) => {
-        if(dostream) {
-          try {
-            await client.QueueMessage({ queuename: streamqueue, data: {"command": "stream", "data": data}, correlationId: streamid });
-          } catch (error) {
-            _error(error);
-            dostream = false;
-          }
-        } else {
-          if(data != null) buffer += data.toString();
+        if (!dostream) {
+          if (data != null) buffer += data.toString();
         }
       });
       stream.on('end', async () => {
-        var data = {"command": "completed", "data": buffer};
-        if(buffer == "") delete data.data;
+        var data = { "command": "completed", "data": buffer };
+        if (buffer == "") delete data.data;
         try {
-          if(commandqueue != "") await client.QueueMessage({ queuename: commandqueue, data, correlationId: streamid });
+          if (commandqueue != "") await client.QueueMessage({ queuename: commandqueue, data, correlationId: streamid });
         } catch (error) {
           _error(error);
         }
         try {
-          if(dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data, correlationId: streamid });
+          if (dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data, correlationId: streamid });
         } catch (error) {
           _error(error);
         }
       });
-      runner.addstream(streamid, stream);  
-      await packagemanager.runpackage(payload.id, streamid, true);
+      runner.addstream(streamid, stream);
+      await packagemanager.runpackage(client, payload.id, streamid, streamqueue, true);
       try {
-        if(dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "success" }, correlationId: streamid });
+        if (dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "success" }, correlationId: streamid });
       } catch (error) {
         _error(error);
         dostream = false;
@@ -374,39 +368,42 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       return { "command": "success" };
     }
     if (payload.command == "kill") {
-      if(payload.id == null || payload.id == "") payload.id = payload.streamid;
-      if(payload.id == null || payload.id == "") throw new Error("id is required");
-      runner.kill(payload.id);
+      if (payload.id == null || payload.id == "") payload.id = payload.streamid;
+      if (payload.id == null || payload.id == "") throw new Error("id is required");
+      runner.kill(client, payload.id);
       return { "command": "success" };
     }
+    if (payload.command == "killall") {
+      var processcount = runner.processs.length;
+      for (var i = processcount; i >= 0; i--) {
+        runner.kill(client, runner.processs[i].id);
+      }
+      return { "command": "success", "count": processcount };
+    }
+    if (payload.command == "setstreamid") {
+      if (payload.id == null || payload.id == "") payload.id = payload.streamid;
+      if (payload.id == null || payload.id == "") throw new Error("id is required");
+    }
+    if (payload.command == "listprocesses") {
+      var processcount = runner.processs.length;
+      var processes = [];
+      for (var i = processcount; i >= 0; i--) {
+        var p = runner.processs[i];
+        processes.push({
+          "id": p.id,
+          "forcekilled": p.forcekilled,
+          "pid": p.pid,
+        });
+      }
+      return { "command": "success", "count": processcount, "processes": processes };
+    }
   } catch (error) {
-    return { "command": "error", error: JSON.stringify(error.message) };    
+    return { "command": "error", error: JSON.stringify(error.message) };
   }
 }
 async function main() {
   init()
-  if (os.platform() === 'win32') {
-    // const Service = require('node-windows').Service;
-    // let scriptPath = path.join(__dirname, "agent.js");
-    // const svc = new Service({
-    //   name: "nodeagent",
-    //   description: "nodeagent",
-    //   script: scriptPath
-    // });
-    // svc.on('install', () => { log("Service installed"); });
-    // svc.on('alreadyinstalled', () => { log("Service already installed"); });
-    // svc.on('invalidinstallation', () => { log("Service invalid installation"); });
-    // svc.on('uninstall', () => { log("Service uninstalled"); });
-    // svc.on('alreadyuninstalled', () => { log("Service already uninstalled"); });
-    // svc.on('start', () => { log("Service started"); });
-    // svc.on('stop', () => { log("Service stopped"); });
-    // svc.on('error', () => { log("Service error"); });
-    // while(svc.status != "running") {
-    //   await new Promise(resolve => setTimeout(resolve, 1000));
-    // }    
-  }
   while (true) {
-    log("looping");
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
 }

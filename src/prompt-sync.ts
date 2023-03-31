@@ -41,19 +41,19 @@ var term = 13; // carriage return
  * @returns {Function} prompt function
  */
 
- // for ANSI escape codes reference see https://en.wikipedia.org/wiki/ANSI_escape_code
+// for ANSI escape codes reference see https://en.wikipedia.org/wiki/ANSI_escape_code
 
-function create(config:any) {
+function create(config: any) {
 
   config = config || {};
   var sigint = config.sigint;
   var eot = config.eot;
   // @ts-ignore
-  var autocomplete = config.autocomplete = config.autocomplete || function(){return []};
+  var autocomplete = config.autocomplete = config.autocomplete || function () { return [] };
   var history = config.history;
-  prompt.history = history || {save: function(){}};
+  prompt.history = history || { save: function () { } };
   // @ts-ignore
-  prompt.hide = function (ask) { return prompt(ask, {echo: ''}) };
+  prompt.hide = function (ask) { return prompt(ask, { echo: '' }) };
 
   return prompt;
 
@@ -74,7 +74,7 @@ function create(config:any) {
    */
 
 
-  function prompt(ask:any, value:any, opts:any) {
+  function prompt(ask: any, value: any, opts: any) {
     var insert = 0, savedinsert = 0, res, i, savedstr;
     opts = opts || {};
 
@@ -112,7 +112,7 @@ function create(config:any) {
     while (true) {
       read = fs.readSync(fd, buf, 0, 3);
       if (read > 1) { // received a control sequence
-        switch(buf.toString()) {
+        switch (buf.toString()) {
           case '\u001b[A':  //up arrow
             if (masked) break;
             if (!history) break;
@@ -139,7 +139,7 @@ function create(config:any) {
               str = history.next();
               insert = str.length;
             }
-            process.stdout.write('\u001b[2K\u001b[0G'+ ask + str + '\u001b['+(insert+ask.length+1)+'G');
+            process.stdout.write('\u001b[2K\u001b[0G' + ask + str + '\u001b[' + (insert + ask.length + 1) + 'G');
             break;
           case '\u001b[D': //left arrow
             if (masked) break;
@@ -151,7 +151,7 @@ function create(config:any) {
           case '\u001b[C': //right arrow
             if (masked) break;
             insert = (++insert > str.length) ? str.length : insert;
-            process.stdout.write('\u001b[' + (insert+ask.length+1) + 'G');
+            process.stdout.write('\u001b[' + (insert + ask.length + 1) + 'G');
             break;
           default:
             if (buf.toString()) {
@@ -159,7 +159,7 @@ function create(config:any) {
               str = str.replace(/\0/g, '');
               insert = str.length;
               promptPrint(masked, ask, echo, str, insert);
-              process.stdout.write('\u001b[' + (insert+ask.length+1) + 'G');
+              process.stdout.write('\u001b[' + (insert + ask.length + 1) + 'G');
               buf = Buffer.alloc(3);
             }
         }
@@ -167,10 +167,10 @@ function create(config:any) {
       }
 
       // if it is not a control character seq, assume only one character is read
-      character = buf[read-1];
+      character = buf[read - 1];
 
       // catch a ^C and return null
-      if (character == 3){
+      if (character == 3) {
         process.stdout.write('^C\n');
         fs.closeSync(fd);
 
@@ -224,12 +224,12 @@ function create(config:any) {
 
       if (character == 127 || (process.platform == 'win32' && character == 8)) { //backspace
         if (!insert) continue;
-        str = str.slice(0, insert-1) + str.slice(insert);
+        str = str.slice(0, insert - 1) + str.slice(insert);
         insert--;
         process.stdout.write('\u001b[2D');
       } else {
-        if ((character < 32 ) || (character > 126))
-            continue;
+        if ((character < 32) || (character > 126))
+          continue;
         str = str.slice(0, insert) + String.fromCharCode(character) + str.slice(insert);
         insert++;
       };
@@ -246,24 +246,24 @@ function create(config:any) {
   };
 
 
-  function promptPrint(masked:any, ask:any, echo:any, str:any, insert:any) {
+  function promptPrint(masked: any, ask: any, echo: any, str: any, insert: any) {
     if (masked) {
-        process.stdout.write('\u001b[2K\u001b[0G' + ask + Array(str.length+1).join(echo));
+      process.stdout.write('\u001b[2K\u001b[0G' + ask + Array(str.length + 1).join(echo));
     } else {
       process.stdout.write('\u001b[s');
       if (insert == str.length) {
-          process.stdout.write('\u001b[2K\u001b[0G'+ ask + str);
+        process.stdout.write('\u001b[2K\u001b[0G' + ask + str);
       } else {
         if (ask) {
-          process.stdout.write('\u001b[2K\u001b[0G'+ ask + str);
+          process.stdout.write('\u001b[2K\u001b[0G' + ask + str);
         } else {
-          process.stdout.write('\u001b[2K\u001b[0G'+ str + '\u001b[' + (str.length - insert) + 'D');
+          process.stdout.write('\u001b[2K\u001b[0G' + str + '\u001b[' + (str.length - insert) + 'D');
         }
       }
 
       // Reposition the cursor to the right of the insertion point
       var askLength = stripAnsi(ask).length;
-      process.stdout.write(`\u001b[${askLength+1+(echo==''? 0:insert)}G`);
+      process.stdout.write(`\u001b[${askLength + 1 + (echo == '' ? 0 : insert)}G`);
     }
   }
 };

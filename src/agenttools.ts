@@ -1,15 +1,15 @@
 import * as http from "http"
 import * as https from "https"
 export class agenttools {
-  static async AddRequestToken(url:string) {
+  static async AddRequestToken(url: string) {
     var tokenkey = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     var u: URL = new URL(url);
     var host = u.host;
     if (host.startsWith("grpc.")) host = host.substring(5);
     var base = u.protocol + "//" + host;
-    if(u.protocol == "wss:") {
+    if (u.protocol == "wss:") {
       base = "https://" + host;
-    } else if(u.protocol == "ws:") {
+    } else if (u.protocol == "ws:") {
       base = "http://" + host;
     }
     var addtokenurl = base + "/AddTokenRequest";
@@ -18,15 +18,15 @@ export class agenttools {
     var res = JSON.parse(result)
     return [tokenkey, signinurl];
   }
-  static async WaitForToken(url:string, tokenkey: string) {
+  static async WaitForToken(url: string, tokenkey: string) {
     return new Promise<string>((resolve, reject) => {
       var u: URL = new URL(url);
       var host = u.host;
       if (host.startsWith("grpc.")) host = host.substring(5);
       var base = u.protocol + "//" + host;
-      if(u.protocol == "wss:") {
+      if (u.protocol == "wss:") {
         base = "https://" + host;
-      } else if(u.protocol == "ws:") {
+      } else if (u.protocol == "ws:") {
         base = "http://" + host;
       }
       var gettokenurl = base + "/GetTokenRequest?key=" + tokenkey;
