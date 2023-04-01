@@ -91,6 +91,10 @@ export class runner {
                     }
                 }
                 const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, log_with_colors: "false" } })
+                console.log('Running command:', command);
+                if(parameters != null && Array.isArray(parameters)) console.log('With parameters:', parameters.join(" "));
+                console.log('Current working directory:', packagepath);
+
                 const pid = childProcess.pid;
                 const p: runner_process = { id: streamid, pid, p: childProcess, forcekilled: false, streamqueue }
                 runner.notifyStream(client, streamid, `Child process started as pid ${pid}`);
@@ -107,8 +111,6 @@ export class runner {
                 childProcess.stdio[1]?.on('data', catchoutput);
                 childProcess.stdio[2]?.on('data', catchoutput);
                 childProcess.stdio[3]?.on('data', catchoutput);
-                // childProcess.stdout.on('data', catchoutput);
-                // childProcess.stderr.on('data', catchoutput);
                 childProcess.stdout.on('close', (code: any) => {
                     if (code == false || code == null) {
                         runner.notifyStream(client, streamid, `Child process ${pid} exited`);

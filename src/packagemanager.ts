@@ -91,9 +91,9 @@ export class packagemanager {
           if (python == "") throw new Error("Failed locating python, is python installed and in the path?")
           await runner.pipinstall(client, packagepath, streamid, streamqueue, python)
           if (wait) {
-            await runner.runit(client, packagepath, streamid, streamqueue, python, [command], true)
+            await runner.runit(client, packagepath, streamid, streamqueue, python, ["-u", command], true)
           } else {
-            runner.runit(client, packagepath, streamid, streamqueue, python, [command], true)
+            runner.runit(client, packagepath, streamid, streamqueue, python, ["-u", command], true)
           }
         } else if (command.endsWith(".js") || command == "npm run start") {
           // const nodePath = path.join(app.getAppPath(), 'node_modules', '.bin', 'node');
