@@ -144,7 +144,9 @@ export class runner {
                     throw new Error(`Unsupported platform: ${process.platform}`);
             }
             const stdout = execSync(command, { stdio: 'pipe' }).toString();
-            return stdout.trim() || "";
+            const lines = stdout.split(/\r?\n/).filter(line => line.trim() !== '');
+            if(lines.length > 0)  return lines[0]
+            return "";
         } catch (error) {
             return "";
             // throw error;
