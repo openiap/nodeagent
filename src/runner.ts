@@ -156,6 +156,9 @@ export class runner {
                     .filter((line:string) => line.toLowerCase().indexOf("windowsapps\\python3.exe") == -1)
                     .filter((line:string) => line.toLowerCase().indexOf("windowsapps\\python.exe") == -1);
                 if(lines.length > 0)  return lines[0]
+            } else {
+                if(result.stderr != null) console.log(result.stderr.toString());
+                if(result.stdout != null) console.log(result.stdout.toString());
             }
             return "";
         } catch (error) {
