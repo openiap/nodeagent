@@ -4,6 +4,9 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { config, openiap } from '@openiap/nodeapi';
+// import { spawnSync } from 'cross-spawn';
+const ctrossspawn = require('cross-spawn');
+
 const { info, err } = config;
 export class runner_process {
     id: string;
@@ -138,19 +141,22 @@ export class runner {
             switch (process.platform) {
                 case 'linux':
                 case 'darwin':
-                    command = 'which ' + exec;
+                    command = 'which';
                     break;
                 case 'win32':
-                    command = 'where.exe ' + exec;
+                    command = 'where';
                     break;
                 default:
                     throw new Error(`Unsupported platform: ${process.platform}`);
             }
-            const stdout = execSync(command, { stdio: 'pipe' }).toString();
-            const lines = stdout.split(/\r?\n/).filter(line => line.trim() !== '')
-                .filter(line => line.toLowerCase().indexOf("windowsapps\\python3.exe") == -1)
-                .filter(line => line.toLowerCase().indexOf("windowsapps\\python.exe") == -1);
-            if(lines.length > 0)  return lines[0]
+            const result:any = ctrossspawn.sync(command, [exec], { stdio: 'pipe' });
+            if (result.status === 0) {
+                const stdout = result.stdout.toString();
+                const lines = stdout.split(/\r?\n/).filter((line:string) => line.trim() !== '')
+                    .filter((line:string) => line.toLowerCase().indexOf("windowsapps\\python3.exe") == -1)
+                    .filter((line:string) => line.toLowerCase().indexOf("windowsapps\\python.exe") == -1);
+                if(lines.length > 0)  return lines[0]
+            }
             return "";
         } catch (error) {
             return "";
