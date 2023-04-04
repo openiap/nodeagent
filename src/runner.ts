@@ -144,7 +144,7 @@ export class runner {
                     command = 'which';
                     break;
                 case 'win32':
-                    command = 'where';
+                    command = 'where.exe';
                     break;
                 default:
                     throw new Error(`Unsupported platform: ${process.platform}`);
