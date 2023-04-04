@@ -125,31 +125,37 @@ function installService(svcName: string, serviceName: string, script: string): P
       svc.on('error', () => { console.log("Service error"); });
       svc.install();
     } else if ( process.platform === 'darwin' ) {
-      const plist = `
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-          <key>Label</key>
-          <string>${serviceName}</string>
-          <key>ProgramArguments</key>
-          <array>
-            <string>${runner.findNodePath()}</string>
-            <string>${scriptPath}</string>
-          </array>
-          <key>RunAtLoad</key>
-          <true/>
-          <key>KeepAlive</key>
-          <true/>
-          <key>StandardOutPath</key>
-          <string>/dev/null</string>
-          <key>StandardErrorPath</key>
-          <string>/dev/null</string>
-        </dict>
-        </plist>
-      `;
+      const plist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>${serviceName}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${runner.findNodePath()}</string>
+    <string>${scriptPath}</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/var/log/nodeagent.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/log/nodeagent.log</string>
+  </dict>
+</plist>`;
       const plistPath = `/Library/LaunchDaemons/${serviceName}.plist`;
+      if (fs.existsSync(plistPath)) {
+        await UninstallService(svcName, serviceName);
+      }
       fs.writeFileSync(plistPath, plist);
+
+      var assistentConfig = require(path.join(os.homedir(), ".openiap", "config.json"));
+      if (!fs.existsSync("/var/root/.openiap")) fs.mkdirSync("/var/root/.openiap", { recursive: true });
+      fs.writeFileSync("/var/root/.openiap/config.json", JSON.stringify(assistentConfig));
+
       if (verbose) console.log(`Service file created at "${plistPath}".`);
       Run(`launchctl load ${plistPath}`);
       console.log(`Service "${serviceName}" installed successfully.`);
@@ -216,9 +222,20 @@ function UninstallService(svcName: string, serviceName: string): Promise<void> {
       });
 
       svc.uninstall();
-
-
-    } else {
+    } else if ( process.platform === 'darwin' ) {
+      const plistPath = `/Library/LaunchDaemons/${serviceName}.plist`;
+      if(fs.existsSync(plistPath)) {
+        console.log(`Unload service at "${plistPath}".`);
+        Run(`launchctl stop ${plistPath}`);
+        Run(`launchctl unload ${plistPath}`);
+        // delete plist file
+        fs.unlinkSync(plistPath);  
+        console.log(`Service "${serviceName}" uninstalled successfully.`);
+      } else {
+        console.log(`Service "${serviceName}" already uninstalled.`);
+      }
+      resolve();
+  } else {
       const svcPath = `/etc/systemd/system/${svcName}.service`;
       if (fs.existsSync(svcPath)) {
         Run(`systemctl stop ${serviceName}.service`)
