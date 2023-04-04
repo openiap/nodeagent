@@ -124,7 +124,37 @@ function installService(svcName: string, serviceName: string, script: string): P
       svc.on('stop', () => { console.log("Service stopped"); });
       svc.on('error', () => { console.log("Service error"); });
       svc.install();
-
+    } else if ( process.platform === 'darwin' ) {
+      const plist = `
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>Label</key>
+          <string>${serviceName}</string>
+          <key>ProgramArguments</key>
+          <array>
+            <string>${runner.findNodePath()}</string>
+            <string>${scriptPath}</string>
+          </array>
+          <key>RunAtLoad</key>
+          <true/>
+          <key>KeepAlive</key>
+          <true/>
+          <key>StandardOutPath</key>
+          <string>/dev/null</string>
+          <key>StandardErrorPath</key>
+          <string>/dev/null</string>
+        </dict>
+        </plist>
+      `;
+      const plistPath = `/Library/LaunchDaemons/${serviceName}.plist`;
+      fs.writeFileSync(plistPath, plist);
+      if (verbose) console.log(`Service file created at "${plistPath}".`);
+      Run(`launchctl load ${plistPath}`);
+      console.log(`Service "${serviceName}" installed successfully.`);
+      Run(`launchctl start ${serviceName}`);
+      resolve();
     } else {
       const svcPath = `/etc/systemd/system/${svcName}.service`;
       if (fs.existsSync(svcPath)) {
