@@ -141,6 +141,31 @@ export class runner {
                     command = 'which ' + exec;
                     break;
                 case 'win32':
+                    command = 'where.exe ' + exec;
+                    break;
+                default:
+                    throw new Error(`Unsupported platform: ${process.platform}`);
+            }
+            const stdout = execSync(command, { stdio: 'pipe' }).toString();
+            const lines = stdout.split(/\r?\n/).filter(line => line.trim() !== '')
+                .filter(line => line.toLowerCase().indexOf("windowsapps\\python3.exe") == -1)
+                .filter(line => line.toLowerCase().indexOf("windowsapps\\python.exe") == -1);
+            if(lines.length > 0)  return lines[0]
+            return "";
+        } catch (error) {
+            return "";
+            // throw error;
+        }
+    }
+    public static findInPath2(exec: string): string | null {
+        try {
+            let command;
+            switch (process.platform) {
+                case 'linux':
+                case 'darwin':
+                    command = 'which ' + exec;
+                    break;
+                case 'win32':
                     command = 'where ' + exec;
                     break;
                 default:

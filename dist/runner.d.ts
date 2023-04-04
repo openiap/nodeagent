@@ -24,6 +24,7 @@ export declare class runner {
     static ensurestream(streamid: string): runner_stream;
     static runit(client: openiap, packagepath: string, streamid: string, streamqueue: string, command: string, parameters: string[], clearstream: boolean): Promise<unknown>;
     static findInPath(exec: string): string | null;
+    static findInPath2(exec: string): string | null;
     static kill(client: openiap, streamid: string): void;
     static findPythonPath(): string;
     static findDotnetPath(): string;
