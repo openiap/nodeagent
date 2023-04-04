@@ -71,6 +71,9 @@ export class runner {
             try {
                 // , stdio: ['pipe', 'pipe', 'pipe']
                 // , stdio: 'pipe'
+                // if(command.indexOf(" ") > -1 && !command.startsWith('"')) {
+                //     command = '"' + command + '"'
+                // }
                 if (clearstream) {
                     var xvfb = runner.findXvfbPath()
                     if (xvfb != null && xvfb != "") {
@@ -90,9 +93,9 @@ export class runner {
                         parameters = parameters.concat(_parameters);
                     }
                 }
-                const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, log_with_colors: "false" } })
                 console.log('Running command:', command);
                 if(parameters != null && Array.isArray(parameters)) console.log('With parameters:', parameters.join(" "));
+                const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, log_with_colors: "false" } })
                 console.log('Current working directory:', packagepath);
 
                 const pid = childProcess.pid;
@@ -177,8 +180,8 @@ export class runner {
         return runner.findInPath("node")
     }
     public static findNPMPath() {
-        // const child = (process.platform === 'win32' ? 'npm.cmd' : 'npm')
-        return runner.findInPath("npm")
+        const child = (process.platform === 'win32' ? 'npm.cmd' : 'npm')
+        return runner.findInPath(child)
     }
     public static findChromiumPath() {
         var result = runner.findInPath("chromium-browser");
