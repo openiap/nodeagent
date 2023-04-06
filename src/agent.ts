@@ -44,6 +44,7 @@ client.allowconnectgiveup = false;
 client.agent = "nodeagent"
 var myproject = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
 client.version = myproject.version;
+console.log("version: " + client.version);
 var assistentConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
 var agentid = "";
 // When injected from docker, use the injected agentid
