@@ -47,8 +47,11 @@ client.version = myproject.version;
 var assistentConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
 var agentid = "";
 // When injected from docker, use the injected agentid
-if (process.env.agentid != "" && process.env.agentid != null) agentid = process.env.agentid;
-var dockeragent = false;
+let dockeragent = false;
+if (process.env.agentid != "" && process.env.agentid != null) {
+  agentid = process.env.agentid;
+  dockeragent = true;
+}
 var localqueue = "";
 var languages = ["nodejs"];
 function reloadAndParseConfig(): boolean {
@@ -62,8 +65,7 @@ function reloadAndParseConfig(): boolean {
     assistentConfig.apiurl = process.env["wsapiurl"];
   }
   assistentConfig.jwt = process.env["jwt"];
-  if (assistentConfig.apiurl != null && assistentConfig.apiurl != "") {
-    dockeragent = true;
+  if (dockeragent) {
     return true;
   }
 
@@ -253,15 +255,15 @@ async function RegisterAgent() {
       }
       config.agentid = agentid;
 
-      if (process.env["apiurl"] != null && process.env["apiurl"] != "") {
-        log("Skip updating config.json as apiurl is set in environment variable (probably running as a service)")
-      } else {
+      // if (process.env["apiurl"] != null && process.env["apiurl"] != "") {
+      //   log("Skip updating config.json as apiurl is set in environment variable (probably running as a service)")
+      // } else {
         if (res.jwt != null && res.jwt != "") {
           config.jwt = res.jwt;
           process.env.jwt = res.jwt;
         }
         fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(config));
-      }
+      // }
       log("Registed agent as " + agentid + " and queue " + localqueue + " ( from " + res.slug + " )");
     } else {
       log("Registrering agent seems to have failed without an error !?!");
