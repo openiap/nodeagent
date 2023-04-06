@@ -85,8 +85,10 @@ function reloadAndParseConfig(): boolean {
     }
     return true;
   } else {
-    log("failed locating config to load from " + path.join(os.homedir(), ".openiap", "config.json"))
-    process.exit(1);
+    if(assistentConfig.apiurl == null || assistentConfig.apiurl == "") {
+      log("failed locating config to load from " + path.join(os.homedir(), ".openiap", "config.json"))
+      process.exit(1);
+    }
   }
   return false;
 }
