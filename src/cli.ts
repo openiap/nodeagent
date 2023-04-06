@@ -15,6 +15,7 @@ const readline = require('readline').createInterface({
   input: process.stdin,
   output: process.stdout
 });
+var assistentConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
 const args = process.argv.slice(2);
 process.on('SIGINT', () => { process.exit(0) })
 process.on('SIGTERM', () => { process.exit(0) })
@@ -83,20 +84,16 @@ function installService(svcName: string, serviceName: string, script: string): P
       reject();
       return;
     }
-
     if (os.platform() === 'win32') {
       const Service = require('node-windows').Service;
 
       const svc = new Service({
         name: serviceName,
         description: serviceName,
-        script: scriptPath
+        script: scriptPath,
+        env: [{ name: "apiurl", value: assistentConfig.apiurl }, { name: "jwt", value: assistentConfig.jwt }]
       });
       console.log("Install using " + scriptPath)
-      var assistentConfig = require(path.join(os.homedir(), ".openiap", "config.json"));
-      if (!fs.existsSync(path.join("C:\\WINDOWS\\system32\\config\\systemprofile\\", ".openiap"))) fs.mkdirSync(path.join("C:\\WINDOWS\\system32\\config\\systemprofile\\", ".openiap"), { recursive: true });
-      fs.writeFileSync(path.join("C:\\WINDOWS\\system32\\config\\systemprofile\\", ".openiap", "config.json"), JSON.stringify(assistentConfig));
-
       svc.on('alreadyinstalled', () => {
         console.log("Service already installed");
         svc.start();
@@ -125,6 +122,7 @@ function installService(svcName: string, serviceName: string, script: string): P
       svc.on('error', () => { console.log("Service error"); });
       svc.install();
     } else if ( process.platform === 'darwin' ) {
+
       const plist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -136,6 +134,13 @@ function installService(svcName: string, serviceName: string, script: string): P
     <string>${runner.findNodePath()}</string>
     <string>${scriptPath}</string>
   </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+  <key>apiurl</key>
+  <string>${assistentConfig.apiurl}</string>
+  <key>jwt</key>
+  <string>${assistentConfig.jwt}</string>
+</dict>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
@@ -152,9 +157,6 @@ function installService(svcName: string, serviceName: string, script: string): P
       }
       fs.writeFileSync(plistPath, plist);
 
-      var assistentConfig = require(path.join(os.homedir(), ".openiap", "config.json"));
-      if (!fs.existsSync("/var/root/.openiap")) fs.mkdirSync("/var/root/.openiap", { recursive: true });
-      fs.writeFileSync("/var/root/.openiap/config.json", JSON.stringify(assistentConfig));
 
       if (verbose) console.log(`Service file created at "${plistPath}".`);
       Run(`launchctl load ${plistPath}`);
@@ -177,6 +179,8 @@ function installService(svcName: string, serviceName: string, script: string): P
         ExecStart=${nodepath} ${scriptPath}
         Environment=NODE_ENV=production
         Environment=PATH=${process.env.PATH}
+        Environment=apiurl=${assistentConfig.apiurl}
+        Environment=jwt=${assistentConfig.jwt}        
         
         Restart=on-failure
   
@@ -262,12 +266,19 @@ async function main() {
   } else {
     console.log("Not running as service")
   }
+  const home_configfile = path.join(os.homedir(), ".openiap", "config.json")
+  const win32_configfile = path.join("C:\\WINDOWS\\system32\\config\\systemprofile\\", ".openiap", "config.json")
+  const darwin_configfile = "/var/root/.openiap/config.json"
   if (command === 'install' || command == "") {
-    var configfile = path.join(os.homedir(), ".openiap", "config.json");
-    console.log("Working with " + configfile)
-    var assistentConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
-    if (fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
-      assistentConfig = require(path.join(os.homedir(), ".openiap", "config.json"));
+    if (fs.existsSync(win32_configfile)) {
+      console.log("Parsing config from " + win32_configfile)
+      assistentConfig = JSON.parse(fs.readFileSync(win32_configfile, "utf8"));
+    } else if (fs.existsSync(darwin_configfile)) {
+      console.log("Parsing config from " + darwin_configfile)
+      assistentConfig = JSON.parse(fs.readFileSync(darwin_configfile, "utf8"));
+    } else if (fs.existsSync(home_configfile)) {
+      console.log("Parsing config from " + home_configfile)
+      assistentConfig = JSON.parse(fs.readFileSync(home_configfile, "utf8"));
     }
     assistentConfig.apiurl = prompts(`apiurl (Enter for ${assistentConfig.apiurl})? `, assistentConfig.apiurl);
     if (assistentConfig.apiurl == null) process.exit(0);
@@ -287,8 +298,8 @@ async function main() {
       const jwt = await agenttools.WaitForToken(assistentConfig.apiurl, tokenkey);
       assistentConfig.jwt = jwt;
     }
-    if (!fs.existsSync(path.join(os.homedir(), ".openiap"))) fs.mkdirSync(path.join(os.homedir(), ".openiap"), { recursive: true });
-    fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(assistentConfig));
+    // if (!fs.existsSync(path.join(os.homedir(), ".openiap"))) fs.mkdirSync(path.join(os.homedir(), ".openiap"), { recursive: true });
+    // fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(assistentConfig));
 
     console.log(`Installing service "${serviceName}"...`);
     await installService(serviceName, serviceName, 'agent.js');
