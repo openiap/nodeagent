@@ -4,7 +4,7 @@ import { agenttools } from "./agenttools";
 import { packagemanager } from "./packagemanager";
 import { runner } from "./runner";
 
-console.log(JSON.stringify(process.env.PATH, null, 2));
+// console.log(JSON.stringify(process.env.PATH, null, 2));
 const os = require('os');
 const path = require('path');
 const prompts = require('./prompt-sync')();
