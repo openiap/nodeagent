@@ -99,7 +99,7 @@ export class packagemanager {
           // const nodePath = path.join(app.getAppPath(), 'node_modules', '.bin', 'node');
           // const nodePath = "node"
           const nodePath = runner.findNodePath();
-          if (nodePath == "") throw new Error("Failed locating node, is node installed and in the path?")
+          if (nodePath == "") throw new Error("Failed locating node, is node installed and in the path? " + JSON.stringify(process.env.PATH))
           await runner.npminstall(client, packagepath, streamid, streamqueue);
           if (wait) {
             await runner.runit(client, packagepath, streamid, streamqueue, nodePath, [command], true)
@@ -117,14 +117,14 @@ export class packagemanager {
         }
       } else {
         if (packagepath == null || packagepath == "") {
-          runner.notifyStream(client, streamid, "Package not found in " + packagemanager.packagefolder);
+          runner.notifyStream(client, streamid, streamqueue, "Package not found in " + packagemanager.packagefolder);
         } else {
-          runner.notifyStream(client, streamid, "Package not found in " + packagepath);
+          runner.notifyStream(client, streamid, streamqueue, "Package not found in " + packagepath);
         }
         runner.removestream(streamid);
       }
     } catch (error) {
-      runner.notifyStream(client, streamid, error.message);
+      runner.notifyStream(client, streamid, streamqueue, error.message);
       runner.removestream(streamid);
     }
   }

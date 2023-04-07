@@ -253,7 +253,7 @@ async function RegisterAgent() {
     if (res != null && res.slug != "" && res._id != null && res._id != "") {
       localqueue = await client.RegisterQueue({ queuename: res.slug }, onQueueMessage);
       agentid = res._id;
-      var config = { agentid, jwt: res.jwt };
+      var config = { agentid, jwt: res.jwt, apiurl: client.url };
       if (fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
         config = JSON.parse(fs.readFileSync(path.join(os.homedir(), ".openiap", "config.json"), "utf8"));
       }
@@ -263,9 +263,12 @@ async function RegisterAgent() {
       //   log("Skip updating config.json as apiurl is set in environment variable (probably running as a service)")
       // } else {
         if (res.jwt != null && res.jwt != "") {
-          config.jwt = res.jwt;
           process.env.jwt = res.jwt;
         }
+        if (client.url != null && client.url != "") {
+          config.apiurl = client.url;
+        } 
+          
         fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(config));
       // }
       log("Registed agent as " + agentid + " and queue " + localqueue + " ( from " + res.slug + " )");
@@ -313,7 +316,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
     if (payload.stream == "false" || payload.stream == false) {
       dostream = false;
     }
-    log("commandqueue: " + commandqueue + " streamqueue: " + streamqueue + " dostream: " + dostream)
+    log("command: " + payload.command + " commandqueue: " + commandqueue + " streamqueue: " + streamqueue + " dostream: " + dostream)
     if (commandqueue == null) commandqueue = "";
     if (streamqueue == null) streamqueue = "";
     if (payload.command == "runpackage") {

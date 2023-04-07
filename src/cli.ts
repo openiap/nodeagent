@@ -140,6 +140,10 @@ function installService(svcName: string, serviceName: string, script: string): P
   <string>${assistentConfig.apiurl}</string>
   <key>jwt</key>
   <string>${assistentConfig.jwt}</string>
+  <key>NODE</key>
+  <string>production</string>
+  <key>PATH</key>
+  <string>${process.env.PATH}</string>
 </dict>
   <key>RunAtLoad</key>
   <true/>

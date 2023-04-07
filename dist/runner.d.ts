@@ -19,7 +19,7 @@ export declare class runner {
     static processs: runner_process[];
     static streams: runner_stream[];
     static addstream(streamid: string, stream: Readable): runner_stream;
-    static notifyStream(client: openiap, streamid: string, message: Buffer | string): Promise<void>;
+    static notifyStream(client: openiap, streamid: string, streamqueue: string, message: Buffer | string): Promise<void>;
     static removestream(streamid: string): void;
     static ensurestream(streamid: string): runner_stream;
     static runit(client: openiap, packagepath: string, streamid: string, streamqueue: string, command: string, parameters: string[], clearstream: boolean): Promise<unknown>;
