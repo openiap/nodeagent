@@ -307,7 +307,6 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
     if (user == null || jwt == null || jwt == "") {
       return { "command": payload.command, "success": false, error: "not authenticated" };
     }
-    var commandqueue = msg.replyto;
     var streamqueue = msg.replyto;
     if (payload.queuename != null && payload.queuename != "") {
       streamqueue = payload.queuename;
@@ -316,8 +315,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
     if (payload.stream == "false" || payload.stream == false) {
       dostream = false;
     }
-    log("command: " + payload.command + " commandqueue: " + commandqueue + " streamqueue: " + streamqueue + " dostream: " + dostream)
-    if (commandqueue == null) commandqueue = "";
+    log("command: " + payload.command + " streamqueue: " + streamqueue + " dostream: " + dostream)
     if (streamqueue == null) streamqueue = "";
     if (payload.command == "runpackage") {
       if (payload.id == null || payload.id == "") throw new Error("id is required");
@@ -340,7 +338,6 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       if (packagepath == "") {
         log("Package " + payload.id + " not found");
         if (dostream) await client.QueueMessage({ queuename: streamqueue, data: { "command": "stream", "data": Buffer.from("Package " + payload.id + " not found") }, correlationId: streamid });
-        if (commandqueue != "") await client.QueueMessage({ queuename: commandqueue, data: { "command": "completed" }, correlationId: streamid });
         return { "command": "runpackage", "success": false, "completed": true , error: "Package " + payload.id + " not found" };
       }
       var stream = new Stream.Readable({
@@ -355,18 +352,6 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       stream.on('end', async () => {
         var data = { "command": "runpackage", "success": true, "completed": true, "data": buffer };
         if (buffer == "") delete data.data;
-        try {
-          if (commandqueue != "") client.QueueMessage({ queuename: commandqueue, data, correlationId: streamid }).catch((error) => { 
-            _error(error) 
-          });
-        } catch (error) {
-          _error(error);
-        }
-        try {
-          if (dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data, correlationId: streamid }).catch((error) => { _error(error) });
-        } catch (error) {
-          _error(error);
-        }
       });
       runner.addstream(streamid, streamqueue, stream);
       await packagemanager.runpackage(client, payload.id, streamid, streamqueue, true);
