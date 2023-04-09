@@ -142,6 +142,7 @@ export class runner {
                     }
                     runner.processs = runner.processs.filter(x => x.pid != pid);
                     if (clearstream == true) {
+                        console.log("!!!!!!!!!!!!!!!!! clearstream !!!!!!!!!!!!!!!!!")
                         runner.removestream(client, streamid, true, "");
                     }
                     resolve(!p.forcekilled);
