@@ -62,9 +62,12 @@ export class runner {
             runner.streams = runner.streams.filter(x => x.id != streamid);
             var data = { "command": "runpackage", success, "completed": true, "data": buffer };
             try {
-                if (s.streamqueue != null && s.streamqueue != "") client.QueueMessage({ queuename: s.streamqueue, data, correlationId: streamid }).catch((error) => {
-                    console.error(error);
-                });
+                if (s.streamqueue != null && s.streamqueue != "") {
+                    console.log("removestream streamid/correlationId: " + streamid + " streamqueue: " + s.streamqueue);
+                    client.QueueMessage({ queuename: s.streamqueue, data, correlationId: streamid }).catch((error) => {
+                        console.error(error);
+                    });
+                }
             } catch (error) {
                 console.error(error);
             }
@@ -127,11 +130,6 @@ export class runner {
                         if (s.startsWith("Debugger listening")) return;
                         if (s.startsWith("Debugger attached")) return;
                         if (s.startsWith("Waiting for the debugger to")) return;
-                    } else {
-                        if (clearstream == true) {
-                            console.log("!!!!!!!!!!!!!!!!! clearstream 2 !!!!!!!!!!!!!!!!!")
-                            runner.removestream(client, streamid, true, "");
-                        }
                     }
                     runner.notifyStream(client, streamid, data)
                 };
@@ -147,7 +145,6 @@ export class runner {
                     }
                     runner.processs = runner.processs.filter(x => x.pid != pid);
                     if (clearstream == true) {
-                        console.log("!!!!!!!!!!!!!!!!! clearstream !!!!!!!!!!!!!!!!!")
                         runner.removestream(client, streamid, true, "");
                     }
                     resolve(!p.forcekilled);
