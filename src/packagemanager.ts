@@ -89,42 +89,42 @@ export class packagemanager {
         if (command.endsWith(".py")) {
           var python = runner.findPythonPath();
           if (python == "") throw new Error("Failed locating python, is python installed and in the path?")
-          await runner.pipinstall(client, packagepath, streamid, streamqueue, python)
+          await runner.pipinstall(client, packagepath, streamid, python)
           if (wait) {
-            await runner.runit(client, packagepath, streamid, streamqueue, python, ["-u", command], true)
+            await runner.runit(client, packagepath, streamid, python, ["-u", command], true)
           } else {
-            runner.runit(client, packagepath, streamid, streamqueue, python, ["-u", command], true)
+            runner.runit(client, packagepath, streamid, python, ["-u", command], true)
           }
         } else if (command.endsWith(".js") || command == "npm run start") {
           // const nodePath = path.join(app.getAppPath(), 'node_modules', '.bin', 'node');
           // const nodePath = "node"
           const nodePath = runner.findNodePath();
           if (nodePath == "") throw new Error("Failed locating node, is node installed and in the path? " + JSON.stringify(process.env.PATH))
-          await runner.npminstall(client, packagepath, streamid, streamqueue);
+          await runner.npminstall(client, packagepath, streamid);
           if (wait) {
-            await runner.runit(client, packagepath, streamid, streamqueue, nodePath, [command], true)
+            await runner.runit(client, packagepath, streamid, nodePath, [command], true)
           } else {
-            runner.runit(client, packagepath, streamid, streamqueue, nodePath, [command], true)
+            runner.runit(client, packagepath, streamid, nodePath, [command], true)
           }
         } else {
           var dotnet = runner.findDotnetPath();
           if (dotnet == "") throw new Error("Failed locating dotnet, is dotnet installed and in the path?")
           if (wait) {
-            await runner.runit(client, packagepath, streamid, streamqueue, dotnet, ["run"], true)
+            await runner.runit(client, packagepath, streamid, dotnet, ["run"], true)
           } else {
-            runner.runit(client, packagepath, streamid, streamqueue, dotnet, ["run"], true)
+            runner.runit(client, packagepath, streamid, dotnet, ["run"], true)
           }
         }
       } else {
         if (packagepath == null || packagepath == "") {
-          runner.notifyStream(client, streamid, streamqueue, "Package not found in " + packagemanager.packagefolder);
+          runner.notifyStream(client, streamid, "Package not found in " + packagemanager.packagefolder);
         } else {
-          runner.notifyStream(client, streamid, streamqueue, "Package not found in " + packagepath);
+          runner.notifyStream(client, streamid, "Package not found in " + packagepath);
         }
         runner.removestream(streamid);
       }
     } catch (error) {
-      runner.notifyStream(client, streamid, streamqueue, error.message);
+      runner.notifyStream(client, streamid, error.message);
       runner.removestream(streamid);
     }
   }

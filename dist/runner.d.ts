@@ -9,20 +9,20 @@ export declare class runner_process {
     pid: number;
     p: ChildProcessWithoutNullStreams;
     forcekilled: boolean;
-    streamqueue: string;
 }
 export declare class runner_stream {
     id: string;
     stream: Readable;
+    streamqueue: string;
 }
 export declare class runner {
     static processs: runner_process[];
     static streams: runner_stream[];
-    static addstream(streamid: string, stream: Readable): runner_stream;
-    static notifyStream(client: openiap, streamid: string, streamqueue: string, message: Buffer | string): Promise<void>;
+    static addstream(streamid: string, streamqueue: string, stream: Readable): runner_stream;
+    static notifyStream(client: openiap, streamid: string, message: Buffer | string): Promise<void>;
     static removestream(streamid: string): void;
-    static ensurestream(streamid: string): runner_stream;
-    static runit(client: openiap, packagepath: string, streamid: string, streamqueue: string, command: string, parameters: string[], clearstream: boolean): Promise<unknown>;
+    static ensurestream(streamid: string, streamqueue: string): runner_stream;
+    static runit(client: openiap, packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean): Promise<unknown>;
     static findInPath(exec: string): string | null;
     static findInPath2(exec: string): string | null;
     static kill(client: openiap, streamid: string): void;
@@ -33,8 +33,8 @@ export declare class runner {
     static findNPMPath(): string;
     static findChromiumPath(): string;
     static findChromePath(): string;
-    static pipinstall(client: openiap, packagepath: string, streamid: string, streamqueue: string, pythonpath: string): Promise<void>;
-    static npminstall(client: openiap, packagepath: string, streamid: string, streamqueue: string): Promise<boolean>;
+    static pipinstall(client: openiap, packagepath: string, streamid: string, pythonpath: string): Promise<void>;
+    static npminstall(client: openiap, packagepath: string, streamid: string): Promise<boolean>;
     static runpythonscript(script: string): Promise<string>;
     static runpythoncode(code: string): Promise<string>;
 }

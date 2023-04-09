@@ -194,7 +194,7 @@ async function localrun() {
     stream.on('end', async () => {
       log("process ended");
     });
-    runner.addstream(streamid, stream);
+    runner.addstream(streamid, "", stream);
     log("run package " + process.env.packageid);
     await packagemanager.runpackage(client, process.env.packageid, streamid, "", true);
     log("run complete");
@@ -305,7 +305,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
     // log("onQueueMessage");
     // log(payload);
     if (user == null || jwt == null || jwt == "") {
-      return { "command": "error", error: "not authenticated" };
+      return { "command": payload.command, "success": false, error: "not authenticated" };
     }
     var commandqueue = msg.replyto;
     var streamqueue = msg.replyto;
@@ -341,7 +341,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         log("Package " + payload.id + " not found");
         if (dostream) await client.QueueMessage({ queuename: streamqueue, data: { "command": "stream", "data": Buffer.from("Package " + payload.id + " not found") }, correlationId: streamid });
         if (commandqueue != "") await client.QueueMessage({ queuename: commandqueue, data: { "command": "completed" }, correlationId: streamid });
-        return { "command": "error", error: "Package " + payload.id + " not found" };
+        return { "command": "runpackage", "success": false, "completed": true , error: "Package " + payload.id + " not found" };
       }
       var stream = new Stream.Readable({
         read(size) { }
@@ -353,7 +353,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         }
       });
       stream.on('end', async () => {
-        var data = { "command": "completed", "data": buffer };
+        var data = { "command": "runpackage", "success": true, "completed": true, "data": buffer };
         if (buffer == "") delete data.data;
         try {
           if (commandqueue != "") await client.QueueMessage({ queuename: commandqueue, data, correlationId: streamid });
@@ -366,48 +366,62 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
           _error(error);
         }
       });
-      runner.addstream(streamid, stream);
+      runner.addstream(streamid, streamqueue, stream);
       await packagemanager.runpackage(client, payload.id, streamid, streamqueue, true);
       try {
-        if (dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "success" }, correlationId: streamid });
+        if (dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "runpackage", "success": true, "completed": true }, correlationId: streamid });
       } catch (error) {
         _error(error);
         dostream = false;
       }
-      return { "command": "success" };
+      return { "command": "runpackage", "success": true, "completed": false };
     }
     if (payload.command == "kill") {
       if (payload.id == null || payload.id == "") payload.id = payload.streamid;
       if (payload.id == null || payload.id == "") throw new Error("id is required");
       runner.kill(client, payload.id);
-      return { "command": "success" };
+      return { "command": "kill", "success": true };
     }
     if (payload.command == "killall") {
       var processcount = runner.processs.length;
       for (var i = processcount; i >= 0; i--) {
         runner.kill(client, runner.processs[i].id);
       }
-      return { "command": "success", "count": processcount };
+      return { "command": "killall", "success": true, "count": processcount };
     }
     if (payload.command == "setstreamid") {
       if (payload.id == null || payload.id == "") payload.id = payload.streamid;
       if (payload.id == null || payload.id == "") throw new Error("id is required");
+      if(payload.streamqueue == null || payload.streamqueue == "") payload.streamqueue = msg.replyto;
+      if (payload.streamqueue == null || payload.streamqueue == "") throw new Error("streamqueue is required");
+      var processcount = runner.streams.length;
+      var counter = 0;
+      for (var i = processcount; i >= 0; i--) {
+        var p = runner.streams[i];
+        if(p == null) continue
+        if(p.id==payload.id) {
+          counter++;
+          p.streamqueue = payload.streamqueue;
+        }
+      }
+      return { "command": "setstreamid", "success": true, "count": counter };
     }
     if (payload.command == "listprocesses") {
-      var processcount = runner.processs.length;
+      var processcount = runner.streams.length;
       var processes = [];
       for (var i = processcount; i >= 0; i--) {
-        var p = runner.processs[i];
+        var p = runner.streams[i];
+        if(p == null) continue;
         processes.push({
           "id": p.id,
-          "forcekilled": p.forcekilled,
-          "pid": p.pid,
+          "streamqueue": p.streamqueue,
         });
       }
-      return { "command": "success", "count": processcount, "processes": processes };
+      return { "command": "listprocesses", "success": true, "count": processcount, "processes": processes };
     }
   } catch (error) {
-    return { "command": "error", error: JSON.stringify(error.message) };
+    console.error(error);
+    return { "command": payload.command, "success": false, error: JSON.stringify(error.message) };
   }
 }
 async function main() {
