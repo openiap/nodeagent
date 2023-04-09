@@ -127,6 +127,11 @@ export class runner {
                         if (s.startsWith("Debugger listening")) return;
                         if (s.startsWith("Debugger attached")) return;
                         if (s.startsWith("Waiting for the debugger to")) return;
+                    } else {
+                        if (clearstream == true) {
+                            console.log("!!!!!!!!!!!!!!!!! clearstream 2 !!!!!!!!!!!!!!!!!")
+                            runner.removestream(client, streamid, true, "");
+                        }
                     }
                     runner.notifyStream(client, streamid, data)
                 };
