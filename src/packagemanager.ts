@@ -121,11 +121,11 @@ export class packagemanager {
         } else {
           runner.notifyStream(client, streamid, "Package not found in " + packagepath);
         }
-        runner.removestream(streamid);
+        runner.removestream(client, streamid, false, "");
       }
     } catch (error) {
       runner.notifyStream(client, streamid, error.message);
-      runner.removestream(streamid);
+      runner.removestream(client, streamid, false, "");
     }
   }
   public static async removepackage(id: string) {

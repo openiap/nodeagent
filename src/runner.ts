@@ -55,11 +55,19 @@ export class runner {
             // console.log("notifyStream streamid: " + streamid + " streamqueue: not found")
         }
     }
-    public static removestream(streamid: string) {
+    public static removestream(client: openiap, streamid: string, success: boolean, buffer: string) {
         let s = runner.streams.find(x => x.id == streamid)
         if (s != null) {
             s.stream.push(null);
             runner.streams = runner.streams.filter(x => x.id != streamid);
+            var data = { "command": "runpackage", success, "completed": true, "data": buffer };
+            try {
+                if (s.streamqueue != null && s.streamqueue != "") client.QueueMessage({ queuename: s.streamqueue, data, correlationId: streamid }).catch((error) => {
+                    console.error(error);
+                });
+            } catch (error) {
+                console.error(error);
+            }
         }
     }
     public static ensurestream(streamid: string, streamqueue: string) {
@@ -105,7 +113,7 @@ export class runner {
                     }
                 }
                 console.log('Running command:', command);
-                if(parameters != null && Array.isArray(parameters)) console.log('With parameters:', parameters.join(" "));
+                if (parameters != null && Array.isArray(parameters)) console.log('With parameters:', parameters.join(" "));
                 const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, log_with_colors: "false" } })
                 console.log('Current working directory:', packagepath);
 
@@ -134,7 +142,7 @@ export class runner {
                     }
                     runner.processs = runner.processs.filter(x => x.pid != pid);
                     if (clearstream == true) {
-                        runner.removestream(streamid);
+                        runner.removestream(client, streamid, true, "");
                     }
                     resolve(!p.forcekilled);
                 });
@@ -157,16 +165,16 @@ export class runner {
                 default:
                     throw new Error(`Unsupported platform: ${process.platform}`);
             }
-            const result:any = ctrossspawn.sync(command, [exec], { stdio: 'pipe' });
+            const result: any = ctrossspawn.sync(command, [exec], { stdio: 'pipe' });
             if (result.status === 0) {
                 const stdout = result.stdout.toString();
-                const lines = stdout.split(/\r?\n/).filter((line:string) => line.trim() !== '')
-                    .filter((line:string) => line.toLowerCase().indexOf("windowsapps\\python3.exe") == -1)
-                    .filter((line:string) => line.toLowerCase().indexOf("windowsapps\\python.exe") == -1);
-                if(lines.length > 0)  return lines[0]
+                const lines = stdout.split(/\r?\n/).filter((line: string) => line.trim() !== '')
+                    .filter((line: string) => line.toLowerCase().indexOf("windowsapps\\python3.exe") == -1)
+                    .filter((line: string) => line.toLowerCase().indexOf("windowsapps\\python.exe") == -1);
+                if (lines.length > 0) return lines[0]
             } else {
-                if(result.stderr != null) console.log(result.stderr.toString());
-                if(result.stdout != null) console.log(result.stdout.toString());
+                if (result.stderr != null) console.log(result.stderr.toString());
+                if (result.stdout != null) console.log(result.stdout.toString());
             }
             return "";
         } catch (error) {
@@ -192,7 +200,7 @@ export class runner {
             const lines = stdout.split(/\r?\n/).filter(line => line.trim() !== '')
                 .filter(line => line.toLowerCase().indexOf("windowsapps\\python3.exe") == -1)
                 .filter(line => line.toLowerCase().indexOf("windowsapps\\python.exe") == -1);
-            if(lines.length > 0)  return lines[0]
+            if (lines.length > 0) return lines[0]
             return "";
         } catch (error) {
             return "";

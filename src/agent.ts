@@ -356,12 +356,14 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         var data = { "command": "runpackage", "success": true, "completed": true, "data": buffer };
         if (buffer == "") delete data.data;
         try {
-          if (commandqueue != "") await client.QueueMessage({ queuename: commandqueue, data, correlationId: streamid });
+          if (commandqueue != "") client.QueueMessage({ queuename: commandqueue, data, correlationId: streamid }).catch((error) => { 
+            _error(error) 
+          });
         } catch (error) {
           _error(error);
         }
         try {
-          if (dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data, correlationId: streamid });
+          if (dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data, correlationId: streamid }).catch((error) => { _error(error) });
         } catch (error) {
           _error(error);
         }
