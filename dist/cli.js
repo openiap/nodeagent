@@ -50,7 +50,7 @@ var readline = require('readline').createInterface({
     input: process.stdin,
     output: process.stdout
 });
-var assistentConfig = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
+var assistantConfig = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
 var args = process.argv.slice(2);
 process.on('SIGINT', function () { process.exit(0); });
 process.on('SIGTERM', function () { process.exit(0); });
@@ -141,7 +141,7 @@ function installService(svcName, serviceName, script) {
                         name: serviceName,
                         description: serviceName,
                         script: scriptPath,
-                        env: [{ name: "apiurl", value: assistentConfig.apiurl }, { name: "jwt", value: assistentConfig.jwt }]
+                        env: [{ name: "apiurl", value: assistantConfig.apiurl }, { name: "jwt", value: assistantConfig.jwt }]
                     });
                     console.log("Install using " + scriptPath);
                     svc_1.on('alreadyinstalled', function () {
@@ -174,7 +174,7 @@ function installService(svcName, serviceName, script) {
                     return [3 /*break*/, 7];
                 case 1:
                     if (!(process.platform === 'darwin')) return [3 /*break*/, 4];
-                    plist = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n  <key>Label</key>\n  <string>".concat(serviceName, "</string>\n  <key>ProgramArguments</key>\n  <array>\n    <string>").concat(runner_1.runner.findNodePath(), "</string>\n    <string>").concat(scriptPath, "</string>\n  </array>\n  <key>EnvironmentVariables</key>\n  <dict>\n  <key>apiurl</key>\n  <string>").concat(assistentConfig.apiurl, "</string>\n  <key>jwt</key>\n  <string>").concat(assistentConfig.jwt, "</string>\n  <key>NODE</key>\n  <string>production</string>\n  <key>PATH</key>\n  <string>").concat(process.env.PATH, "</string>\n</dict>\n  <key>RunAtLoad</key>\n  <true/>\n  <key>KeepAlive</key>\n  <true/>\n  <key>StandardOutPath</key>\n  <string>/var/log/nodeagent.log</string>\n  <key>StandardErrorPath</key>\n  <string>/var/log/nodeagent.log</string>\n  </dict>\n</plist>");
+                    plist = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n  <key>Label</key>\n  <string>".concat(serviceName, "</string>\n  <key>ProgramArguments</key>\n  <array>\n    <string>").concat(runner_1.runner.findNodePath(), "</string>\n    <string>").concat(scriptPath, "</string>\n  </array>\n  <key>EnvironmentVariables</key>\n  <dict>\n  <key>apiurl</key>\n  <string>").concat(assistantConfig.apiurl, "</string>\n  <key>jwt</key>\n  <string>").concat(assistantConfig.jwt, "</string>\n  <key>NODE</key>\n  <string>production</string>\n  <key>PATH</key>\n  <string>").concat(process.env.PATH, "</string>\n</dict>\n  <key>RunAtLoad</key>\n  <true/>\n  <key>KeepAlive</key>\n  <true/>\n  <key>StandardOutPath</key>\n  <string>/var/log/nodeagent.log</string>\n  <key>StandardErrorPath</key>\n  <string>/var/log/nodeagent.log</string>\n  </dict>\n</plist>");
                     plistPath = "/Library/LaunchDaemons/".concat(serviceName, ".plist");
                     if (!fs.existsSync(plistPath)) return [3 /*break*/, 3];
                     return [4 /*yield*/, UninstallService(svcName, serviceName)];
@@ -199,7 +199,7 @@ function installService(svcName, serviceName, script) {
                     _a.label = 6;
                 case 6:
                     nodepath = runner_1.runner.findNodePath();
-                    svcContent = "\n        [Unit]\n        Description=".concat(serviceName, "\n        After=network.target\n  \n        [Service]\n        Type=simple\n        ExecStart=").concat(nodepath, " ").concat(scriptPath, "\n        Environment=NODE_ENV=production\n        Environment=PATH=").concat(process.env.PATH, "\n        Environment=apiurl=").concat(assistentConfig.apiurl, "\n        Environment=jwt=").concat(assistentConfig.jwt, "        \n        \n        Restart=on-failure\n  \n        [Install]\n        WantedBy=multi-user.target\n     ");
+                    svcContent = "\n        [Unit]\n        Description=".concat(serviceName, "\n        After=network.target\n  \n        [Service]\n        Type=simple\n        ExecStart=").concat(nodepath, " ").concat(scriptPath, "\n        Environment=NODE_ENV=production\n        Environment=PATH=").concat(process.env.PATH, "\n        Environment=apiurl=").concat(assistantConfig.apiurl, "\n        Environment=jwt=").concat(assistantConfig.jwt, "        \n        \n        Restart=on-failure\n  \n        [Install]\n        WantedBy=multi-user.target\n     ");
                     fs.writeFileSync(svcPath, svcContent);
                     if (verbose)
                         console.log("Service file created at \"".concat(svcPath, "\"."));
@@ -294,40 +294,40 @@ function main() {
                     if (!(command === 'install' || command == "")) return [3 /*break*/, 5];
                     if (fs.existsSync(win32_configfile)) {
                         console.log("Parsing config from " + win32_configfile);
-                        assistentConfig = JSON.parse(fs.readFileSync(win32_configfile, "utf8"));
+                        assistantConfig = JSON.parse(fs.readFileSync(win32_configfile, "utf8"));
                     }
                     else if (fs.existsSync(darwin_configfile)) {
                         console.log("Parsing config from " + darwin_configfile);
-                        assistentConfig = JSON.parse(fs.readFileSync(darwin_configfile, "utf8"));
+                        assistantConfig = JSON.parse(fs.readFileSync(darwin_configfile, "utf8"));
                     }
                     else if (fs.existsSync(home_configfile)) {
                         console.log("Parsing config from " + home_configfile);
-                        assistentConfig = JSON.parse(fs.readFileSync(home_configfile, "utf8"));
+                        assistantConfig = JSON.parse(fs.readFileSync(home_configfile, "utf8"));
                     }
-                    assistentConfig.apiurl = prompts("apiurl (Enter for ".concat(assistentConfig.apiurl, ")? "), assistentConfig.apiurl);
-                    if (assistentConfig.apiurl == null)
+                    assistantConfig.apiurl = prompts("apiurl (Enter for ".concat(assistantConfig.apiurl, ")? "), assistantConfig.apiurl);
+                    if (assistantConfig.apiurl == null)
                         process.exit(0);
-                    if (assistentConfig.jwt != null && assistentConfig.jwt != "") {
+                    if (assistantConfig.jwt != null && assistantConfig.jwt != "") {
                         reuse = prompts("Reuse existing token (Enter for yes)? (yes/no) ", { value: "yes", autocomplete: function () { return ["yes", "no"]; } });
                         if (reuse == null)
                             process.exit(0);
                         if (reuse == "no") {
-                            assistentConfig.jwt = "";
+                            assistantConfig.jwt = "";
                         }
                     }
-                    if (!(assistentConfig.jwt == null || assistentConfig.jwt == "")) return [3 /*break*/, 3];
-                    return [4 /*yield*/, agenttools_1.agenttools.AddRequestToken(assistentConfig.apiurl)];
+                    if (!(assistantConfig.jwt == null || assistantConfig.jwt == "")) return [3 /*break*/, 3];
+                    return [4 /*yield*/, agenttools_1.agenttools.AddRequestToken(assistantConfig.apiurl)];
                 case 1:
                     _a = _b.sent(), tokenkey = _a[0], signinurl = _a[1];
                     console.log("Please open ".concat(signinurl, " in your browser and login with your OpenIAP account"));
-                    return [4 /*yield*/, agenttools_1.agenttools.WaitForToken(assistentConfig.apiurl, tokenkey)];
+                    return [4 /*yield*/, agenttools_1.agenttools.WaitForToken(assistantConfig.apiurl, tokenkey)];
                 case 2:
                     jwt = _b.sent();
-                    assistentConfig.jwt = jwt;
+                    assistantConfig.jwt = jwt;
                     _b.label = 3;
                 case 3:
                     // if (!fs.existsSync(path.join(os.homedir(), ".openiap"))) fs.mkdirSync(path.join(os.homedir(), ".openiap"), { recursive: true });
-                    // fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(assistentConfig));
+                    // fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(assistantConfig));
                     console.log("Installing service \"".concat(serviceName, "\"..."));
                     return [4 /*yield*/, installService(serviceName, serviceName, 'agent.js')];
                 case 4:

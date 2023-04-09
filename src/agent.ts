@@ -45,7 +45,7 @@ client.agent = "nodeagent"
 var myproject = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
 client.version = myproject.version;
 console.log("version: " + client.version);
-var assistentConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
+var assistantConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
 var agentid = "";
 // When injected from docker, use the injected agentid
 let dockeragent = false;
@@ -57,36 +57,36 @@ var localqueue = "";
 var languages = ["nodejs"];
 function reloadAndParseConfig(): boolean {
   config.doDumpStack = true
-  assistentConfig = {};
-  assistentConfig.apiurl = process.env["apiurl"];
-  if (assistentConfig.apiurl == null || assistentConfig.apiurl == "") {
-    assistentConfig.apiurl = process.env["grpcapiurl"];
+  assistantConfig = {};
+  assistantConfig.apiurl = process.env["apiurl"];
+  if (assistantConfig.apiurl == null || assistantConfig.apiurl == "") {
+    assistantConfig.apiurl = process.env["grpcapiurl"];
   }
-  if (assistentConfig.apiurl == null || assistentConfig.apiurl == "") {
-    assistentConfig.apiurl = process.env["wsapiurl"];
+  if (assistantConfig.apiurl == null || assistantConfig.apiurl == "") {
+    assistantConfig.apiurl = process.env["wsapiurl"];
   }
-  assistentConfig.jwt = process.env["jwt"];
+  assistantConfig.jwt = process.env["jwt"];
   if (dockeragent) {
     return true;
   }
 
   if (fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
-    assistentConfig = JSON.parse(fs.readFileSync(path.join(os.homedir(), ".openiap", "config.json"), "utf8"));
+    assistantConfig = JSON.parse(fs.readFileSync(path.join(os.homedir(), ".openiap", "config.json"), "utf8"));
     process.env["NODE_ENV"] = "production";
-    if (assistentConfig.apiurl) {
-      process.env["apiurl"] = assistentConfig.apiurl;
-      client.url = assistentConfig.apiurl;
+    if (assistantConfig.apiurl) {
+      process.env["apiurl"] = assistantConfig.apiurl;
+      client.url = assistantConfig.apiurl;
     }
-    if (assistentConfig.jwt) {
-      process.env["jwt"] = assistentConfig.jwt;
-      client.jwt = assistentConfig.jwt;
+    if (assistantConfig.jwt) {
+      process.env["jwt"] = assistantConfig.jwt;
+      client.jwt = assistantConfig.jwt;
     }
-    if (assistentConfig.agentid != null && assistentConfig.agentid != "") {
-      agentid = assistentConfig.agentid;
+    if (assistantConfig.agentid != null && assistantConfig.agentid != "") {
+      agentid = assistantConfig.agentid;
     }
     return true;
   } else {
-    if(assistentConfig.apiurl == null || assistentConfig.apiurl == "") {
+    if(assistantConfig.apiurl == null || assistantConfig.apiurl == "") {
       log("failed locating config to load from " + path.join(os.homedir(), ".openiap", "config.json"))
       process.exit(1);
       return false;

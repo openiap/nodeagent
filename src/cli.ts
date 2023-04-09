@@ -15,7 +15,7 @@ const readline = require('readline').createInterface({
   input: process.stdin,
   output: process.stdout
 });
-var assistentConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
+var assistantConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
 const args = process.argv.slice(2);
 process.on('SIGINT', () => { process.exit(0) })
 process.on('SIGTERM', () => { process.exit(0) })
@@ -91,7 +91,7 @@ function installService(svcName: string, serviceName: string, script: string): P
         name: serviceName,
         description: serviceName,
         script: scriptPath,
-        env: [{ name: "apiurl", value: assistentConfig.apiurl }, { name: "jwt", value: assistentConfig.jwt }]
+        env: [{ name: "apiurl", value: assistantConfig.apiurl }, { name: "jwt", value: assistantConfig.jwt }]
       });
       console.log("Install using " + scriptPath)
       svc.on('alreadyinstalled', () => {
@@ -137,9 +137,9 @@ function installService(svcName: string, serviceName: string, script: string): P
   <key>EnvironmentVariables</key>
   <dict>
   <key>apiurl</key>
-  <string>${assistentConfig.apiurl}</string>
+  <string>${assistantConfig.apiurl}</string>
   <key>jwt</key>
-  <string>${assistentConfig.jwt}</string>
+  <string>${assistantConfig.jwt}</string>
   <key>NODE</key>
   <string>production</string>
   <key>PATH</key>
@@ -183,8 +183,8 @@ function installService(svcName: string, serviceName: string, script: string): P
         ExecStart=${nodepath} ${scriptPath}
         Environment=NODE_ENV=production
         Environment=PATH=${process.env.PATH}
-        Environment=apiurl=${assistentConfig.apiurl}
-        Environment=jwt=${assistentConfig.jwt}        
+        Environment=apiurl=${assistantConfig.apiurl}
+        Environment=jwt=${assistantConfig.jwt}        
         
         Restart=on-failure
   
@@ -276,34 +276,34 @@ async function main() {
   if (command === 'install' || command == "") {
     if (fs.existsSync(win32_configfile)) {
       console.log("Parsing config from " + win32_configfile)
-      assistentConfig = JSON.parse(fs.readFileSync(win32_configfile, "utf8"));
+      assistantConfig = JSON.parse(fs.readFileSync(win32_configfile, "utf8"));
     } else if (fs.existsSync(darwin_configfile)) {
       console.log("Parsing config from " + darwin_configfile)
-      assistentConfig = JSON.parse(fs.readFileSync(darwin_configfile, "utf8"));
+      assistantConfig = JSON.parse(fs.readFileSync(darwin_configfile, "utf8"));
     } else if (fs.existsSync(home_configfile)) {
       console.log("Parsing config from " + home_configfile)
-      assistentConfig = JSON.parse(fs.readFileSync(home_configfile, "utf8"));
+      assistantConfig = JSON.parse(fs.readFileSync(home_configfile, "utf8"));
     }
-    assistentConfig.apiurl = prompts(`apiurl (Enter for ${assistentConfig.apiurl})? `, assistentConfig.apiurl);
-    if (assistentConfig.apiurl == null) process.exit(0);
+    assistantConfig.apiurl = prompts(`apiurl (Enter for ${assistantConfig.apiurl})? `, assistantConfig.apiurl);
+    if (assistantConfig.apiurl == null) process.exit(0);
 
-    if (assistentConfig.jwt != null && assistentConfig.jwt != "") {
+    if (assistantConfig.jwt != null && assistantConfig.jwt != "") {
       var reuse = prompts(`Reuse existing token (Enter for yes)? (yes/no) `, { value: "yes", autocomplete: () => ["yes", "no"] });
       if (reuse == null) process.exit(0);
       if (reuse == "no") {
-        assistentConfig.jwt = "";
+        assistantConfig.jwt = "";
       }
 
     }
 
-    if (assistentConfig.jwt == null || assistentConfig.jwt == "") {
-      const [tokenkey, signinurl] = await agenttools.AddRequestToken(assistentConfig.apiurl)
+    if (assistantConfig.jwt == null || assistantConfig.jwt == "") {
+      const [tokenkey, signinurl] = await agenttools.AddRequestToken(assistantConfig.apiurl)
       console.log(`Please open ${signinurl} in your browser and login with your OpenIAP account`)
-      const jwt = await agenttools.WaitForToken(assistentConfig.apiurl, tokenkey);
-      assistentConfig.jwt = jwt;
+      const jwt = await agenttools.WaitForToken(assistantConfig.apiurl, tokenkey);
+      assistantConfig.jwt = jwt;
     }
     // if (!fs.existsSync(path.join(os.homedir(), ".openiap"))) fs.mkdirSync(path.join(os.homedir(), ".openiap"), { recursive: true });
-    // fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(assistentConfig));
+    // fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(assistantConfig));
 
     console.log(`Installing service "${serviceName}"...`);
     await installService(serviceName, serviceName, 'agent.js');
