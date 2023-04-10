@@ -30,5 +30,6 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true
 COPY dist /tmp/dist
 RUN python -m pip install --upgrade pip
 RUN python -m pip install openiap
-RUN npx -y @openiap/nodeagent -noop
-CMD ["npx", "@openiap/nodeagent", "-service"]
+# load current version
+# RUN npx -y @openiap/nodeagent -noop
+CMD ["npx", "-y", "@openiap/nodeagent", "-service"]

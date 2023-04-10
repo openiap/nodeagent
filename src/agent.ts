@@ -135,6 +135,7 @@ async function onConnected(client: openiap) {
     return client.Close();
   }
   await reloadpackages(false)
+  console.log("registering watch on agents")
   var watchid = await client.Watch({ paths: [], collectionname: "agents" }, async (operation: string, document: any) => {
     try {
       if (document._type == "package") {
