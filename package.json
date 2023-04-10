@@ -9,7 +9,10 @@
         "watch": "tsc -w",
         "updateapidev": "npm uninstall @openiap/nodeapi && npm i openiap/nodeapi",
         "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi",
-        "clean": "rm -rf $(npm get cache)/_npx && sudo rm -rf /root/.npm/_npx"
+        "clean": "rm -rf $(npm get cache)/_npx && sudo rm -rf /root/.npm/_npx",
+        "start2": "node ./dist/agent.js",
+        "start": "node /tmp/dist/agent.js"
+
     },
     "keywords": [],
     "publishConfig": {

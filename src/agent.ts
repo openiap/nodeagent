@@ -135,7 +135,7 @@ async function onConnected(client: openiap) {
       log('connected, but not signed in, close connection again');
       return client.Close();
     }
-    await reloadpackages(false)
+    // await reloadpackages(false)
     console.log("registering watch on agents")
     var watchid = await client.Watch({ paths: [], collectionname: "agents" }, async (operation: string, document: any) => {
       try {
@@ -261,7 +261,7 @@ async function RegisterAgent() {
         if (client.url != null && client.url != "") {
           config.apiurl = client.url;
         } 
-          
+        if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
         fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(config));
       // }
       log("Registed agent as " + agentid + " and queue " + localqueue + " ( from " + res.slug + " )");
