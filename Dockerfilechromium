@@ -27,9 +27,12 @@ ENV OPENSSL_CONF=/dev/null
 # tell puppeteer to skip installing chrome. We'll be using the installed package.
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 
-COPY dist /tmp/dist
+# COPY dist /tmp/dist
+COPY . /tmp
+WORKDIR /tmp
 RUN python -m pip install --upgrade pip
 RUN python -m pip install openiap
 # load current version
 # RUN npx -y @openiap/nodeagent -noop
-CMD ["npx", "-y", "@openiap/nodeagent", "-service"]
+# CMD ["npx", "-y", "@openiap/nodeagent", "-service"]
+CMD ["node", "dist/agent.js"]

@@ -9,5 +9,5 @@ WORKDIR /tmp
 # RUN python -m pip install openiap
 # load current version
 # RUN npx -y @openiap/nodeagent -noop
-CMD ["npx", "-y", "@openiap/nodeagent", "-service"]
-# CMD ["node", "dist/agent.js"]
+# CMD ["npx", "-y", "@openiap/nodeagent", "-service"]
+CMD ["node", "dist/agent.js"]

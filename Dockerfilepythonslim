@@ -1,9 +1,13 @@
 FROM python:slim
 
-COPY dist /tmp/dist
+# COPY dist /tmp/dist
+COPY . /tmp
+WORKDIR /tmp
+
 RUN apt-get update && apt-get install -y nodejs npm && rm -rf /var/lib/apt/lists/*
 RUN python -m pip install --upgrade pip
 RUN python -m pip install openiap numpy
 # load current version
 # RUN npx -y @openiap/nodeagent -noop
-CMD ["npx", "-y", "@openiap/nodeagent", "-service"]
+# CMD ["npx", "-y", "@openiap/nodeagent", "-service"]
+CMD ["node", "dist/agent.js"]
