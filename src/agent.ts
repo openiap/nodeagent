@@ -127,54 +127,60 @@ function init() {
 }
 var lastreload = new Date();
 async function onConnected(client: openiap) {
-  var u = new URL(client.url);
-  process.env.apiurl = client.url;
-  await RegisterAgent()
-  if (client.client == null || client.client.user == null) {
-    log('connected, but not signed in, close connection again');
-    return client.Close();
-  }
-  await reloadpackages(false)
-  console.log("registering watch on agents")
-  var watchid = await client.Watch({ paths: [], collectionname: "agents" }, async (operation: string, document: any) => {
-    try {
-      if (document._type == "package") {
-        if (operation == "insert") {
-          log("package " + document.name + " inserted, reload packages");
-          await reloadpackages(false)
-        } else if (operation == "replace") {
-          log("package " + document.name + " updated, delete and reload");
-          packagemanager.removepackage(document._id);
-          if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
-          fs.writeFileSync(path.join(packagemanager.packagefolder, document._id + ".json"), JSON.stringify(document, null, 2))
-          await packagemanager.getpackage(client, document._id);
-        } else if (operation == "delete") {
-          log("package " + document.name + " deleted, cleanup after package");
-          packagemanager.removepackage(document._id);
-        }
-      } else if (document._type == "agent") {
-        if (document._id == agentid) {
-          if (lastreload.getTime() + 1000 > new Date().getTime()) {
-            log("agent changed, but last reload was less than 1 second ago, do nothing");
-            return;
-          }
-          lastreload = new Date();
-          log("agent changed, reload config");
-          await RegisterAgent()
-        } else {
-          log("Another agent was changed, do nothing");
-        }
-      } else {
-        log("unknown type " + document._type + " changed, do nothing");
-      }
-    } catch (error) {
-      _error(error);
+  try {
+    var u = new URL(client.url);
+    process.env.apiurl = client.url;
+    await RegisterAgent()
+    if (client.client == null || client.client.user == null) {
+      log('connected, but not signed in, close connection again');
+      return client.Close();
     }
-  });
-  log("watch registered with id " + watchid);
-  if (process.env.packageid != "" && process.env.packageid != null) {
-    log("packageid is set, run package " + process.env.packageid);
-    await localrun();
+    await reloadpackages(false)
+    console.log("registering watch on agents")
+    var watchid = await client.Watch({ paths: [], collectionname: "agents" }, async (operation: string, document: any) => {
+      try {
+        if (document._type == "package") {
+          if (operation == "insert") {
+            log("package " + document.name + " inserted, reload packages");
+            await reloadpackages(false)
+          } else if (operation == "replace") {
+            log("package " + document.name + " updated, delete and reload");
+            packagemanager.removepackage(document._id);
+            if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
+            fs.writeFileSync(path.join(packagemanager.packagefolder, document._id + ".json"), JSON.stringify(document, null, 2))
+            await packagemanager.getpackage(client, document._id);
+          } else if (operation == "delete") {
+            log("package " + document.name + " deleted, cleanup after package");
+            packagemanager.removepackage(document._id);
+          }
+        } else if (document._type == "agent") {
+          if (document._id == agentid) {
+            if (lastreload.getTime() + 1000 > new Date().getTime()) {
+              log("agent changed, but last reload was less than 1 second ago, do nothing");
+              return;
+            }
+            lastreload = new Date();
+            log("agent changed, reload config");
+            await RegisterAgent()
+          } else {
+            log("Another agent was changed, do nothing");
+          }
+        } else {
+          log("unknown type " + document._type + " changed, do nothing");
+        }
+      } catch (error) {
+        _error(error);
+      }
+    });
+    log("watch registered with id " + watchid);
+    if (process.env.packageid != "" && process.env.packageid != null) {
+      log("packageid is set, run package " + process.env.packageid);
+      await localrun();
+      process.exit(0);
+    }
+  } catch (error) {
+    console.error(error);
+    await new Promise(resolve => setTimeout(resolve, 2000));
     process.exit(0);
   }
 }
