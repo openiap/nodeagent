@@ -134,17 +134,19 @@ async function onConnected(client: openiap) {
     log('connected, but not signed in, close connection again');
     return client.Close();
   }
-  await reloadpackages()
+  await reloadpackages(false)
   var watchid = await client.Watch({ paths: [], collectionname: "agents" }, async (operation: string, document: any) => {
     try {
       if (document._type == "package") {
         if (operation == "insert") {
           log("package " + document.name + " inserted, reload packages");
-          await reloadpackages()
+          await reloadpackages(false)
         } else if (operation == "replace") {
           log("package " + document.name + " updated, delete and reload");
           packagemanager.removepackage(document._id);
-          await packagemanager.getpackage(client, document.fileid, document._id);
+          if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
+          fs.writeFileSync(path.join(packagemanager.packagefolder, document._id + ".json"), JSON.stringify(document, null, 2))
+          await packagemanager.getpackage(client, document._id);
         } else if (operation == "delete") {
           log("package " + document.name + " deleted, cleanup after package");
           packagemanager.removepackage(document._id);
@@ -194,37 +196,21 @@ async function localrun() {
     stream.on('end', async () => {
       log("process ended");
     });
-    runner.addstream(streamid, "", stream);
     log("run package " + process.env.packageid);
-    await packagemanager.runpackage(client, process.env.packageid, streamid, "", true);
+    await packagemanager.runpackage(client, process.env.packageid, streamid, "", stream, true);
     log("run complete");
   } catch (error) {
     _error(error);
     process.exit(1);
   }
 }
-async function reloadpackages() {
+async function reloadpackages(force: boolean) {
   try {
     log("reloadpackages")
     if (process.env.packageid != "" && process.env.packageid != null) {
-      // packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder, process.env.packageid));
-      var _packages = await client.Query<any>({ query: { "_type": "package", "_id": process.env.packageid }, collectionname: "agents" });
+      await packagemanager.reloadpackage(client, process.env.packageid, force);
     } else {
-      var _packages = await client.Query<any>({ query: { "_type": "package", "language": { "$in": languages } }, collectionname: "agents" });
-    }
-    log("Got " + _packages.length + " packages to handle")
-    if (_packages != null) {
-      for (var i = 0; i < _packages.length; i++) {
-        try {
-          if (fs.existsSync(path.join(packagemanager.packagefolder, _packages[i]._id))) continue;
-          if (_packages[i].fileid != null && _packages[i].fileid != "") {
-            log("get package " + _packages[i].name);
-            await packagemanager.getpackage(client, _packages[i].fileid, _packages[i]._id);
-          }
-        } catch (error) {
-          _error(error);
-        }
-      }
+      await packagemanager.reloadpackages(client, languages, force);
     }
   } catch (error) {
     _error(error);
@@ -319,22 +305,8 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
     if (streamqueue == null) streamqueue = "";
     if (payload.command == "runpackage") {
       if (payload.id == null || payload.id == "") throw new Error("id is required");
+      await packagemanager.getpackage(client, payload.id);
       var packagepath = packagemanager.getpackagepath(path.join(os.homedir(), ".openiap", "packages", payload.id));
-      if (packagepath == "") {
-        try {
-          var _packages = await client.Query<any>({ query: { "_type": "package", "_id": payload.id }, collectionname: "agents" });
-          if (_packages.length > 0) {
-            log("get package " + _packages[0].name);
-            await packagemanager.getpackage(client, _packages[0].fileid, payload.id);
-            packagepath = packagemanager.getpackagepath(path.join(os.homedir(), ".openiap", "packages", payload.id));
-          } else {
-            log("Cannot find package with id " + payload.id);
-          }
-
-        } catch (error) {
-
-        }
-      }
       if (packagepath == "") {
         log("Package " + payload.id + " not found");
         if (dostream) await client.QueueMessage({ queuename: streamqueue, data: { "command": "stream", "data": Buffer.from("Package " + payload.id + " not found") }, correlationId: streamid });
@@ -353,8 +325,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         var data = { "command": "runpackage", "success": true, "completed": true, "data": buffer };
         if (buffer == "") delete data.data;
       });
-      runner.addstream(streamid, streamqueue, stream);
-      await packagemanager.runpackage(client, payload.id, streamid, streamqueue, true);
+      await packagemanager.runpackage(client, payload.id, streamid, streamqueue, stream, true);
       try {
         if (dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "runpackage", "success": true, "completed": true }, correlationId: streamid });
       } catch (error) {

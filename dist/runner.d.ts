@@ -14,11 +14,12 @@ export declare class runner_stream {
     id: string;
     stream: Readable;
     streamqueue: string;
+    packageid: string;
+    packagename: string;
 }
 export declare class runner {
     static processs: runner_process[];
     static streams: runner_stream[];
-    static addstream(streamid: string, streamqueue: string, stream: Readable): runner_stream;
     static notifyStream(client: openiap, streamid: string, message: Buffer | string): Promise<void>;
     static removestream(client: openiap, streamid: string, success: boolean, buffer: string): void;
     static ensurestream(streamid: string, streamqueue: string): runner_stream;

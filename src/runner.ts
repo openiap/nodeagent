@@ -18,20 +18,22 @@ export class runner_stream {
     id: string;
     stream: Readable;
     streamqueue: string;
+    packageid: string;
+    packagename: string;
 }
 export class runner {
     public static processs: runner_process[] = [];
     public static streams: runner_stream[] = [];
-    public static addstream(streamid: string, streamqueue: string, stream: Readable) {
-        let s = runner.streams.find(x => x.id == streamid)
-        if (s != null) throw new Error("Stream " + streamid + " already exists")
-        s = new runner_stream();
-        s.id = streamid;
-        s.stream = stream;
-        s.streamqueue = streamqueue;
-        runner.streams.push(s);
-        return s;
-    }
+    // private static addstream(streamid: string, streamqueue: string, stream: Readable) {
+    //     let s = runner.streams.find(x => x.id == streamid)
+    //     if (s != null) throw new Error("Stream " + streamid + " already exists")
+    //     s = new runner_stream();
+    //     s.id = streamid;
+    //     s.stream = stream;
+    //     s.streamqueue = streamqueue;
+    //     runner.streams.push(s);
+    //     return s;
+    // }
     public static async notifyStream(client: openiap, streamid: string, message: Buffer | string): Promise<void> {
         const s = this.ensurestream(streamid, "");
         if (message != null && !Buffer.isBuffer(message)) {

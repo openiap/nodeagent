@@ -1,17 +1,91 @@
 import { openiap } from "@openiap/nodeapi";
+import { Readable } from 'stream';
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os"
 import * as AdmZip from "adm-zip";
 import * as tar from "tar";
 import { config } from '@openiap/nodeapi';
-import { runner } from "./runner";
+import { runner, runner_stream } from "./runner";
 const { info, err } = config;
+export interface ipackage {
+  _id: string;
+  name: string;
+  description: string;
+  version: string;
+  fileid: string;
+  language: string;
+  daemon: boolean;
+  chrome: boolean;
+  chromium: boolean;
+  main: string;
+}
 export class packagemanager {
   public static packagefolder = path.join(os.homedir(), ".openiap", "packages");
-  public static async getpackage(client: openiap, fileid: string, id: string) {
+  public static async getpackages(client: openiap, languages: string[]): Promise<ipackage[]> {
+    if(client == null) {
+      if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
+      var _packages: ipackage[] = [];
+      var files = fs.readdirSync(packagemanager.packagefolder);
+      for(var i = 0; i < files.length; i++) {
+        if(files[i].endsWith(".json")) {
+          var pkg = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder, files[i])).toString());
+          if(pkg != null && pkg._type == "package") _packages.push(pkg);
+        }
+      }
+      return _packages;
+    }
+    var _packages = await client.Query<ipackage>({ query: { "_type": "package", "language": { "$in": languages } }, collectionname: "agents" });
+    return _packages;
+  }
+  public static async reloadpackage(client: openiap, id: string, force: boolean): Promise<ipackage> {
+    var pkg = await client.FindOne<ipackage>({ query: { "_type": "package", "_id": id }, collectionname: "agents" });
+    if(pkg == null) return null;
     if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
-    const reply = await client.DownloadFile({ id: fileid, folder: packagemanager.packagefolder });
+    if(force == false && fs.existsSync(path.join(packagemanager.packagefolder, pkg._id + ".json"))) {
+      var document = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder, pkg._id + ".json")).toString());
+      if(document.version == pkg.version) return pkg;
+    }
+    packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder, pkg._id));
+    fs.writeFileSync(path.join(packagemanager.packagefolder, pkg._id + ".json"), JSON.stringify(pkg, null, 2))
+    if (pkg.fileid != null && pkg.fileid != "") {
+      console.log("get package " + pkg.name);
+      await packagemanager.getpackage(client, pkg._id);
+    }
+  }
+  public static async reloadpackages(client: openiap, languages: string[], force: boolean): Promise<ipackage[]> {
+    var packages = await packagemanager.getpackages(client, languages);
+    if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
+    for (var i = 0; i < packages.length; i++) {
+      try {
+        if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
+        if(force == false && fs.existsSync(path.join(packagemanager.packagefolder, packages[i]._id + ".json"))) {
+          var document = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder, packages[i]._id + ".json")).toString());
+          if(document.version == packages[i].version) continue;
+        }
+        packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder, packages[i]._id));
+        fs.writeFileSync(path.join(packagemanager.packagefolder, packages[i]._id + ".json"), JSON.stringify(packages[i], null, 2))
+        if (packages[i].fileid != null && packages[i].fileid != "") {
+          console.log("get package " + packages[i].name + " v" + packages[i].version + " " + packages[i]._id);
+          await packagemanager.getpackage(client, packages[i]._id);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    return packages;
+  }
+  public static async getpackage(client: openiap, id: string): Promise<ipackage> {
+    if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
+    let pkg: ipackage = null;
+    if(fs.existsSync(path.join(packagemanager.packagefolder, id + ".json"))) {
+      pkg = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder, id + ".json")).toString())
+    } else {
+      pkg = await client.FindOne<ipackage>({ collectionname: "agents", query: { _id: id, "_type": "package" } });
+      if(pkg != null) fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
+    }     
+    if(pkg == null) throw new Error("Failed to find package: " + id);
+    const reply = await client.DownloadFile({ id: pkg.fileid, folder: packagemanager.packagefolder });
     const filename = path.join(packagemanager.packagefolder, reply.filename);
     try {
       if (path.extname(filename) == ".zip") {
@@ -38,6 +112,7 @@ export class packagemanager {
       throw error
     } finally {
       fs.unlinkSync(filename);
+      return pkg;
     }
   }
   public static getpackagepath(packagepath: string, first: boolean = true): string {
@@ -79,9 +154,24 @@ export class packagemanager {
     if (fs.existsSync(path.join(packagepath, "main.py"))) return path.join(packagepath, "main.py");
     if (fs.existsSync(path.join(packagepath, "index.py"))) return path.join(packagepath, "index.py");
   }
-  public static async runpackage(client: openiap, id: string, streamid: string, streamqueue: string, wait: boolean) {
+  private static addstream(streamid: string, streamqueue: string, stream: Readable) {
+    let s = runner.streams.find(x => x.id == streamid)
+    if (s != null) throw new Error("Stream " + streamid + " already exists")
+    s = new runner_stream();
+    s.id = streamid;
+    s.stream = stream;
+    s.streamqueue = streamqueue;
+    runner.streams.push(s);
+    return s;
+  }
+  public static async runpackage(client: openiap, id: string, streamid: string, streamqueue: string, stream: Readable, wait: boolean) {
     if (streamid == null || streamid == "") throw new Error("streamid is null or empty");
     try {
+      var s = packagemanager.addstream(streamid, streamqueue, stream)
+      const pck = await packagemanager.getpackage(client, id);
+      if(pck == null) throw new Error("Failed to find package: " + id);
+      s.packagename = pck.name;
+      s.packageid = pck._id;
       var packagepath = packagemanager.getpackagepath(path.join(packagemanager.packagefolder, id));
       if (fs.existsSync(packagepath)) {
         let command = packagemanager.getscriptpath(packagepath)
