@@ -244,7 +244,7 @@ async function RegisterAgent() {
       }
     }
     if (res != null && res.slug != "" && res._id != null && res._id != "") {
-      localqueue = await client.RegisterQueue({ queuename: res.slug }, onQueueMessage);
+      localqueue = await client.RegisterQueue({ queuename: res.slug + "agent" }, onQueueMessage);
       agentid = res._id;
       var config = { agentid, jwt: res.jwt, apiurl: client.url };
       if (fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
