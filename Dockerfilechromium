@@ -27,9 +27,14 @@ ENV OPENSSL_CONF=/dev/null
 # tell puppeteer to skip installing chrome. We'll be using the installed package.
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 
-# COPY dist /tmp/dist
-COPY . /tmp
 WORKDIR /tmp
+COPY package.json /tmp/package.json
+COPY package-lock.json /tmp/package-lock.json
+COPY bin /tmp/bin
+RUN npm install
+
+COPY dist /tmp/dist
+# COPY . /tmp
 RUN python -m pip install --upgrade pip
 RUN python -m pip install openiap
 # load current version

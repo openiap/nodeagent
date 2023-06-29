@@ -2,8 +2,15 @@
 # from python:alpine3.17
 FROM alpine:3.17
 RUN apk add --update git nodejs npm python3 py3-pip g++ && rm -rf /var/cache/apk/*
-# COPY dist /tmp/dist
-COPY . /tmp
+
+WORKDIR /tmp
+COPY package.json /tmp/package.json
+COPY package-lock.json /tmp/package-lock.json
+COPY bin /tmp/bin
+RUN npm install
+
+COPY dist /tmp/dist
+# COPY . /tmp
 WORKDIR /tmp
 # RUN python -m pip install --upgrade pip
 # RUN python -m pip install openiap

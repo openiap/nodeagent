@@ -1,12 +1,17 @@
 FROM python:slim
 
-# COPY dist /tmp/dist
-COPY . /tmp
-WORKDIR /tmp
-
 RUN apt-get update && apt-get install -y nodejs npm && rm -rf /var/lib/apt/lists/*
 RUN python -m pip install --upgrade pip
 RUN python -m pip install openiap numpy
+
+WORKDIR /tmp
+COPY package.json /tmp/package.json
+COPY package-lock.json /tmp/package-lock.json
+COPY bin /tmp/bin
+RUN npm install
+
+COPY dist /tmp/dist
+
 # load current version
 # RUN npx -y @openiap/nodeagent -noop
 # CMD ["npx", "-y", "@openiap/nodeagent", "-service"]
