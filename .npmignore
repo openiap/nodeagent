@@ -4,6 +4,7 @@ package-lock.json
 /.vscode
 make
 bin
+Dockerfilepowershell
 Dockerfilechromiumold
 Dockerfilechromium
 Dockerfile

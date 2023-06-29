@@ -1,6 +1,6 @@
 {
     "name": "@openiap/nodeagent",
-    "version": "0.0.45",
+    "version": "0.0.47",
     "description": "",
     "main": "./dist/index.js",
     "module": "./dist/index.js",
@@ -12,7 +12,6 @@
         "clean": "rm -rf $(npm get cache)/_npx && sudo rm -rf /root/.npm/_npx",
         "start2": "node ./dist/agent.js",
         "start": "npx -y @openiap/nodeagent -service"
-
     },
     "keywords": [],
     "publishConfig": {
@@ -40,5 +39,11 @@
         "cross-spawn": "^7.0.3",
         "node-windows": "^1.0.0-beta.6",
         "tar": "^6.1.13"
+    },
+    "openiap": {
+        "language": "nodejs",
+        "typescript": true,
+        "daemon": false,
+        "chromium": false
     }
 }

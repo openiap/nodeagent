@@ -20,6 +20,7 @@ export class runner_stream {
     streamqueue: string;
     packageid: string;
     packagename: string;
+    buffer: string;
 }
 export class runner {
     public static processs: runner_process[] = [];
@@ -34,7 +35,7 @@ export class runner {
     //     runner.streams.push(s);
     //     return s;
     // }
-    public static async notifyStream(client: openiap, streamid: string, message: Buffer | string): Promise<void> {
+    public static async notifyStream(client: openiap, streamid: string, message: Buffer | string, addtobuffer: boolean = true): Promise<void> {
         const s = this.ensurestream(streamid, "");
         if (message != null && !Buffer.isBuffer(message)) {
             message = Buffer.from(message + "\n");
@@ -55,6 +56,12 @@ export class runner {
             }
         } else {
             // console.log("notifyStream streamid: " + streamid + " streamqueue: not found")
+        }
+        if(!addtobuffer) return;
+        if(s.buffer == null) s.buffer = "";
+        s.buffer += message;
+        if(s.buffer.length > 1000000) {
+            s.buffer = s.buffer.substring(s.buffer.length - 1000000);
         }
     }
     public static removestream(client: openiap, streamid: string, success: boolean, buffer: string) {
@@ -89,7 +96,7 @@ export class runner {
         }
         return s;
     }
-    public static async runit(client: openiap, packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean) {
+    public static async runit(client: openiap, packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean): Promise<number> {
         return new Promise((resolve, reject) => {
             try {
                 console.log('runit: Running command:', command);
@@ -138,9 +145,12 @@ export class runner {
                 childProcess.stdio[1]?.on('data', catchoutput);
                 childProcess.stdio[2]?.on('data', catchoutput);
                 childProcess.stdio[3]?.on('data', catchoutput);
-                childProcess.stdout.on('close', (code: any) => {
+                // childProcess.stdout.on('exit', (code: number) => {
+                childProcess.on('close', (code: number) => {
+                    // @ts-ignore
                     if (code == false || code == null) {
                         runner.notifyStream(client, streamid, `Child process ${pid} exited`);
+                        code = 0;
                     } else {
                         runner.notifyStream(client, streamid, `Child process ${pid} exited with code ${code}`);
                         p.forcekilled = true;
@@ -149,7 +159,7 @@ export class runner {
                     if (clearstream == true) {
                         runner.removestream(client, streamid, true, "");
                     }
-                    resolve(!p.forcekilled);
+                    resolve(code);
                 });
             } catch (error) {
                 reject(error);
@@ -225,6 +235,11 @@ export class runner {
         if (result == "") result = runner.findInPath("python")
         return result;
     }
+    public static findPwShPath() {
+        var result = runner.findInPath("pwsh")
+        if (result == "") result = runner.findInPath("powershell")
+        return result;
+    }    
     public static findDotnetPath() {
         return runner.findInPath("dotnet")
     }
@@ -254,7 +269,7 @@ export class runner {
             runner.notifyStream(client, streamid, "************************");
             runner.notifyStream(client, streamid, "**** Running pip install");
             runner.notifyStream(client, streamid, "************************");
-            if ((await runner.runit(client, packagepath, streamid, pythonpath, ["-m", "pip", "install", "-r", path.join(packagepath, "requirements.txt")], false)) == true) {
+            if ((await runner.runit(client, packagepath, streamid, pythonpath, ["-m", "pip", "install", "-r", path.join(packagepath, "requirements.txt")], false)) == 0) {
                 // WHY is this needed ???
                 await runner.runit(client, packagepath, streamid, pythonpath, ["-m", "pip", "install", "--upgrade", "protobuf"], false)
                 fs.writeFileSync(path.join(packagepath, "requirements.txt.done"), "done");
@@ -271,7 +286,7 @@ export class runner {
             runner.notifyStream(client, streamid, "************************");
             const npmpath = runner.findNPMPath();
             if (npmpath == "") throw new Error("Failed locating NPM, is it installed and in the path?")
-            if ((await runner.runit(client, packagepath, streamid, npmpath, ["install"], false)) == true) {
+            if ((await runner.runit(client, packagepath, streamid, npmpath, ["install"], false)) == 0) {
                 fs.writeFileSync(path.join(packagepath, "npm.install.done"), "done");
                 return true;
             }

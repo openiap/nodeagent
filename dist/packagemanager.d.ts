@@ -22,7 +22,7 @@ export declare class packagemanager {
     static getpackagepath(packagepath: string, first?: boolean): string;
     static getscriptpath(packagepath: string): string;
     private static addstream;
-    static runpackage(client: openiap, id: string, streamid: string, streamqueue: string, stream: Readable, wait: boolean): Promise<void>;
+    static runpackage(client: openiap, id: string, streamid: string, streamqueue: string, stream: Readable, wait: boolean): Promise<number>;
     static removepackage(id: string): Promise<void>;
     static deleteDirectoryRecursiveSync(dirPath: string): void;
 }

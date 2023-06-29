@@ -85,6 +85,7 @@ export class packagemanager {
       if(pkg != null) fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
     }     
     if(pkg == null) throw new Error("Failed to find package: " + id);
+    // console.log("Downloading file " + pkg.fileid)
     const reply = await client.DownloadFile({ id: pkg.fileid, folder: packagemanager.packagefolder });
     const filename = path.join(packagemanager.packagefolder, reply.filename);
     try {
@@ -153,6 +154,8 @@ export class packagemanager {
     if (fs.existsSync(path.join(packagepath, "agent.py"))) return path.join(packagepath, "agent.py");
     if (fs.existsSync(path.join(packagepath, "main.py"))) return path.join(packagepath, "main.py");
     if (fs.existsSync(path.join(packagepath, "index.py"))) return path.join(packagepath, "index.py");
+    if (fs.existsSync(path.join(packagepath, "index.ps1"))) return path.join(packagepath, "index.ps1");
+    if (fs.existsSync(path.join(packagepath, "main.ps1"))) return path.join(packagepath, "main.ps1");
   }
   private static addstream(streamid: string, streamqueue: string, stream: Readable) {
     let s = runner.streams.find(x => x.id == streamid)
@@ -164,8 +167,9 @@ export class packagemanager {
     runner.streams.push(s);
     return s;
   }
-  public static async runpackage(client: openiap, id: string, streamid: string, streamqueue: string, stream: Readable, wait: boolean) {
+  public static async runpackage(client: openiap, id: string, streamid: string, streamqueue: string, stream: Readable, wait: boolean): Promise<number> {
     if (streamid == null || streamid == "") throw new Error("streamid is null or empty");
+    if(packagemanager.packagefolder == null || packagemanager.packagefolder == "") throw new Error("packagemanager.packagefolder is null or empty");
     try {
       var s = packagemanager.addstream(streamid, streamqueue, stream)
       const pck = await packagemanager.getpackage(client, id);
@@ -181,9 +185,10 @@ export class packagemanager {
           if (python == "") throw new Error("Failed locating python, is python installed and in the path?")
           await runner.pipinstall(client, packagepath, streamid, python)
           if (wait) {
-            await runner.runit(client, packagepath, streamid, python, ["-u", command], true)
+            return await runner.runit(client, packagepath, streamid, python, ["-u", command], true)
           } else {
             runner.runit(client, packagepath, streamid, python, ["-u", command], true)
+            return 0;
           }
         } else if (command.endsWith(".js") || command == "npm run start") {
           // const nodePath = path.join(app.getAppPath(), 'node_modules', '.bin', 'node');
@@ -192,17 +197,29 @@ export class packagemanager {
           if (nodePath == "") throw new Error("Failed locating node, is node installed and in the path? " + JSON.stringify(process.env.PATH))
           await runner.npminstall(client, packagepath, streamid);
           if (wait) {
-            await runner.runit(client, packagepath, streamid, nodePath, [command], true)
+            return await runner.runit(client, packagepath, streamid, nodePath, [command], true)
           } else {
             runner.runit(client, packagepath, streamid, nodePath, [command], true)
+            return 0;
+          }
+        } else if (command.endsWith(".ps1")) {
+          const pwshPath = runner.findPwShPath();
+          if (pwshPath == "") throw new Error("Failed locating powershell, is powershell installed and in the path? " + JSON.stringify(process.env.PATH))
+          if (wait) {
+            var exitcode = await runner.runit(client, packagepath, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true);
+            return exitcode
+          } else {
+            runner.runit(client, packagepath, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true)
+            return 0;
           }
         } else {
           var dotnet = runner.findDotnetPath();
           if (dotnet == "") throw new Error("Failed locating dotnet, is dotnet installed and in the path?")
           if (wait) {
-            await runner.runit(client, packagepath, streamid, dotnet, ["run"], true)
+            return await runner.runit(client, packagepath, streamid, dotnet, ["run"], true)
           } else {
             runner.runit(client, packagepath, streamid, dotnet, ["run"], true)
+            return 0;
           }
         }
       } else {
@@ -217,6 +234,7 @@ export class packagemanager {
       runner.notifyStream(client, streamid, error.message);
       runner.removestream(client, streamid, false, "");
     }
+    return 0;
   }
   public static async removepackage(id: string) {
     var ppath = path.join(packagemanager.packagefolder, id);
