@@ -51,7 +51,7 @@ export class runner {
                     await client.QueueMessage({ queuename: streamqueue, data: { "command": "stream", "data": message }, correlationId: streamid });
                 }
             } catch (error) {
-                console.error(error.message);
+                console.error("notifyStream: " + error.message);
                 s.streamqueue = "";
             }
         } else {

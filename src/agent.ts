@@ -308,7 +308,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
   try {
     // const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     let streamid = msg.correlationId;
-    if (payload != null && payload.payload != null) payload = payload.payload;
+    if (payload != null && payload.payload != null && payload.command == null) payload = payload.payload;
     if (payload.streamid != null && payload.streamid != "") streamid = payload.streamid;
     // log("onQueueMessage");
     // log(payload);
@@ -476,7 +476,15 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
     if (streamqueue == null) streamqueue = "";
     if (payload.command == "runpackage") {
       if (payload.id == null || payload.id == "") throw new Error("id is required");
-      await packagemanager.getpackage(client, payload.id);
+      try {
+        await packagemanager.getpackage(client, payload.id);
+      } catch (error) {
+        console.log(error.message ? error.message : error)
+        if (dostream) {
+          await client.QueueMessage({ queuename: streamqueue, data: { "command": "runpackage", "success": false, "completed": true, "error": error.message ? error.message : error , "payload": wipayload }, correlationId: streamid });
+        }
+        throw error;
+      }
       var packagepath = packagemanager.getpackagepath(path.join(os.homedir(), ".openiap", "packages", payload.id));
       if (packagepath == "") {
         log("Package " + payload.id + " not found");
@@ -496,14 +504,42 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         var data = { "command": "runpackage", "success": true, "completed": true, "data": buffer };
         if (buffer == "") delete data.data;
       });
-      await packagemanager.runpackage(client, payload.id, streamid, streamqueue, stream, true);
-      try {
-        if (dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "runpackage", "success": true, "completed": true }, correlationId: streamid });
-      } catch (error) {
-        _error(error);
-        dostream = false;
+      var wipath = path.join(packagepath, "workitem.json");
+      var wijson = JSON.stringify(payload.payload, null, 2);
+      if (fs.existsSync(wipath)) { fs.unlinkSync(wipath); }
+      if(payload.payload != null) {
+        console.log("dump payload to: ", wipath);
+        fs.writeFileSync(wipath, wijson);
       }
-      return { "command": "runpackage", "success": true, "completed": false };
+
+      wipayload = {};
+      try {
+        await packagemanager.runpackage(client, payload.id, streamid, streamqueue, stream, true);
+        if (fs.existsSync(wipath)) {
+          console.log("loading", wipath);
+          try {
+            wipayload = JSON.parse(fs.readFileSync(wipath).toString());
+            if (fs.existsSync(wipath)) { fs.unlinkSync(wipath); }
+          } catch (error) {
+            console.log(error.message ? error.message : error);
+          }
+        }
+        try {
+          if (dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "runpackage", "success": true, "completed": true, "payload": wipayload }, correlationId: streamid });
+        } catch (error) {
+          _error(error);
+          dostream = false;
+        }
+      } catch (error) {
+        try {
+          if (dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "runpackage", "success": false, "completed": true, "error": error.message ? error.message : error , "payload": wipayload }, correlationId: streamid });
+        } catch (error) {
+          _error(error);
+          dostream = false;
+        }
+      }
+
+      return { "command": "runpackage", "success": true, "completed": false, "payload": wipayload };
     }
     if (payload.command == "kill") {
       if (payload.id == null || payload.id == "") payload.id = payload.streamid;
@@ -552,6 +588,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
     }
   } catch (error) {
     console.error(error);
+    console.log({ "command": payload.command, "success": false, error: JSON.stringify(error.message) })
     return { "command": payload.command, "success": false, error: JSON.stringify(error.message) };
   }
 }
