@@ -215,7 +215,8 @@ async function localrun() {
       log("process ended");
     });
     log("run package " + process.env.packageid);
-    await packagemanager.runpackage(client, process.env.packageid, streamid, "", stream, true);
+    var env = {"localrun": "true"};
+    await packagemanager.runpackage(client, process.env.packageid, streamid, "", stream, true, env);
     log("run complete");
   } catch (error) {
     _error(error);
@@ -376,9 +377,11 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
           if (fs.lstatSync(filename).isFile()) original.push(file);
         });
 
+        let env = {"packageid": "", "workitemid": workitem._id}
         if (workitem.payload != null && workitem.payload != "") {
           try {
             wijson = JSON.stringify(workitem.payload);
+            env = Object.assign(env, workitem.payload);
             wipayload = JSON.parse(wijson);
             console.log("dump payload to: ", wipath);
             fs.writeFileSync(wipath, wijson);
@@ -396,7 +399,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         }
 
 
-        var exitcode = await packagemanager.runpackage(client, payload.packageid, streamid, streamqueue, stream2, true);
+        var exitcode = await packagemanager.runpackage(client, payload.packageid, streamid, streamqueue, stream2, true, env);
         if (exitcode != 0) { 
           throw new Error("exitcode: " + exitcode); 
         }
@@ -507,14 +510,16 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       var wipath = path.join(packagepath, "workitem.json");
       var wijson = JSON.stringify(payload.payload, null, 2);
       if (fs.existsSync(wipath)) { fs.unlinkSync(wipath); }
+      let env = {"packageid": ""}
       if(payload.payload != null) {
         console.log("dump payload to: ", wipath);
+        env = Object.assign(env, payload.payload);
         fs.writeFileSync(wipath, wijson);
       }
 
       wipayload = {};
       try {
-        await packagemanager.runpackage(client, payload.id, streamid, streamqueue, stream, true);
+        await packagemanager.runpackage(client, payload.id, streamid, streamqueue, stream, true, env);
         if (fs.existsSync(wipath)) {
           console.log("loading", wipath);
           try {

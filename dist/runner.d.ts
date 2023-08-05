@@ -24,7 +24,7 @@ export declare class runner {
     static notifyStream(client: openiap, streamid: string, message: Buffer | string, addtobuffer?: boolean): Promise<void>;
     static removestream(client: openiap, streamid: string, success: boolean, buffer: string): void;
     static ensurestream(streamid: string, streamqueue: string): runner_stream;
-    static runit(client: openiap, packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean): Promise<number>;
+    static runit(client: openiap, packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean, env?: any): Promise<number>;
     static findInPath(exec: string): string | null;
     static findInPath2(exec: string): string | null;
     static kill(client: openiap, streamid: string): void;

@@ -96,7 +96,7 @@ export class runner {
         }
         return s;
     }
-    public static async runit(client: openiap, packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean): Promise<number> {
+    public static async runit(client: openiap, packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean, env: any = {}): Promise<number> {
         return new Promise((resolve, reject) => {
             try {
                 console.log('runit: Running command:', command);
@@ -126,7 +126,7 @@ export class runner {
                 }
                 console.log('Running command:', command);
                 if (parameters != null && Array.isArray(parameters)) console.log('With parameters:', parameters.join(" "));
-                const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, log_with_colors: "false" } })
+                const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
                 console.log('Current working directory:', packagepath);
 
                 const pid = childProcess.pid;

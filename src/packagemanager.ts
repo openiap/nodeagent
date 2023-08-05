@@ -167,7 +167,7 @@ export class packagemanager {
     runner.streams.push(s);
     return s;
   }
-  public static async runpackage(client: openiap, id: string, streamid: string, streamqueue: string, stream: Readable, wait: boolean): Promise<number> {
+  public static async runpackage(client: openiap, id: string, streamid: string, streamqueue: string, stream: Readable, wait: boolean, env: any = {}): Promise<number> {
     if (streamid == null || streamid == "") throw new Error("streamid is null or empty");
     if(packagemanager.packagefolder == null || packagemanager.packagefolder == "") throw new Error("packagemanager.packagefolder is null or empty");
     try {
@@ -185,9 +185,9 @@ export class packagemanager {
           if (python == "") throw new Error("Failed locating python, is python installed and in the path?")
           await runner.pipinstall(client, packagepath, streamid, python)
           if (wait) {
-            return await runner.runit(client, packagepath, streamid, python, ["-u", command], true)
+            return await runner.runit(client, packagepath, streamid, python, ["-u", command], true, env)
           } else {
-            runner.runit(client, packagepath, streamid, python, ["-u", command], true)
+            runner.runit(client, packagepath, streamid, python, ["-u", command], true, env)
             return 0;
           }
         } else if (command.endsWith(".js") || command == "npm run start") {
@@ -197,28 +197,28 @@ export class packagemanager {
           if (nodePath == "") throw new Error("Failed locating node, is node installed and in the path? " + JSON.stringify(process.env.PATH))
           await runner.npminstall(client, packagepath, streamid);
           if (wait) {
-            return await runner.runit(client, packagepath, streamid, nodePath, [command], true)
+            return await runner.runit(client, packagepath, streamid, nodePath, [command], true, env)
           } else {
-            runner.runit(client, packagepath, streamid, nodePath, [command], true)
+            runner.runit(client, packagepath, streamid, nodePath, [command], true, env)
             return 0;
           }
         } else if (command.endsWith(".ps1")) {
           const pwshPath = runner.findPwShPath();
           if (pwshPath == "") throw new Error("Failed locating powershell, is powershell installed and in the path? " + JSON.stringify(process.env.PATH))
           if (wait) {
-            var exitcode = await runner.runit(client, packagepath, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true);
+            var exitcode = await runner.runit(client, packagepath, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true, env);
             return exitcode
           } else {
-            runner.runit(client, packagepath, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true)
+            runner.runit(client, packagepath, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true, env)
             return 0;
           }
         } else {
           var dotnet = runner.findDotnetPath();
           if (dotnet == "") throw new Error("Failed locating dotnet, is dotnet installed and in the path?")
           if (wait) {
-            return await runner.runit(client, packagepath, streamid, dotnet, ["run"], true)
+            return await runner.runit(client, packagepath, streamid, dotnet, ["run"], true, env)
           } else {
-            runner.runit(client, packagepath, streamid, dotnet, ["run"], true)
+            runner.runit(client, packagepath, streamid, dotnet, ["run"], true, env)
             return 0;
           }
         }
