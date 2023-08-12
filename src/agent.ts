@@ -239,7 +239,6 @@ async function reloadpackages(force: boolean) {
     _error(error);
   }
 }
-const crons: any = {};
 let schedules: any[] = [];
 async function RegisterAgent() {
   try {
@@ -291,20 +290,50 @@ async function RegisterAgent() {
         }
         log("packageid is set, run package " + process.env.packageid);
       }
+      for (var p = 0; p < res.schedules.length; p++) {
+        const _schedule = res.schedules[p];
+        let schedule = schedules.find((x: any) => x.name == _schedule.name && x.packageid == _schedule.packageid);
+        if(schedule != null && schedule != _schedule) {
+          _schedule.task = schedule.task;
+          if(_schedule.env == null) _schedule.env = {};
+          if(schedule.env == null) schedule.env = {};
+          if(JSON.stringify(_schedule.env) != JSON.stringify(schedule.env)) {
+            try {
+              _schedule.task.stop();
+            } catch (error) {
+            }
+            _schedule.task = null;
+          }          
+        }
+      }
+      for (var p = 0; p < schedules.length; p++) {
+        const _schedule = schedules[p];
+        let schedule = res.schedules.find((x: any) => x.name == _schedule.name && x.packageid == _schedule.packageid);
+        if(schedule == null) {
+          try {
+            if(_schedule.task != null) {
+              _schedule.task.stop();
+              _schedule.task = null;
+            }
+          } catch (error) {
+            
+          }
+        }
+      }
       schedules = res.schedules;
       for (var p = 0; p < res.schedules.length; p++) {
         const schedule = res.schedules[p];
-        if (schedule.id == null || schedule.id == "") schedule.id = p;
         if (schedule.packageid == null || schedule.packageid == "") {
-          log("Schedule " + p + " has no packageid, skip");
+          log("Schedule " + schedule.name + " has no packageid, skip");
           continue;
         }
+
         if (schedule.cron != null && schedule.cron != "") {
-          if (crons[schedule.id] != null) {
-            log("Schedule " + schedule.name + " (" + schedule.id + ") already running, skip");
-            crons[schedule.id].stop();
-          }
           if (!schedule.enabled) {
+            if(schedule.task != null) {
+              schedule.task.stop();
+              schedule.task = null;
+            }
             log("Schedule " + schedule.name + " (" + schedule.id + ") disabled, kill all instances of package " + schedule.packageid + " if running");
             for (let s = runner.streams.length -1; s >= 0; s--) {
               const stream = runner.streams[s];
@@ -314,57 +343,92 @@ async function RegisterAgent() {
             }
           } else {
             log("Schedule " + schedule.name + " (" + schedule.id + ") running every " + schedule.cron);
-            crons[schedule.id] = cron.schedule(schedule.cron, async () => {
-              if (schedule.enabled) {
-                log("Schedule " + schedule.name + " (" + schedule.id + ") enabled, run now");
-                localrun(schedule.packageid, schedule.env);
-                // await packagemanager.runpackage(client, schedule.packageid, streamid, "", null, false, schedule.env);
-              } else {
-                log("Schedule " + + " (" + schedule.id + ") disabled, kill all instances of package " + schedule.packageid + " if running");
-                for (let s = runner.streams.length -1; s >= 0; s--) {
-                  const stream = runner.streams[s];
-                  if (stream.packageid == schedule.packageid) {
-                    runner.kill(client, stream.id);
+            if(schedule.task == null) {
+              schedule.task = cron.schedule(schedule.cron, async () => {
+                if (schedule.enabled) {
+                  log("Schedule " + schedule.name + " (" + schedule.id + ") enabled, run now");
+                  localrun(schedule.packageid, schedule.env);
+                  // await packagemanager.runpackage(client, schedule.packageid, streamid, "", null, false, schedule.env);
+                } else {
+                  log("Schedule " + + " (" + schedule.id + ") disabled, kill all instances of package " + schedule.packageid + " if running");
+                  for (let s = runner.streams.length -1; s >= 0; s--) {
+                    const stream = runner.streams[s];
+                    if (stream.packageid == schedule.packageid) {
+                      runner.kill(client, stream.id);
+                    }
                   }
                 }
-              }
-            });
+              });  
+            }
           }
         } else {
           if (schedule.enabled) {
-            log("Schedule " + schedule.name + " enabled, run now");
             // const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
             // await packagemanager.runpackage(client, schedule.packageid, streamid, "", null, false, schedule.env);
             let lastrestart = new Date();
             let restartcounter = 0;
-            var runit = ()=> {
-              setTimeout(() => {
-                localrun(schedule.packageid, schedule.env).then(() => {
-                  try {
-                    log("Schedule " + schedule.name + " (" + schedule.id + ") finished");
-                    const minutes = (new Date().getTime() - lastrestart.getTime()) / 1000 / 60;
-                    if(minutes < 5) {
-                      restartcounter++;
-                    } else {
-                      restartcounter = 0;
-                    }
-                    lastrestart = new Date();
-                    if(restartcounter < 5) {
-                      var exists = schedules.find(x => x.id == schedule.id);
-                      if(exists != null) {
-                        log("Schedule " + schedule.name + " (" + schedule.id + ") restarted again after " + minutes + " minutes (" + restartcounter + " times)");
-                        runit();
+            if (schedule.task == null) {
+              log("Schedule " + schedule.name + " enabled, run now");
+              schedule.task = {
+                timeout: null,
+                stop() {
+                  if(schedule.task.timeout != null) {
+                    clearTimeout(schedule.task.timeout);
+                    for (let s = runner.streams.length -1; s >= 0; s--) {
+                      const stream = runner.streams[s];
+                      if (stream.packageid == schedule.packageid) {
+                        runner.kill(client, stream.id);
                       }
-                    } else {
-                      log("Schedule " + schedule.name + " (" + schedule.id + ") restarted too many times, stop! (" + restartcounter + " times)");
                     }
-                  } catch (error) {
-                    console.error(error);                    
                   }
-                });
-              }, 100);
+                },
+                start() {
+                  if(schedule.task.timeout != null) {
+                    log("Schedule " + schedule.name + " (" + schedule.id + ") already running");
+                    return;
+                  }
+                  log("Schedule " + schedule.name + " (" + schedule.id + ") started");
+                  schedule.task.stop()
+                  schedule.task.timeout = setTimeout(() => {
+                    localrun(schedule.packageid, schedule.env).then(() => {
+                      try {
+                        schedule.task.timeout = null;
+                        log("Schedule " + schedule.name + " (" + schedule.id + ") finished");
+                        const minutes = (new Date().getTime() - lastrestart.getTime()) / 1000 / 60;
+                        if (minutes < 5) {
+                          restartcounter++;
+                        } else {
+                          restartcounter = 0;
+                        }
+                        lastrestart = new Date();
+                        if (restartcounter < 5) {
+                          var exists = schedules.find(x => x.name == schedule.name && x.packageid == schedule.packageid );
+                          if (exists != null && schedule.task != null) {
+                            log("Schedule " + schedule.name + " (" + schedule.id + ") restarted again after " + minutes + " minutes (" + restartcounter + " times)");
+                            schedule.task.start();
+                          }
+                        } else {
+                          log("Schedule " + schedule.name + " (" + schedule.id + ") restarted too many times, stop! (" + restartcounter + " times)");
+
+                        }
+                      } catch (error) {
+                        console.error(error);
+                      }
+                    }).catch((error) => {
+                      try {
+                        console.error(error);
+                        schedule.task.timeout = null;
+                      } catch (e) {
+                        console.error(e);
+                      }
+                    });;
+                  }, 100);
+                }
+              }
+              schedule.task.start();
+            } else {
+              log("Schedule " + schedule.name + " (" + schedule.id + ") allready running");
             }
-            runit();
           } else {
             log("Schedule " + schedule.name + " disabled, kill all instances of package " + schedule.packageid + " if running");
             for (let s = runner.streams.length - 1; s >= 0; s--) {
@@ -709,6 +773,8 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         processes.push({
           "id": p.id,
           "streamqueues": runner.commandstreams,
+          "packagename": p.packagename,
+          "packageid": p.packageid,
         });
       }
       return { "command": "listprocesses", "success": true, "count": processcount, "processes": processes };

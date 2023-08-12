@@ -21,6 +21,7 @@ export class runner_stream {
     // streamqueues: string[];
     packageid: string;
     packagename: string;
+    schedulename: string;
     buffer: string;
 }
 let lastping = new Date();
@@ -31,7 +32,7 @@ export class runner {
     public static async notifyStream(client: openiap, streamid: string, message: Buffer | string, addtobuffer: boolean = true): Promise<void> {
         const s = this.ensurestream(streamid, "");
         if (message != null && !Buffer.isBuffer(message)) {
-            message = Buffer.from(message);
+            message = Buffer.from(message + "\n");
         }
         s.stream.push(message);
         const now = new Date();

@@ -15,6 +15,7 @@ export declare class runner_stream {
     stream: Readable;
     packageid: string;
     packagename: string;
+    schedulename: string;
     buffer: string;
 }
 export declare class runner {

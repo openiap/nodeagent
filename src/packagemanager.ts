@@ -167,7 +167,7 @@ export class packagemanager {
     runner.streams.push(s);
     return s;
   }
-  public static async runpackage(client: openiap, id: string, streamid: string, streamqueue: string, stream: Readable, wait: boolean, env: any = {}): Promise<number> {
+  public static async runpackage(client: openiap, id: string, streamid: string, streamqueue: string, stream: Readable, wait: boolean, env: any = {}, schedule: any = undefined): Promise<number> {
     if (streamid == null || streamid == "") throw new Error("streamid is null or empty");
     if(packagemanager.packagefolder == null || packagemanager.packagefolder == "") throw new Error("packagemanager.packagefolder is null or empty");
     try {
@@ -176,6 +176,10 @@ export class packagemanager {
       if(pck == null) throw new Error("Failed to find package: " + id);
       s.packagename = pck.name;
       s.packageid = pck._id;
+      s.schedulename = "";
+      if(schedule != null) {
+        s.schedulename = schedule.name;
+      }
       var packagepath = packagemanager.getpackagepath(path.join(packagemanager.packagefolder, id));
       if (fs.existsSync(packagepath)) {
         let command = packagemanager.getscriptpath(packagepath)
