@@ -1,6 +1,8 @@
 import { openiap, config, QueueEvent } from "@openiap/nodeapi";
 import { runner } from "./runner";
 import { packagemanager } from "./packagemanager";
+import * as cron from "node-cron";
+
 import * as os from "os"
 import * as path from "path";
 import * as fs from "fs"
@@ -184,11 +186,11 @@ async function onConnected(client: openiap) {
       }
     });
     log("watch registered with id " + watchid);
-    if (process.env.packageid != "" && process.env.packageid != null) {
-      log("packageid is set, run package " + process.env.packageid);
-      await localrun();
-      process.exit(0);
-    }
+    // if (process.env.packageid != "" && process.env.packageid != null) {
+    //   log("packageid is set, run package " + process.env.packageid);
+    //   await localrun();
+    //   process.exit(0);
+    // }
   } catch (error) {
     console.error(error);
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -199,7 +201,7 @@ async function onDisconnected(client: openiap) {
   log("Disconnected");
 };
 
-async function localrun() {
+async function localrun(packageid: string, env: any) {
   try {
     const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     var stream = new Stream.Readable({
@@ -209,14 +211,16 @@ async function localrun() {
     stream.on('data', async (data) => {
       if (data == null) return;
       var s = data.toString().replace(/\n$/, "");
-      log(s);
+      if(buffer == "") {
+        buffer += s;
+        log(s);
+      }
     });
     stream.on('end', async () => {
       log("process ended");
     });
-    log("run package " + process.env.packageid);
-    var env = {"localrun": "true"};
-    await packagemanager.runpackage(client, process.env.packageid, streamid, "", stream, true, env);
+    log("run package " + packageid);
+    await packagemanager.runpackage(client, packageid, streamid, "", stream, true, env);
     log("run complete");
   } catch (error) {
     _error(error);
@@ -235,6 +239,8 @@ async function reloadpackages(force: boolean) {
     _error(error);
   }
 }
+const crons: any = {};
+let schedules: any[] = [];
 async function RegisterAgent() {
   try {
     var u = new URL(client.url);
@@ -276,6 +282,80 @@ async function RegisterAgent() {
       if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
       fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(config));
       // }
+
+      if (res.schedules == null || !Array.isArray(res.schedules))  res.schedules = [];
+      if (process.env.packageid != "" && process.env.packageid != null) {
+        var exists = res.schedules.find((x: any) => x.id == "localrun");
+        if (exists == null) {
+          res.schedules.push({ id: "localrun", name: "localrun", packageid: process.env.packageid, enabled: true, cron: "", env: {"localrun": true} });
+        }
+        log("packageid is set, run package " + process.env.packageid);
+      }
+      schedules = res.schedules;
+      for (var p = 0; p < res.schedules.length; p++) {
+        const schedule = res.schedules[p];
+        if (schedule.id == null || schedule.id == "") schedule.id = p;
+        if (schedule.packageid == null || schedule.packageid == "") {
+          log("Schedule " + p + " has no packageid, skip");
+          continue;
+        }
+        if (schedule.cron != null && schedule.cron != "") {
+          if (crons[schedule.id] != null) {
+            log("Schedule " + schedule.name + " (" + schedule.id + ") already running, skip");
+            crons[schedule.id].stop();
+          }
+          if (!schedule.enabled) {
+            log("Schedule " + schedule.name + " (" + schedule.id + ") disabled, kill all instances of package " + schedule.packageid + " if running");
+            for (let s = runner.streams.length -1; s >= 0; s--) {
+              const stream = runner.streams[s];
+              if (stream.packageid == schedule.packageid) {
+                runner.kill(client, stream.id);
+              }
+            }
+          } else {
+            log("Schedule " + schedule.name + " (" + schedule.id + ") running every " + schedule.cron);
+            crons[schedule.id] = cron.schedule(schedule.cron, async () => {
+              if (schedule.enabled) {
+                log("Schedule " + schedule.name + " (" + schedule.id + ") enabled, run now");
+                localrun(schedule.packageid, schedule.env);
+                // await packagemanager.runpackage(client, schedule.packageid, streamid, "", null, false, schedule.env);
+              } else {
+                log("Schedule " + + " (" + schedule.id + ") disabled, kill all instances of package " + schedule.packageid + " if running");
+                for (let s = runner.streams.length -1; s >= 0; s--) {
+                  const stream = runner.streams[s];
+                  if (stream.packageid == schedule.packageid) {
+                    runner.kill(client, stream.id);
+                  }
+                }
+              }
+            });
+          }
+        } else {
+          if (schedule.enabled) {
+            log("Schedule " + schedule.name + " enabled, run now");
+            // const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            // await packagemanager.runpackage(client, schedule.packageid, streamid, "", null, false, schedule.env);
+            var runit = ()=> {
+              setTimeout(() => {
+                localrun(schedule.packageid, schedule.env).then(() => {
+                  log("Schedule " + schedule.name + " (" + schedule.id + ") finished");
+                  // var exists = schedules.find(x => x.id == schedule.id);
+                  // if(exists != null) runit();
+                });
+              }, 100);
+            }
+            runit();
+          } else {
+            log("Schedule " + schedule.name + " disabled, kill all instances of package " + schedule.packageid + " if running");
+            for (let s = runner.streams.length - 1; s >= 0; s--) {
+              const stream = runner.streams[s];
+              if (stream.packageid == schedule.packageid) {
+                runner.kill(client, stream.id);
+              }
+            }
+          }
+        }
+      }
       log("Registed agent as " + res.name + " (" + agentid + ") and queue " + localqueue + " ( from " + res.slug + " )");
     } else {
       log("Registrering agent seems to have failed without an error !?!");
@@ -305,6 +385,7 @@ let max_workitemqueue_jobs = 1;
 if (process.env.maxjobs != null && process.env.maxjobs != null) {
   max_workitemqueue_jobs = parseInt(process.env.maxjobs);
 }
+const commandstreams:string[] = [];
 async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: string) {
   try {
     // const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
@@ -377,7 +458,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
           if (fs.lstatSync(filename).isFile()) original.push(file);
         });
 
-        let env = {"packageid": "", "workitemid": workitem._id}
+        let env = { "packageid": "", "workitemid": workitem._id }
         if (workitem.payload != null && workitem.payload != "") {
           try {
             wijson = JSON.stringify(workitem.payload);
@@ -392,7 +473,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         }
         for (let i = 0; i < workitem.files.length; i++) {
           const file = workitem.files[i];
-          if(file.filename == "output.txt") continue;
+          if (file.filename == "output.txt") continue;
           // const reply = await client.DownloadFile({ id: file._id, folder: packagepath });
           console.log("Downloaded file: ", file.filename);
           fs.writeFileSync(path.join(packagepath, file.filename), file.file);
@@ -400,8 +481,8 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
 
 
         var exitcode = await packagemanager.runpackage(client, payload.packageid, streamid, streamqueue, stream2, true, env);
-        if (exitcode != 0) { 
-          throw new Error("exitcode: " + exitcode); 
+        if (exitcode != 0) {
+          throw new Error("exitcode: " + exitcode);
         }
         try {
           workitem.state = "successful";
@@ -484,7 +565,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       } catch (error) {
         console.log(error.message ? error.message : error)
         if (dostream) {
-          await client.QueueMessage({ queuename: streamqueue, data: { "command": "runpackage", "success": false, "completed": true, "error": error.message ? error.message : error , "payload": wipayload }, correlationId: streamid });
+          await client.QueueMessage({ queuename: streamqueue, data: { "command": "runpackage", "success": false, "completed": true, "error": error.message ? error.message : error, "payload": wipayload }, correlationId: streamid });
         }
         throw error;
       }
@@ -510,8 +591,8 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       var wipath = path.join(packagepath, "workitem.json");
       var wijson = JSON.stringify(payload.payload, null, 2);
       if (fs.existsSync(wipath)) { fs.unlinkSync(wipath); }
-      let env = {"packageid": ""}
-      if(payload.payload != null) {
+      let env = { "packageid": "" }
+      if (payload.payload != null) {
         console.log("dump payload to: ", wipath);
         env = Object.assign(env, payload.payload);
         fs.writeFileSync(wipath, wijson);
@@ -537,13 +618,12 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         }
       } catch (error) {
         try {
-          if (dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "runpackage", "success": false, "completed": true, "error": error.message ? error.message : error , "payload": wipayload }, correlationId: streamid });
+          if (dostream == true && streamqueue != "") await client.QueueMessage({ queuename: streamqueue, data: { "command": "runpackage", "success": false, "completed": true, "error": error.message ? error.message : error, "payload": wipayload }, correlationId: streamid });
         } catch (error) {
           _error(error);
           dostream = false;
         }
       }
-
       return { "command": "runpackage", "success": true, "completed": false, "payload": wipayload };
     }
     if (payload.command == "kill") {
@@ -559,6 +639,14 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       }
       return { "command": "killall", "success": true, "count": processcount };
     }
+    if (payload.command == "addcommandstreamid") {
+      if (payload.streamqueue == null || payload.streamqueue == "") payload.streamqueue = msg.replyto;
+      if(commandstreams.indexOf(payload.streamqueue) == -1) commandstreams.push(payload.streamqueue);
+    }
+    if (payload.command == "removecommandstreamid") {
+      if (payload.streamqueue == null || payload.streamqueue == "") payload.streamqueue = msg.replyto;
+      if(commandstreams.indexOf(payload.streamqueue) != -1) commandstreams.splice(commandstreams.indexOf(payload.streamqueue), 1);
+    }
     if (payload.command == "setstreamid") {
       if (payload.id == null || payload.id == "") payload.id = payload.streamid;
       if (payload.id == null || payload.id == "") throw new Error("id is required");
@@ -566,19 +654,33 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       if (payload.streamqueue == null || payload.streamqueue == "") throw new Error("streamqueue is required");
       var processcount = runner.streams.length;
       var counter = 0;
-      for (var i = processcount; i >= 0; i--) {
-        var p = runner.streams[i];
-        if (p == null) continue
-        if (p.id == payload.id) {
-          counter++;
-          p.streamqueue = payload.streamqueue;
-        }
+      if(runner.commandstreams.indexOf(payload.streamqueue) == -1 && payload.streamqueue != null && payload.streamqueue != "") {
+        runner.commandstreams.push(payload.streamqueue);
       }
+      // for (var i = processcount; i >= 0; i--) {
+      //   var p = runner.streams[i];
+      //   if (p == null) continue
+      //   if (p.id == payload.id) {
+      //     counter++;
+      //     // p.streamqueue = payload.streamqueue;
+      //     if(runner.commandstreams.indexOf(payload.streamqueue) == -1 && payload.streamqueue != null && payload.streamqueue != "") {
+      //       runner.commandstreams.push(payload.streamqueue);
+      //     }
+      //   }
+      // }
       const s = runner.ensurestream(streamid, payload.streamqueue);
-      runner.notifyStream(client, payload.id, s.buffer, false)
+      if(s.buffer != null && s.buffer.length > 0) {
+        let _message = Buffer.from(s.buffer);
+
+        await client.QueueMessage({ queuename: payload.streamqueue, data: { "command": "stream", "data": _message }, correlationId: streamid });
+      }
+      // runner.notifyStream(client, payload.id, s.buffer, false)
       return { "command": "setstreamid", "success": true, "count": counter, };
     }
     if (payload.command == "listprocesses") {
+      if(runner.commandstreams.indexOf(msg.replyto) == -1 && msg.replyto != null && msg.replyto != "") {
+        runner.commandstreams.push(msg.replyto);
+      }
       var processcount = runner.streams.length;
       var processes = [];
       for (var i = processcount; i >= 0; i--) {
@@ -586,7 +688,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
         if (p == null) continue;
         processes.push({
           "id": p.id,
-          "streamqueue": p.streamqueue,
+          "streamqueues": runner.commandstreams,
         });
       }
       return { "command": "listprocesses", "success": true, "count": processcount, "processes": processes };

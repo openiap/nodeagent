@@ -13,7 +13,6 @@ export declare class runner_process {
 export declare class runner_stream {
     id: string;
     stream: Readable;
-    streamqueue: string;
     packageid: string;
     packagename: string;
     buffer: string;
@@ -21,6 +20,7 @@ export declare class runner_stream {
 export declare class runner {
     static processs: runner_process[];
     static streams: runner_stream[];
+    static commandstreams: string[];
     static notifyStream(client: openiap, streamid: string, message: Buffer | string, addtobuffer?: boolean): Promise<void>;
     static removestream(client: openiap, streamid: string, success: boolean, buffer: string): void;
     static ensurestream(streamid: string, streamqueue: string): runner_stream;

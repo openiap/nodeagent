@@ -17,45 +17,55 @@ export class runner_process {
 export class runner_stream {
     id: string;
     stream: Readable;
-    streamqueue: string;
+    // streamqueue: string;
+    // streamqueues: string[];
     packageid: string;
     packagename: string;
     buffer: string;
 }
+let lastping = new Date();
 export class runner {
     public static processs: runner_process[] = [];
     public static streams: runner_stream[] = [];
-    // private static addstream(streamid: string, streamqueue: string, stream: Readable) {
-    //     let s = runner.streams.find(x => x.id == streamid)
-    //     if (s != null) throw new Error("Stream " + streamid + " already exists")
-    //     s = new runner_stream();
-    //     s.id = streamid;
-    //     s.stream = stream;
-    //     s.streamqueue = streamqueue;
-    //     runner.streams.push(s);
-    //     return s;
-    // }
+    public static commandstreams: string[] = [];
     public static async notifyStream(client: openiap, streamid: string, message: Buffer | string, addtobuffer: boolean = true): Promise<void> {
         const s = this.ensurestream(streamid, "");
         if (message != null && !Buffer.isBuffer(message)) {
-            message = Buffer.from(message + "\n");
+            message = Buffer.from(message);
         }
         s.stream.push(message);
-        const streamqueue = s.streamqueue;
-        if (streamqueue != null && streamqueue != "") {
-            // console.log("notifyStream streamid: " + streamid + " streamqueue: " + streamqueue)
-            try {
-                if (message == null) {
-                    await client.QueueMessage({ queuename: streamqueue, data: { "command": "completed", "data": message }, correlationId: streamid });
-                } else {
-                    await client.QueueMessage({ queuename: streamqueue, data: { "command": "stream", "data": message }, correlationId: streamid });
+        const now = new Date();
+        const minutes = (now.getTime() - lastping.getTime()) / 60000;
+        if(minutes > 5) {
+            lastping = now;
+        }
+        for (let i = runner.commandstreams.length - 1; i >= 0; i--) {
+            const streamqueue = runner.commandstreams[i];
+            if (streamqueue != null && streamqueue != "") {
+                if(minutes > 5) { // backwars compatibility with older builds of openflow 1.5
+                    client.QueueMessage({ queuename: streamqueue, data: { "command": "ping" } }, true).catch((error) => {
+                        console.error("notifyStream: " + error.message);
+                        runner.commandstreams.splice(i, 1);
+                    }).then((result) => {
+                        if (result != null && result.command == "timeout") {
+                            console.error("notifyStream: " + result.command);
+                            runner.commandstreams.splice(i, 1);
+                        }
+                    });
                 }
-            } catch (error) {
-                console.error("notifyStream: " + error.message);
-                s.streamqueue = "";
+                try {
+                    if (message == null) {
+                        await client.QueueMessage({ queuename: streamqueue, data: { "command": "completed", "data": message }, correlationId: streamid });
+                    } else {
+                        await client.QueueMessage({ queuename: streamqueue, data: { "command": "stream", "data": message }, correlationId: streamid });
+                    }
+                } catch (error) {
+                    console.error("notifyStream: " + error.message);
+                    runner.commandstreams.splice(i, 1);
+                }
+            } else {
+                runner.commandstreams.splice(i, 1);
             }
-        } else {
-            // console.log("notifyStream streamid: " + streamid + " streamqueue: not found")
         }
         if(!addtobuffer) return;
         if(s.buffer == null) s.buffer = "";
@@ -71,11 +81,15 @@ export class runner {
             runner.streams = runner.streams.filter(x => x.id != streamid);
             var data = { "command": "runpackage", success, "completed": true, "data": buffer };
             try {
-                if (s.streamqueue != null && s.streamqueue != "") {
-                    console.log("removestream streamid/correlationId: " + streamid + " streamqueue: " + s.streamqueue);
-                    client.QueueMessage({ queuename: s.streamqueue, data, correlationId: streamid }).catch((error) => {
-                        console.error(error);
-                    });
+                for(let i = 0; i < runner.commandstreams.length; i++) {
+                    const streamqueue = runner.commandstreams[i];
+                    if (streamqueue != null && streamqueue != "") {
+                        console.log("removestream streamid/correlationId: " + streamid + " streamqueue: " + streamqueue);
+                        client.QueueMessage({ queuename: streamqueue, data, correlationId: streamid }).catch((error) => {
+                            console.error(error);
+                        });
+                    }
+    
                 }
             } catch (error) {
                 console.error(error);
@@ -86,13 +100,10 @@ export class runner {
         let s = runner.streams.find(x => x.id == streamid)
         if (s == null) {
             s = new runner_stream();
-            s.streamqueue = streamqueue;
             s.stream = new Stream.Readable();
             s.stream.read = function () { };
             s.id = streamid;
             runner.streams.push(s);
-        } else if (streamqueue != null && streamqueue != "") {
-            s.streamqueue = streamqueue;
         }
         return s;
     }

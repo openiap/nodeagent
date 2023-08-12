@@ -163,7 +163,7 @@ export class packagemanager {
     s = new runner_stream();
     s.id = streamid;
     s.stream = stream;
-    s.streamqueue = streamqueue;
+    // s.streamqueue = streamqueue;
     runner.streams.push(s);
     return s;
   }
