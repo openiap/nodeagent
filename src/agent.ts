@@ -335,12 +335,32 @@ async function RegisterAgent() {
             log("Schedule " + schedule.name + " enabled, run now");
             // const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
             // await packagemanager.runpackage(client, schedule.packageid, streamid, "", null, false, schedule.env);
+            let lastrestart = new Date();
+            let restartcounter = 0;
             var runit = ()=> {
               setTimeout(() => {
                 localrun(schedule.packageid, schedule.env).then(() => {
-                  log("Schedule " + schedule.name + " (" + schedule.id + ") finished");
-                  // var exists = schedules.find(x => x.id == schedule.id);
-                  // if(exists != null) runit();
+                  try {
+                    log("Schedule " + schedule.name + " (" + schedule.id + ") finished");
+                    const minutes = (new Date().getTime() - lastrestart.getTime()) / 1000 / 60;
+                    if(minutes < 5) {
+                      restartcounter++;
+                    } else {
+                      restartcounter = 0;
+                    }
+                    lastrestart = new Date();
+                    if(restartcounter < 5) {
+                      var exists = schedules.find(x => x.id == schedule.id);
+                      if(exists != null) {
+                        log("Schedule " + schedule.name + " (" + schedule.id + ") restarted again after " + minutes + " minutes (" + restartcounter + " times)");
+                        runit();
+                      }
+                    } else {
+                      log("Schedule " + schedule.name + " (" + schedule.id + ") restarted too many times, stop! (" + restartcounter + " times)");
+                    }
+                  } catch (error) {
+                    console.error(error);                    
+                  }
                 });
               }, 100);
             }
