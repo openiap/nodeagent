@@ -284,7 +284,7 @@ async function RegisterAgent() {
 
       if (res.schedules == null || !Array.isArray(res.schedules))  res.schedules = [];
       if (process.env.packageid != "" && process.env.packageid != null) {
-        var exists = res.schedules.find((x: any) => x.id == "localrun");
+        var exists = res.schedules.find((x: any) => x.packageid == process.env.packageid);
         if (exists == null) {
           res.schedules.push({ id: "localrun", name: "localrun", packageid: process.env.packageid, enabled: true, cron: "", env: {"localrun": true} });
         }

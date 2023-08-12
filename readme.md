@@ -1,5 +1,5 @@
 Package for handling packages.
-USed to run packakes in [docker](https://hub.docker.com/r/openiap/nodeagent), native on the os as a daemon, and in user desktop with [assistant](https://github.com/openiap/assistant)
+Used to run packakes in [docker](https://hub.docker.com/r/openiap/nodeagent), native on the os as a daemon, and in user desktop with [assistant](https://github.com/openiap/assistant)
 
 ```bash
 npm i @openiap/nodeagent
