@@ -339,7 +339,7 @@ async function RegisterAgent() {
             log("Schedule " + schedule.name + " (" + schedule.id + ") disabled, kill all instances of package " + schedule.packageid + " if running");
             for (let s = runner.streams.length -1; s >= 0; s--) {
               const stream = runner.streams[s];
-              if (stream.packageid == schedule.packageid) {
+              if (stream.schedulename == schedule.name ) {
                 runner.kill(client, stream.id);
               }
             }
@@ -355,7 +355,7 @@ async function RegisterAgent() {
                   log("Schedule " + + " (" + schedule.id + ") disabled, kill all instances of package " + schedule.packageid + " if running");
                   for (let s = runner.streams.length -1; s >= 0; s--) {
                     const stream = runner.streams[s];
-                    if (stream.packageid == schedule.packageid) {
+                    if (stream.schedulename == schedule.name) {
                       runner.kill(client, stream.id);
                     }
                   }
@@ -378,7 +378,7 @@ async function RegisterAgent() {
                     clearTimeout(schedule.task.timeout);
                     for (let s = runner.streams.length -1; s >= 0; s--) {
                       const stream = runner.streams[s];
-                      if (stream.packageid == schedule.packageid) {
+                      if (stream.schedulename == schedule.name) {
                         runner.kill(client, stream.id);
                       }
                     }
@@ -434,7 +434,7 @@ async function RegisterAgent() {
             log("Schedule " + schedule.name + " disabled, kill all instances of package " + schedule.packageid + " if running");
             for (let s = runner.streams.length - 1; s >= 0; s--) {
               const stream = runner.streams[s];
-              if (stream.packageid == schedule.packageid) {
+              if (stream.schedulename == schedule.name) {
                 runner.kill(client, stream.id);
               }
             }
