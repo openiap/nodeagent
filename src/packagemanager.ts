@@ -157,12 +157,21 @@ export class packagemanager {
     if (fs.existsSync(path.join(packagepath, "index.ps1"))) return path.join(packagepath, "index.ps1");
     if (fs.existsSync(path.join(packagepath, "main.ps1"))) return path.join(packagepath, "main.ps1");
   }
-  private static addstream(streamid: string, streamqueue: string, stream: Readable) {
+  private static addstream(streamid: string, streamqueue: string, stream: Readable, pck: ipackage = undefined) {
     let s = runner.streams.find(x => x.id == streamid)
     if (s != null) throw new Error("Stream " + streamid + " already exists")
     s = new runner_stream();
     s.id = streamid;
     s.stream = stream;
+    if(pck != null) {
+      s.packagename = pck.name;
+      s.packageid = pck._id;
+      if(s.packageid == null || s.packageid == "") {
+        var b = true;  
+      }
+    } else {
+      var b = true;
+    }
     // s.streamqueue = streamqueue;
     runner.streams.push(s);
     return s;
@@ -171,14 +180,35 @@ export class packagemanager {
     if (streamid == null || streamid == "") throw new Error("streamid is null or empty");
     if(packagemanager.packagefolder == null || packagemanager.packagefolder == "") throw new Error("packagemanager.packagefolder is null or empty");
     try {
-      var s = packagemanager.addstream(streamid, streamqueue, stream)
       const pck = await packagemanager.getpackage(client, id);
       if(pck == null) throw new Error("Failed to find package: " + id);
-      s.packagename = pck.name;
-      s.packageid = pck._id;
+      var s = packagemanager.addstream(streamid, streamqueue, stream, pck)
       s.schedulename = "";
       if(schedule != null) {
         s.schedulename = schedule.name;
+      }
+      var processcount = runner.streams.length;
+      var processes = [];
+      for (var i = processcount; i >= 0; i--) {
+        var p = runner.streams[i];
+        if (p == null) continue;
+        if(p.schedulename == null || p.schedulename == "") {
+          var b = true;
+        }
+        processes.push({
+          "id": p.id,
+          "streamqueues": runner.commandstreams,
+          "packagename": p.packagename,
+          "packageid": p.packageid,
+          "schedulename": p.schedulename,
+        });
+      }
+      let message = { "command": "listprocesses", "success": true, "count": processcount, "processes": processes }
+
+      for(let i = 0; i <runner.commandstreams.length; i++) {
+        if(runner.commandstreams[i] != streamid) {
+          await client.QueueMessage({ queuename: runner.commandstreams[i], data: message, correlationId: streamid });
+        }
       }
       var packagepath = packagemanager.getpackagepath(path.join(packagemanager.packagefolder, id));
       if (fs.existsSync(packagepath)) {

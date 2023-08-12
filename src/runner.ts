@@ -30,7 +30,9 @@ export class runner {
     public static streams: runner_stream[] = [];
     public static commandstreams: string[] = [];
     public static async notifyStream(client: openiap, streamid: string, message: Buffer | string, addtobuffer: boolean = true): Promise<void> {
-        const s = this.ensurestream(streamid, "");
+        // const s = this.ensurestream(streamid, "");
+        const s = runner.streams.find(x => x.id == streamid)
+        if(s == null) return;
         if (message != null && !Buffer.isBuffer(message)) {
             message = Buffer.from(message + "\n");
         }

@@ -201,7 +201,7 @@ async function onDisconnected(client: openiap) {
   log("Disconnected");
 };
 
-async function localrun(packageid: string, env: any) {
+async function localrun(packageid: string, env: any, schedule: any) {
   try {
     const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     var stream = new Stream.Readable({
@@ -220,7 +220,7 @@ async function localrun(packageid: string, env: any) {
       log("process ended");
     });
     log("run package " + packageid);
-    await packagemanager.runpackage(client, packageid, streamid, "", stream, true, env);
+    await packagemanager.runpackage(client, packageid, streamid, "", stream, true, env, schedule);
     log("run complete");
   } catch (error) {
     _error(error);
@@ -300,6 +300,8 @@ async function RegisterAgent() {
           if(JSON.stringify(_schedule.env) != JSON.stringify(schedule.env)) {
             try {
               _schedule.task.stop();
+              _schedule.task.restartcounter = 0;
+              _schedule.task.lastrestart = new Date();
             } catch (error) {
             }
             _schedule.task = null;
@@ -347,7 +349,7 @@ async function RegisterAgent() {
               schedule.task = cron.schedule(schedule.cron, async () => {
                 if (schedule.enabled) {
                   log("Schedule " + schedule.name + " (" + schedule.id + ") enabled, run now");
-                  localrun(schedule.packageid, schedule.env);
+                  localrun(schedule.packageid, schedule.env, schedule);
                   // await packagemanager.runpackage(client, schedule.packageid, streamid, "", null, false, schedule.env);
                 } else {
                   log("Schedule " + + " (" + schedule.id + ") disabled, kill all instances of package " + schedule.packageid + " if running");
@@ -365,12 +367,12 @@ async function RegisterAgent() {
           if (schedule.enabled) {
             // const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
             // await packagemanager.runpackage(client, schedule.packageid, streamid, "", null, false, schedule.env);
-            let lastrestart = new Date();
-            let restartcounter = 0;
             if (schedule.task == null) {
               log("Schedule " + schedule.name + " enabled, run now");
               schedule.task = {
                 timeout: null,
+                lastrestart: new Date(),
+                restartcounter: 0,
                 stop() {
                   if(schedule.task.timeout != null) {
                     clearTimeout(schedule.task.timeout);
@@ -390,26 +392,25 @@ async function RegisterAgent() {
                   log("Schedule " + schedule.name + " (" + schedule.id + ") started");
                   schedule.task.stop()
                   schedule.task.timeout = setTimeout(() => {
-                    localrun(schedule.packageid, schedule.env).then(() => {
+                    localrun(schedule.packageid, schedule.env, schedule).then(() => {
                       try {
                         schedule.task.timeout = null;
                         log("Schedule " + schedule.name + " (" + schedule.id + ") finished");
-                        const minutes = (new Date().getTime() - lastrestart.getTime()) / 1000 / 60;
+                        const minutes = (new Date().getTime() - schedule.task.lastrestart.getTime()) / 1000 / 60;
                         if (minutes < 5) {
-                          restartcounter++;
+                          schedule.task.restartcounter++;
                         } else {
-                          restartcounter = 0;
+                          schedule.task.restartcounter = 0;
                         }
-                        lastrestart = new Date();
-                        if (restartcounter < 5) {
+                        schedule.task.lastrestart = new Date();
+                        if (schedule.task.restartcounter < 5) {
                           var exists = schedules.find(x => x.name == schedule.name && x.packageid == schedule.packageid );
                           if (exists != null && schedule.task != null) {
-                            log("Schedule " + schedule.name + " (" + schedule.id + ") restarted again after " + minutes + " minutes (" + restartcounter + " times)");
+                            log("Schedule " + schedule.name + " (" + schedule.id + ") restarted again after " + minutes + " minutes (" + schedule.task.restartcounter + " times)");
                             schedule.task.start();
                           }
                         } else {
-                          log("Schedule " + schedule.name + " (" + schedule.id + ") restarted too many times, stop! (" + restartcounter + " times)");
-
+                          log("Schedule " + schedule.name + " (" + schedule.id + ") restarted too many times, stop! (" + schedule.task.restartcounter + " times)");
                         }
                       } catch (error) {
                         console.error(error);
@@ -752,8 +753,9 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
       //     }
       //   }
       // }
-      const s = runner.ensurestream(streamid, payload.streamqueue);
-      if(s.buffer != null && s.buffer.length > 0) {
+      // const s = runner.ensurestream(streamid, payload.streamqueue);
+      const s = runner.streams.find(x => x.id == streamid)
+      if(s?.buffer != null && s?.buffer.length > 0) {
         let _message = Buffer.from(s.buffer);
 
         await client.QueueMessage({ queuename: payload.streamqueue, data: { "command": "stream", "data": _message }, correlationId: streamid });
@@ -775,6 +777,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
           "streamqueues": runner.commandstreams,
           "packagename": p.packagename,
           "packageid": p.packageid,
+          "schedulename": p.schedulename,
         });
       }
       return { "command": "listprocesses", "success": true, "count": processcount, "processes": processes };
