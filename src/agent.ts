@@ -14,6 +14,8 @@ if (os.platform() === 'win32') {
   // elog = new EventLogger('nodeagent');
 }
 
+let globalpackageid = process.env.forcedpackageid || process.env.packageid || "";
+
 function log(message: string) {
   console.log(message);
   if (elog != null) {
@@ -186,8 +188,8 @@ async function onConnected(client: openiap) {
       }
     });
     log("watch registered with id " + watchid);
-    // if (process.env.packageid != "" && process.env.packageid != null) {
-    //   log("packageid is set, run package " + process.env.packageid);
+    // if (globalpackageid != "" && globalpackageid != null) {
+    //   log("packageid is set, run package " + globalpackageid);
     //   await localrun();
     //   process.exit(0);
     // }
@@ -230,8 +232,8 @@ async function localrun(packageid: string, env: any, schedule: any) {
 async function reloadpackages(force: boolean) {
   try {
     log("reloadpackages")
-    if (process.env.packageid != "" && process.env.packageid != null) {
-      await packagemanager.reloadpackage(client, process.env.packageid, force);
+    if (globalpackageid != "" && globalpackageid != null) {
+      await packagemanager.reloadpackage(client, globalpackageid, force);
     } else {
       await packagemanager.reloadpackages(client, languages, force);
     }
@@ -283,12 +285,12 @@ async function RegisterAgent() {
       // }
 
       if (res.schedules == null || !Array.isArray(res.schedules))  res.schedules = [];
-      if (process.env.packageid != "" && process.env.packageid != null) {
-        var exists = res.schedules.find((x: any) => x.packageid == process.env.packageid);
+      if (globalpackageid != "" && globalpackageid != null) {
+        var exists = res.schedules.find((x: any) => x.packageid == globalpackageid);
         if (exists == null) {
-          res.schedules.push({ id: "localrun", name: "localrun", packageid: process.env.packageid, enabled: true, cron: "", env: {"localrun": true} });
+          res.schedules.push({ id: "localrun", name: "localrun", packageid: globalpackageid, enabled: true, cron: "", env: {"localrun": true} });
         }
-        log("packageid is set, run package " + process.env.packageid);
+        log("packageid is set, run package " + globalpackageid);
       }
       for (var p = 0; p < res.schedules.length; p++) {
         const _schedule = res.schedules[p];
