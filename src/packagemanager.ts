@@ -86,8 +86,11 @@ export class packagemanager {
     }     
     if(pkg == null) throw new Error("Failed to find package: " + id);
     // console.log("Downloading file " + pkg.fileid)
-    const reply = await client.DownloadFile({ id: pkg.fileid, folder: packagemanager.packagefolder });
-    const filename = path.join(packagemanager.packagefolder, reply.filename);
+    let filename = "";
+    if(pkg.fileid != "local") {
+      const reply = await client.DownloadFile({ id: pkg.fileid, folder: packagemanager.packagefolder });
+      filename = path.join(packagemanager.packagefolder, reply.filename);
+    }
     try {
       if (path.extname(filename) == ".zip") {
         var zip = new AdmZip(filename);
@@ -106,13 +109,12 @@ export class packagemanager {
           console.error(error)
           throw error;
         }
-
       }
     } catch (error) {
       console.error(error);
       throw error
     } finally {
-      fs.unlinkSync(filename);
+      if(filename != "" && fs.existsSync(filename)) fs.unlinkSync(filename);
       return pkg;
     }
   }
@@ -180,9 +182,11 @@ export class packagemanager {
     if (streamid == null || streamid == "") throw new Error("streamid is null or empty");
     if(packagemanager.packagefolder == null || packagemanager.packagefolder == "") throw new Error("packagemanager.packagefolder is null or empty");
     try {
+      var s = packagemanager.addstream(streamid, streamqueue, stream)
       const pck = await packagemanager.getpackage(client, id);
       if(pck == null) throw new Error("Failed to find package: " + id);
-      var s = packagemanager.addstream(streamid, streamqueue, stream, pck)
+      s.packagename = pck.name;
+      s.packageid = pck._id;
       s.schedulename = "";
       if(schedule != null) {
         s.schedulename = schedule.name;
