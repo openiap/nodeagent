@@ -211,10 +211,10 @@ async function localrun(packageid: string, env: any, schedule: any) {
     stream.on('data', async (data) => {
       if (data == null) return;
       var s = data.toString().replace(/\n$/, "");
-      //if(buffer.length < 500) {
+      if(buffer.length < 300) {
         buffer += s;
         log(s);
-      //}
+      }
     });
     stream.on('end', async () => {
       log("process ended");
