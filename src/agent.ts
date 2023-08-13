@@ -288,7 +288,8 @@ async function RegisterAgent() {
       if (globalpackageid != "" && globalpackageid != null) {
         var exists = res.schedules.find((x: any) => x.packageid == globalpackageid);
         if (exists == null) {
-          res.schedules.push({ id: "localrun", name: "localrun", packageid: globalpackageid, enabled: true, cron: "", env: {"localrun": true} });
+          let name = process.env.forcedpackageid || "localrun";
+          res.schedules.push({ id: "localrun", name, packageid: globalpackageid, enabled: true, cron: "", env: {"localrun": true} });
         }
         log("packageid is set, run package " + globalpackageid);
       }
