@@ -22,7 +22,7 @@ export class runner_stream {
     packageid: string;
     packagename: string;
     schedulename: string;
-    buffer: string;
+    buffer: Buffer;
 }
 let lastping = new Date();
 export class runner {
@@ -37,6 +37,20 @@ export class runner {
             message = Buffer.from(message + "\n");
         }
         s.stream.push(message);
+
+        if(addtobuffer && message != null) {
+            if(s.buffer == null) s.buffer = Buffer.from("");
+            if(Buffer.isBuffer(message)) {
+                s.buffer = Buffer.concat([s.buffer, message]);
+            } else {
+                s.buffer = Buffer.concat([s.buffer, Buffer.from(message)]);
+            }
+            if(s.buffer.length > 1000000) {
+                // keep first 500k and remove rest
+                s.buffer = s.buffer.subarray(0, 500000);
+            }
+        }
+
         const now = new Date();
         const minutes = (now.getTime() - lastping.getTime()) / 60000;
         if(minutes > 5) {
@@ -69,12 +83,6 @@ export class runner {
             } else {
                 runner.commandstreams.splice(i, 1);
             }
-        }
-        if(!addtobuffer) return;
-        if(s.buffer == null) s.buffer = "";
-        s.buffer += message;
-        if(s.buffer.length > 1000000) {
-            s.buffer = s.buffer.substring(s.buffer.length - 1000000);
         }
     }
     public static removestream(client: openiap, streamid: string, success: boolean, buffer: string) {

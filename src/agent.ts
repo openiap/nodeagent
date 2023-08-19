@@ -819,6 +819,7 @@ async function onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: str
           "packagename": p.packagename,
           "packageid": p.packageid,
           "schedulename": p.schedulename,
+          "buffersize": (p.buffer == null ? 0 : p.buffer.length),
         });
       }
       return { "command": "listprocesses", "success": true, "count": processcount, "processes": processes };
