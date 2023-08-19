@@ -49,7 +49,7 @@ export class packagemanager {
     packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder, pkg._id));
     fs.writeFileSync(path.join(packagemanager.packagefolder, pkg._id + ".json"), JSON.stringify(pkg, null, 2))
     if (pkg.fileid != null && pkg.fileid != "") {
-      console.log("get package " + pkg.name);
+      // console.log("get package " + pkg.name);
       await packagemanager.getpackage(client, pkg._id);
     }
   }
@@ -66,7 +66,7 @@ export class packagemanager {
         packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder, packages[i]._id));
         fs.writeFileSync(path.join(packagemanager.packagefolder, packages[i]._id + ".json"), JSON.stringify(packages[i], null, 2))
         if (packages[i].fileid != null && packages[i].fileid != "") {
-          console.log("get package " + packages[i].name + " v" + packages[i].version + " " + packages[i]._id);
+          // console.log("get package " + packages[i].name + " v" + packages[i].version + " " + packages[i]._id);
           await packagemanager.getpackage(client, packages[i]._id);
         }
       } catch (error) {
@@ -80,6 +80,23 @@ export class packagemanager {
     let pkg: ipackage = null;
     if(fs.existsSync(path.join(packagemanager.packagefolder, id + ".json"))) {
       pkg = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder, id + ".json")).toString())
+      if(pkg.fileid != "local") {
+        let serverpck: ipackage = null; 
+        try { // If offline, this will fail, but we still have the files, so return the local package
+          serverpck = await client.FindOne<ipackage>({ collectionname: "agents", query: { _id: id, "_type": "package" } });
+        } catch (error) {          
+        }
+        if(serverpck != null) {
+          if(serverpck.fileid == pkg.fileid) {
+            pkg = serverpck;
+            fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
+            return pkg;
+          } else {
+            pkg = serverpck;
+            fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
+          }
+        }
+      }
     } else {
       pkg = await client.FindOne<ipackage>({ collectionname: "agents", query: { _id: id, "_type": "package" } });
       if(pkg != null) fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
@@ -88,8 +105,24 @@ export class packagemanager {
     // console.log("Downloading file " + pkg.fileid)
     let filename = "";
     if(pkg.fileid != "local") {
-      const reply = await client.DownloadFile({ id: pkg.fileid, folder: packagemanager.packagefolder });
-      filename = path.join(packagemanager.packagefolder, reply.filename);
+      try {
+        const reply = await client.DownloadFile({ id: pkg.fileid, folder: packagemanager.packagefolder });
+        filename = path.join(packagemanager.packagefolder, reply.filename);
+      } catch (error) {
+        console.log(error);
+      }
+      if(filename == "") {
+        pkg = await client.FindOne<ipackage>({ collectionname: "agents", query: { _id: id, "_type": "package" } });
+        if(pkg != null) fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
+        try {
+          const reply = await client.DownloadFile({ id: pkg.fileid, folder: packagemanager.packagefolder });
+          filename = path.join(packagemanager.packagefolder, reply.filename);
+        } catch (error) {
+        }
+      }
+      if(filename == "") {
+        throw new Error("Failed to download file: " + pkg.fileid);
+      }
     }
     try {
       if (path.extname(filename) == ".zip") {
@@ -209,9 +242,14 @@ export class packagemanager {
       }
       let message = { "command": "listprocesses", "success": true, "count": processcount, "processes": processes }
 
-      for(let i = 0; i <runner.commandstreams.length; i++) {
+      for (let i = runner.commandstreams.length - 1; i >= 0; i--) {
         if(runner.commandstreams[i] != streamid) {
-          await client.QueueMessage({ queuename: runner.commandstreams[i], data: message, correlationId: streamid });
+          try {
+            await client.QueueMessage({ queuename: runner.commandstreams[i], data: message, correlationId: streamid });
+          } catch (error) {
+            console.log("runpackage, remove streamqueue " + streamqueue);
+            runner.commandstreams.splice(i, 1);
+          }
         }
       }
       var packagepath = packagemanager.getpackagepath(path.join(packagemanager.packagefolder, id));
