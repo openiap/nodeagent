@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { config, openiap } from '@openiap/nodeapi';
+import { agent } from './agent';
 // import { spawnSync } from 'cross-spawn';
 const ctrossspawn = require('cross-spawn');
 
@@ -18,7 +19,7 @@ export class runner_stream {
     id: string;
     stream: Readable;
     // streamqueue: string;
-    // streamqueues: string[];
+    streamqueues: string[];
     packageid: string;
     packagename: string;
     schedulename: string;
@@ -37,6 +38,7 @@ export class runner {
             message = Buffer.from(message + "\n");
         }
         s.stream.push(message);
+        if(addtobuffer) agent.emit("stream", s, message);
 
         if(addtobuffer && message != null) {
             if(s.buffer == null) s.buffer = Buffer.from("");
@@ -92,6 +94,7 @@ export class runner {
         if (s != null) {
             s.stream.push(null);
             runner.streams = runner.streams.filter(x => x.id != streamid);
+            agent.emit("streamremoved", s);
             var data = { "command": "runpackage", success, "completed": true, "data": buffer };
             try {
                 for (let i = runner.commandstreams.length - 1; i >= 0; i--) {
@@ -110,17 +113,6 @@ export class runner {
                 console.error(error);
             }
         }
-    }
-    public static ensurestream(streamid: string, streamqueue: string) {
-        let s = runner.streams.find(x => x.id == streamid)
-        if (s == null) {
-            s = new runner_stream();
-            s.stream = new Stream.Readable();
-            s.stream.read = function () { };
-            s.id = streamid;
-            runner.streams.push(s);
-        }
-        return s;
     }
     public static async runit(client: openiap, packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean, env: any = {}): Promise<number> {
         return new Promise((resolve, reject) => {
@@ -154,6 +146,8 @@ export class runner {
                 // if (parameters != null && Array.isArray(parameters)) console.log('With parameters:', parameters.join(" "));
                 const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
                 // console.log('Current working directory:', packagepath);
+
+                agent.emit("runit", { streamid, command, parameters, cwd: packagepath, env: { ...process.env, ...env } });
 
                 const pid = childProcess.pid;
                 const p: runner_process = { id: streamid, pid, p: childProcess, forcekilled: false }

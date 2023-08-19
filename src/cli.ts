@@ -207,9 +207,9 @@ function UninstallService(svcName: string, serviceName: string): Promise<void> {
   return new Promise((resolve, reject) => {
     if (os.platform() === 'win32') {
       const Service = require('node-windows').Service;
-      let scriptPath = path.join(__dirname, "agent.js");
+      let scriptPath = path.join(__dirname, "runagent.js");
       if (!fs.existsSync(scriptPath)) {
-        scriptPath = path.join(__dirname, "dist", "agent.js");
+        scriptPath = path.join(__dirname, "dist", "runagent.js");
       }
       const svc = new Service({
         name: serviceName,
@@ -263,7 +263,7 @@ async function main() {
   }
   if (service) {
     let nodepath = runner.findNodePath()
-    let scriptPath = path.join(__dirname, "agent.js");
+    let scriptPath = path.join(__dirname, "runagent.js");
     console.log("run " + scriptPath)
     RunStreamed(nodepath, [scriptPath], true)
     return;
@@ -306,7 +306,7 @@ async function main() {
     // fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(assistantConfig));
 
     console.log(`Installing service "${serviceName}"...`);
-    await installService(serviceName, serviceName, 'agent.js');
+    await installService(serviceName, serviceName, 'runagent.js');
   } else if (command === 'uninstall') {
     console.log(`Uninstalling service "${serviceName}"...`);
     await UninstallService(serviceName, serviceName);

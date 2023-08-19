@@ -15,6 +15,7 @@ export interface ipackage {
 }
 export declare class packagemanager {
     static packagefolder: string;
+    static packages: ipackage[];
     static getpackages(client: openiap, languages: string[]): Promise<ipackage[]>;
     static reloadpackage(client: openiap, id: string, force: boolean): Promise<ipackage>;
     static reloadpackages(client: openiap, languages: string[], force: boolean): Promise<ipackage[]>;
@@ -22,7 +23,7 @@ export declare class packagemanager {
     static getpackagepath(packagepath: string, first?: boolean): string;
     static getscriptpath(packagepath: string): string;
     private static addstream;
-    static runpackage(client: openiap, id: string, streamid: string, streamqueue: string, stream: Readable, wait: boolean, env?: any, schedule?: any): Promise<number>;
+    static runpackage(client: openiap, id: string, streamid: string, streamqueues: string[], stream: Readable, wait: boolean, env?: any, schedule?: any): Promise<number>;
     static removepackage(id: string): Promise<void>;
     static deleteDirectoryRecursiveSync(dirPath: string): void;
 }

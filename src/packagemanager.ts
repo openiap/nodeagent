@@ -7,6 +7,7 @@ import * as AdmZip from "adm-zip";
 import * as tar from "tar";
 import { config } from '@openiap/nodeapi';
 import { runner, runner_stream } from "./runner";
+import { agent } from "./agent";
 const { info, err } = config;
 export interface ipackage {
   _id: string;
@@ -20,8 +21,10 @@ export interface ipackage {
   chromium: boolean;
   main: string;
 }
+
 export class packagemanager {
   public static packagefolder = path.join(os.homedir(), ".openiap", "packages");
+  public static packages: ipackage[] = [];
   public static async getpackages(client: openiap, languages: string[]): Promise<ipackage[]> {
     if(client == null) {
       if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
@@ -33,11 +36,13 @@ export class packagemanager {
           if(pkg != null && pkg._type == "package") _packages.push(pkg);
         }
       }
-      return _packages;
+      packagemanager.packages = _packages
+      return JSON.parse(JSON.stringify(_packages));
     }
     var _packages = await client.Query<ipackage>({ query: { "_type": "package", "language": { "$in": languages } }, collectionname: "agents" });
-    return _packages;
-  }
+    packagemanager.packages = _packages
+    return JSON.parse(JSON.stringify(_packages));
+}
   public static async reloadpackage(client: openiap, id: string, force: boolean): Promise<ipackage> {
     var pkg = await client.FindOne<ipackage>({ query: { "_type": "package", "_id": id }, collectionname: "agents" });
     if(pkg == null) return null;
@@ -47,7 +52,6 @@ export class packagemanager {
       if(document.version == pkg.version) return pkg;
     }
     packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder, pkg._id));
-    fs.writeFileSync(path.join(packagemanager.packagefolder, pkg._id + ".json"), JSON.stringify(pkg, null, 2))
     if (pkg.fileid != null && pkg.fileid != "") {
       // console.log("get package " + pkg.name);
       await packagemanager.getpackage(client, pkg._id);
@@ -64,7 +68,7 @@ export class packagemanager {
           if(document.version == packages[i].version) continue;
         }
         packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder, packages[i]._id));
-        fs.writeFileSync(path.join(packagemanager.packagefolder, packages[i]._id + ".json"), JSON.stringify(packages[i], null, 2))
+        // fs.writeFileSync(path.join(packagemanager.packagefolder, packages[i]._id + ".json"), JSON.stringify(packages[i], null, 2))
         if (packages[i].fileid != null && packages[i].fileid != "") {
           // console.log("get package " + packages[i].name + " v" + packages[i].version + " " + packages[i]._id);
           await packagemanager.getpackage(client, packages[i]._id);
@@ -90,7 +94,13 @@ export class packagemanager {
           if(serverpck.fileid == pkg.fileid) {
             pkg = serverpck;
             fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
-            return pkg;
+            const localpath = path.join(packagemanager.packagefolder, id)
+            if(fs.existsSync(localpath)) {
+              let files = fs.readdirSync(localpath);
+              if(files.length > 0 ) {
+                return pkg;
+              }
+            }
           } else {
             pkg = serverpck;
             fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
@@ -192,31 +202,35 @@ export class packagemanager {
     if (fs.existsSync(path.join(packagepath, "index.ps1"))) return path.join(packagepath, "index.ps1");
     if (fs.existsSync(path.join(packagepath, "main.ps1"))) return path.join(packagepath, "main.ps1");
   }
-  private static addstream(streamid: string, streamqueue: string, stream: Readable, pck: ipackage = undefined) {
+  private static addstream(streamid: string, streamqueues: string[], stream: Readable, pck: ipackage) {
     let s = runner.streams.find(x => x.id == streamid)
     if (s != null) throw new Error("Stream " + streamid + " already exists")
     s = new runner_stream();
     s.id = streamid;
     s.stream = stream;
+    s.streamqueues = streamqueues;
     if(pck != null) {
       s.packagename = pck.name;
       s.packageid = pck._id;
-      if(s.packageid == null || s.packageid == "") {
-        var b = true;  
-      }
-    } else {
-      var b = true;
     }
-    // s.streamqueue = streamqueue;
     runner.streams.push(s);
+    agent.emit("streamadded", s);
     return s;
   }
-  public static async runpackage(client: openiap, id: string, streamid: string, streamqueue: string, stream: Readable, wait: boolean, env: any = {}, schedule: any = undefined): Promise<number> {
+  public static async runpackage(client: openiap, id: string, streamid: string, streamqueues: string[], stream: Readable, wait: boolean, env: any = {}, schedule: any = undefined): Promise<number> {
     if (streamid == null || streamid == "") throw new Error("streamid is null or empty");
     if(packagemanager.packagefolder == null || packagemanager.packagefolder == "") throw new Error("packagemanager.packagefolder is null or empty");
     try {
-      var s = packagemanager.addstream(streamid, streamqueue, stream)
-      const pck = await packagemanager.getpackage(client, id);
+      let pck: ipackage = null;
+      let s: runner_stream = null;
+      try {
+        pck = await packagemanager.getpackage(client, id);
+        s = packagemanager.addstream(streamid, streamqueues, stream, pck)
+      } catch (error) {
+        throw error;
+      }
+      if(s == null) s = packagemanager.addstream(streamid, streamqueues, stream, pck)
+
       if(pck == null) throw new Error("Failed to find package: " + id);
       s.packagename = pck.name;
       s.packageid = pck._id;
@@ -243,9 +257,10 @@ export class packagemanager {
       let message = { "command": "listprocesses", "success": true, "count": processcount, "processes": processes }
 
       for (let i = runner.commandstreams.length - 1; i >= 0; i--) {
-        if(runner.commandstreams[i] != streamid) {
+        const streamqueue = runner.commandstreams[i];
+        if(streamqueue != streamid) {
           try {
-            await client.QueueMessage({ queuename: runner.commandstreams[i], data: message, correlationId: streamid });
+            await client.QueueMessage({ queuename: streamqueue, data: message, correlationId: streamid });
           } catch (error) {
             console.log("runpackage, remove streamqueue " + streamqueue);
             runner.commandstreams.splice(i, 1);

@@ -1,6 +1,6 @@
 {
     "name": "@openiap/nodeagent",
-    "version": "0.0.60",
+    "version": "0.0.69",
     "description": "",
     "main": "./dist/index.js",
     "module": "./dist/index.js",
