@@ -62,11 +62,13 @@ export class runner {
                 if(minutes > 5) { // backwars compatibility with older builds of openflow 1.5
                     client.QueueMessage({ queuename: streamqueue, data: { "command": "ping" } }, true).catch((error) => {
                         console.error("notifyStream: " + error.message);
-                        runner.commandstreams.splice(i, 1);
+                        const index = runner.commandstreams.indexOf(streamqueue);
+                        if(index > -1) runner.commandstreams.splice(index, 1);
                     }).then((result) => {
                         if (result != null && result.command == "timeout") {
-                            console.error("notifyStream: " + result.command);
-                            runner.commandstreams.splice(i, 1);
+                            console.log("notifyStream, remove streamqueue " + streamqueue);
+                            const index = runner.commandstreams.indexOf(streamqueue);
+                            if(index > -1) runner.commandstreams.splice(index, 1);
                         }
                     });
                 }
@@ -77,7 +79,7 @@ export class runner {
                         await client.QueueMessage({ queuename: streamqueue, data: { "command": "stream", "data": message }, correlationId: streamid });
                     }
                 } catch (error) {
-                    console.error("notifyStream: " + error.message);
+                    console.log("notifyStream, remove streamqueue " + streamqueue);
                     runner.commandstreams.splice(i, 1);
                 }
             } else {
@@ -92,12 +94,14 @@ export class runner {
             runner.streams = runner.streams.filter(x => x.id != streamid);
             var data = { "command": "runpackage", success, "completed": true, "data": buffer };
             try {
-                for(let i = 0; i < runner.commandstreams.length; i++) {
+                for (let i = runner.commandstreams.length - 1; i >= 0; i--) {
                     const streamqueue = runner.commandstreams[i];
                     if (streamqueue != null && streamqueue != "") {
                         console.log("removestream streamid/correlationId: " + streamid + " streamqueue: " + streamqueue);
                         client.QueueMessage({ queuename: streamqueue, data, correlationId: streamid }).catch((error) => {
-                            console.error(error);
+                            console.log("removestream, remove streamqueue " + streamqueue);
+                            const index = runner.commandstreams.indexOf(streamqueue);
+                            if(index > -1) runner.commandstreams.splice(index, 1);
                         });
                     }
     
@@ -121,7 +125,7 @@ export class runner {
     public static async runit(client: openiap, packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean, env: any = {}): Promise<number> {
         return new Promise((resolve, reject) => {
             try {
-                console.log('runit: Running command:', command);
+                // console.log('runit: Running command:', command);
                 // , stdio: ['pipe', 'pipe', 'pipe']
                 // , stdio: 'pipe'
                 // if(command.indexOf(" ") > -1 && !command.startsWith('"')) {
@@ -146,10 +150,10 @@ export class runner {
                         parameters = parameters.concat(_parameters);
                     }
                 }
-                console.log('Running command:', command);
-                if (parameters != null && Array.isArray(parameters)) console.log('With parameters:', parameters.join(" "));
+                // console.log('Running command:', command);
+                // if (parameters != null && Array.isArray(parameters)) console.log('With parameters:', parameters.join(" "));
                 const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
-                console.log('Current working directory:', packagepath);
+                // console.log('Current working directory:', packagepath);
 
                 const pid = childProcess.pid;
                 const p: runner_process = { id: streamid, pid, p: childProcess, forcekilled: false }
@@ -210,8 +214,12 @@ export class runner {
                     .filter((line: string) => line.toLowerCase().indexOf("windowsapps\\python.exe") == -1);
                 if (lines.length > 0) return lines[0]
             } else {
-                if (result.stderr != null) console.log(result.stderr.toString());
-                if (result.stdout != null) console.log(result.stdout.toString());
+                if (result.stderr != null && result.stderr.toString() != "") {
+                    console.log(result.stderr.toString());
+                }
+                if (result.stdout != null && result.stdout.toString() != "") {
+                    console.log(result.stdout.toString());
+                }
             }
             return "";
         } catch (error) {
