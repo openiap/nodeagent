@@ -16,7 +16,7 @@ export declare class runner_stream {
     packageid: string;
     packagename: string;
     schedulename: string;
-    buffer: string;
+    buffer: Buffer;
 }
 export declare class runner {
     static processs: runner_process[];
