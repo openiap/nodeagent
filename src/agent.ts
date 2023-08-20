@@ -15,6 +15,11 @@ if (os.platform() === 'win32') {
   // elog = new EventLogger('nodeagent');
 }
 
+export class agent_schedule_task {
+  constructor(copyfrom: agent_schedule_task) {
+    
+  }
+}
 export class agent  {
   public static client: openiap;
   public static assistantConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
@@ -396,13 +401,31 @@ export class agent  {
         for (let p = 0; p < res.schedules.length; p++) {
           const _schedule = res.schedules[p];
           let schedule = agent.schedules.find((x: any) => x.name == _schedule.name && x.packageid == _schedule.packageid);
-          if (schedule != null && schedule != _schedule) {
-            _schedule.task = schedule.task;
-            if (_schedule.env == null) _schedule.env = {};
+          if (_schedule.env == null) _schedule.env = {};
+          if (_schedule.cron == null || _schedule.cron == "") _schedule.cron = "";
+          if (schedule == null) {
+            agent.schedules.push(_schedule);
+          } else {
             if (schedule.env == null) schedule.env = {};
-            if (_schedule.cron == null || _schedule.cron == "") _schedule.cron = "";
             if (schedule.cron == null || schedule.cron == "") schedule.cron = "";
-            if (JSON.stringify(_schedule.env) != JSON.stringify(schedule.env) || _schedule.cron != schedule.cron) {
+            let updated = false;
+            // if (JSON.stringify(_schedule.env) != JSON.stringify(schedule.env) || _schedule.cron != schedule.cron || _schedule.enabled != schedule.enabled) {
+            //   updated = true;
+            // }
+            var keys = Object.keys(_schedule);
+            for (var i = 0; i < keys.length; i++) {
+              const key = keys[i];
+              if(key == "task") continue;
+              if (JSON.stringify(schedule[key]) != JSON.stringify(_schedule[key])) {
+                updated = true;
+                schedule[key] = _schedule[key];
+              }
+            }
+            if (updated) {
+              if(schedule.task != null) {
+                schedule.task.restartcounter = 0;
+                schedule.task.lastrestart = new Date();
+              }
               try {
                 log("Schedule " + _schedule.name + " (" + _schedule.id + ") updated, kill all instances of package " + _schedule.packageid + " if running");
                 for (let s = runner.streams.length - 1; s >= 0; s--) {
@@ -411,15 +434,19 @@ export class agent  {
                     runner.kill(agent.client, stream.id);
                   }
                 }
+                if(schedule.enabled && schedule.task != null) {
+                  schedule.task.start();
+                }
               } catch (error) {
               }
             }
           }
         }
-        for (let p = 0; p < agent.schedules.length; p++) {
+        for (let p = agent.schedules.length-1; p >= 0; p--) {
           const _schedule = agent.schedules[p];
           let schedule = res.schedules.find((x: any) => x.name == _schedule.name && x.packageid == _schedule.packageid);
           if (schedule == null) {
+            agent.schedules.splice(p, 1);
             try {
               if (_schedule.task != null) {
                 _schedule.task.stop();
@@ -438,11 +465,10 @@ export class agent  {
             }
           }
         }
-        var streams = runner.streams;
-        console.log("streams: " + runner.streams.length + " current schedules: " + agent.schedules.length + " new schedules: " + res.schedules.length)
-        agent.schedules = res.schedules;
-        for (let p = 0; p < res.schedules.length; p++) {
-          const schedule = res.schedules[p];
+        // console.log("streams: " + runner.streams.length + " current schedules: " + agent.schedules.length + " new schedules: " + res.schedules.length)
+        //agent.schedules = res.schedules;
+        for (let p = 0; p < agent.schedules.length; p++) {
+          const schedule = agent.schedules[p];
           if (schedule.packageid == null || schedule.packageid == "") {
             log("Schedule " + schedule.name + " has no packageid, skip");
             continue;
@@ -502,6 +528,10 @@ export class agent  {
                   start() {
                     if (schedule.task.timeout != null) {
                       log("Schedule " + schedule.name + " (" + schedule.id + ") already running");
+                      return;
+                    }
+                    if (!schedule.enabled) {
+                      log("Schedule " + schedule.name + " (" + schedule.id + ") is disabled");
                       return;
                     }
                     log("Schedule " + schedule.name + " (" + schedule.id + ") started");

@@ -2,6 +2,9 @@
 import { openiap } from "@openiap/nodeapi";
 import { ipackage } from "./packagemanager";
 import { EventEmitter } from "events";
+export declare class agent_schedule_task {
+    constructor(copyfrom: agent_schedule_task);
+}
 export declare class agent {
     static client: openiap;
     static assistantConfig: any;
