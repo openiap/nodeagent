@@ -18,6 +18,7 @@ export declare class agent {
     static max_workitemqueue_jobs: number;
     static maxrestarts: number;
     static maxrestartsminutes: number;
+    static killonpackageupdate: boolean;
     static exitonfailedschedule: boolean;
     static eventEmitter: EventEmitter;
     static globalpackageid: string;

@@ -29,6 +29,7 @@ export class agent  {
   public static max_workitemqueue_jobs = 1;
   public static maxrestarts = 5;
   public static maxrestartsminutes = 5;
+  public static killonpackageupdate = true;
   public static exitonfailedschedule = true;
   public static eventEmitter = new EventEmitter();
   public static globalpackageid: string = "";
@@ -108,6 +109,14 @@ export class agent  {
         agent.exitonfailedschedule = true;
       }
     }
+    if (process.env.killonpackageupdate != null && process.env.killonpackageupdate != null) {
+      if(process.env.killonpackageupdate == "0" || process.env.killonpackageupdate.toLowerCase() == "false" || process.env.killonpackageupdate.toLowerCase() == "no") {
+        agent.killonpackageupdate = false;
+      } else {
+        agent.killonpackageupdate = true;
+      }
+    }
+    
     
       
     let myproject = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
@@ -213,12 +222,20 @@ export class agent  {
               log("package " + document.name + " inserted, reload packages");
               await agent.reloadpackages(false)
             } else if (operation == "replace") {
-              log("package " + document.name + " updated.");
-              log("Remove package " + document._id);
+              log("package " + document.name + " (" +  document._id + " ) updated.");
               packagemanager.removepackage(document._id);
               if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
-              // log("Get package " + document._id);
               await packagemanager.getpackage(agent.client, document._id);
+
+              if(agent.killonpackageupdate) {
+                log("Kill all instances of package " + document.name + " (" + document._id + ") if running");
+                for (let s = runner.streams.length - 1; s >= 0; s--) {
+                  const stream = runner.streams[s];
+                  if (stream.packageid == document._id) {
+                    runner.kill(agent.client, stream.id);
+                  }
+                }
+              }
             } else if (operation == "delete") {
               log("package " + document.name + " deleted, cleanup after package");
               packagemanager.removepackage(document._id);
