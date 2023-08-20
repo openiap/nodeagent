@@ -270,21 +270,22 @@ export class agent  {
     log("Disconnected");
   };
 
-  public static async localrun(packageid: string, streamid: string, payload: any, env: any, schedule: any): Promise<[number, string, any]> {
+  public static async localrun(packageid: string, streamid: string, payload: any, _env: any, schedule: any): Promise<[number, string, any]> {
     const pck = await packagemanager.getpackage(agent.client, packageid);
     const packagepath = packagemanager.getpackagepath(path.join(os.homedir(), ".openiap", "packages", packageid));
     if (packagepath == "") {
       log("Package " + packageid + " not found");
       return [2, "Package " + packageid + " not found", payload];
     }
+    // var _env = {"payloadfile": ""};
+    // if(env != null) _env = Object.assign(_env, env);
 
     try {
       const payloadfile = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + ".json";
       const wipath = path.join(packagepath, payloadfile);
       if (fs.existsSync(wipath)) { fs.unlinkSync(wipath); }
-      if (env == null) env = {};
-      if (payload != null) { env = Object.assign(env, payload); }
-      env["payloadfile"] = payloadfile;
+      if (payload != null) { _env = Object.assign(_env, payload); }
+      _env["payloadfile"] = payloadfile;
 
       if (payload != null) {
         let wijson = JSON.stringify(payload, null, 2);
@@ -311,7 +312,7 @@ export class agent  {
       });
       // stream.on('end', async () => { log("process ended"); });
       log("run package " + pck.name + " (" + packageid + ")");
-      const exitcode = await packagemanager.runpackage(agent.client, packageid, streamid, [], stream, true, env, schedule);
+      const exitcode = await packagemanager.runpackage(agent.client, packageid, streamid, [], stream, true, _env, schedule);
       // log("run complete");
 
       let wipayload = payload;
@@ -403,10 +404,6 @@ export class agent  {
             if (schedule.cron == null || schedule.cron == "") schedule.cron = "";
             if (JSON.stringify(_schedule.env) != JSON.stringify(schedule.env) || _schedule.cron != schedule.cron) {
               try {
-                _schedule.task.stop();
-                _schedule.task.restartcounter = 0;
-                _schedule.task.lastrestart = new Date();
-
                 log("Schedule " + _schedule.name + " (" + _schedule.id + ") updated, kill all instances of package " + _schedule.packageid + " if running");
                 for (let s = runner.streams.length - 1; s >= 0; s--) {
                   const stream = runner.streams[s];
@@ -414,10 +411,8 @@ export class agent  {
                     runner.kill(agent.client, stream.id);
                   }
                 }
-
               } catch (error) {
               }
-              _schedule.task = null;
             }
           }
         }
@@ -443,6 +438,8 @@ export class agent  {
             }
           }
         }
+        var streams = runner.streams;
+        console.log("streams: " + runner.streams.length + " current schedules: " + agent.schedules.length + " new schedules: " + res.schedules.length)
         agent.schedules = res.schedules;
         for (let p = 0; p < res.schedules.length; p++) {
           const schedule = res.schedules[p];
