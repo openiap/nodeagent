@@ -270,15 +270,15 @@ export class agent  {
     log("Disconnected");
   };
 
-  public static async localrun(packageid: string, streamid: string, payload: any, _env: any, schedule: any): Promise<[number, string, any]> {
+  public static async localrun(packageid: string, streamid: string, payload: any, env: any, schedule: any): Promise<[number, string, any]> {
     const pck = await packagemanager.getpackage(agent.client, packageid);
     const packagepath = packagemanager.getpackagepath(path.join(os.homedir(), ".openiap", "packages", packageid));
     if (packagepath == "") {
       log("Package " + packageid + " not found");
       return [2, "Package " + packageid + " not found", payload];
     }
-    // var _env = {"payloadfile": ""};
-    // if(env != null) _env = Object.assign(_env, env);
+    var _env = {"payloadfile": ""};
+    if(env != null) _env = Object.assign(_env, env);
 
     try {
       const payloadfile = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + ".json";
