@@ -204,7 +204,6 @@ export class agent  {
     } else {
       if (agent.assistantConfig.apiurl == null || agent.assistantConfig.apiurl == "") {
         log("failed locating config to load from " + path.join(os.homedir(), ".openiap", "config.json"))
-        process.exit(1);
         return false;
       }
     }
