@@ -85,14 +85,18 @@ export class packagemanager {
     if(fs.existsSync(path.join(packagemanager.packagefolder, id + ".json"))) {
       pkg = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder, id + ".json")).toString())
       if(pkg.fileid != "local") {
-        let serverpck: ipackage = null; 
+        let serverpcks: ipackage[] = null; 
         try { // If offline, this will fail, but we still have the files, so return the local package
-          serverpck = await client.FindOne<ipackage>({ collectionname: "agents", query: { _id: id, "_type": "package" } });
+          // serverpck = await client.FindOne<ipackage>({ collectionname: "agents", query: { _id: id, "_type": "package" } });
+          serverpcks = await client.Query<ipackage>({ collectionname: "agents", query: { _id: id, "_type": "package" } });
         } catch (error) {          
         }
-        if(serverpck != null) {
-          if(serverpck.fileid == pkg.fileid) {
-            pkg = serverpck;
+        if(serverpcks != null) {
+          if(serverpcks.length == 0) {
+            throw new Error("package: " + id + " no longer exists!");
+          }
+          if(serverpcks[0].fileid == pkg.fileid) {
+            pkg = serverpcks[0];
             fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
             const localpath = path.join(packagemanager.packagefolder, id)
             if(fs.existsSync(localpath)) {
@@ -102,7 +106,7 @@ export class packagemanager {
               }
             }
           } else {
-            pkg = serverpck;
+            pkg = serverpcks[0];
             fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
           }
         }

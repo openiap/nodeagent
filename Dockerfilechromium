@@ -35,8 +35,8 @@ RUN npm install
 
 COPY dist /tmp/dist
 # COPY . /tmp
-RUN python -m pip install --upgrade pip
-RUN python -m pip install openiap
+# RUN python -m pip install --upgrade pip
+RUN python -m pip install openiap --break-system-packages
 # load current version
 # RUN npx -y @openiap/nodeagent -noop
 # CMD ["npx", "-y", "@openiap/nodeagent", "-service"]

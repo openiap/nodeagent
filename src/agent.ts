@@ -121,6 +121,29 @@ export class agent  {
         agent.killonpackageupdate = true;
       }
     }
+    let oidc_config: string = process.env.oidc_config || process.env.agent_oidc_config;
+    if(oidc_config == null || oidc_config == "") {
+      let protocol = process.env.protocol || "http";
+      let domain = process.env.domain || "";
+      if(domain == "") {
+        let apiurl = process.env.oidc_config || process.env.apiurl || process.env.grpcapiurl || process.env.wsapiurl || "";
+        if (apiurl != "") {
+          let url = new URL(apiurl);
+          domain = (url.hostname.indexOf("grpc") == 0) ? url.hostname.substring(5) : url.hostname;
+          if(url.port == "443") {
+            protocol = "http";
+          } else if (url.protocol != "grpc:") {
+            protocol = url.protocol.substring(0, url.protocol.length - 1);
+          } else if (url.hostname == "pc.openiap.io") {
+            protocol = "https";
+          }
+        }
+      }
+      oidc_config = protocol + "://" + domain + "/oidc/.well-known/openid-configuration"
+      console.log("auto generated oidc_config: " + oidc_config)
+      process.env.oidc_config = oidc_config;
+    }
+
     
     
       
@@ -367,7 +390,9 @@ export class agent  {
         }
       }
       if (res != null && res.slug != "" && res._id != null && res._id != "") {
+        log("registering agent queue as " + res.slug + "agent");
         agent.localqueue = await agent.client.RegisterQueue({ queuename: res.slug + "agent" }, agent.onQueueMessage);
+        log("queue registered as " + agent.localqueue);
         agent.agentid = res._id;
         let config = { agentid: agent.agentid, jwt: res.jwt, apiurl: agent.client.url };
         if (fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
@@ -535,50 +560,51 @@ export class agent  {
                     }
                     log("Schedule " + schedule.name + " (" + schedule.id + ") started");
                     schedule.task.stop()
-                    schedule.task.timeout = setTimeout(() => {
-                      agent.localrun(schedule.packageid, null, null, schedule.env, schedule).then((result) => {
-                        if (schedule.task == null) return;
-                        const [exitcode, output, payload] = result;
+                    schedule.task.timeout = setTimeout(async () => {
+                      try {
+                        let exitcode = -1, output, payload;
                         try {
-                          schedule.task.timeout = null;
-                          if(exitcode != 0) {
-                            log("Schedule " + schedule.name + " (" + schedule.id + ") finished with exitcode " + exitcode + '\n' + output);
-                          } else {
-                            log("Schedule " + schedule.name + " (" + schedule.id + ") finished (exitcode " + exitcode + ")");
-                          }
-                          const minutes = (new Date().getTime() - schedule.task.lastrestart.getTime()) / 1000 / 60;
-                          if (minutes < agent.maxrestartsminutes) {
-                            schedule.task.restartcounter++;
-                          } else {
-                            schedule.task.restartcounter = 0;
-                          }
-                          schedule.task.lastrestart = new Date();
-                          if (schedule.task.restartcounter < agent.maxrestarts) {
-                            let exists = agent.schedules.find(x => x.name == schedule.name && x.packageid == schedule.packageid);
-                            if (exists != null && schedule.task != null) {
-                              log("Schedule " + schedule.name + " (" + schedule.id + ") stopped after " + minutes.toFixed(2) + " minutes (" + schedule.task.restartcounter + " of " + agent.maxrestarts + ")");
-                              schedule.task.start();
-                            }
-                          } else {
-                            const hascronjobs = agent.schedules.find(x => x.cron != null && x.cron != "" && x.enabled == true);
-                            if (hascronjobs == null && agent.exitonfailedschedule == true) {
-                              log("Schedule " + schedule.name + " (" + schedule.id + ") stopped " + schedule.task.restartcounter + " times, no cron jobs running, exit agent completly!");
-                              process.exit(0);
-                            } else {
-                              log("Schedule " + schedule.name + " (" + schedule.id + ") stopped " + schedule.task.restartcounter + " times, stop schedule");
-                            }
-                          }
+                          [exitcode, output, payload] = await agent.localrun(schedule.packageid, null, null, schedule.env, schedule);
                         } catch (error) {
-                          _error(error);
                         }
-                      }).catch((error) => {
+                        if (schedule.task == null) return;
+                        schedule.task.timeout = null;
+                        if (exitcode != 0) {
+                          log("Schedule " + schedule.name + " (" + schedule.id + ") finished with exitcode " + exitcode + '\n' + output);
+                        } else {
+                          log("Schedule " + schedule.name + " (" + schedule.id + ") finished (exitcode " + exitcode + ")");
+                        }
+                        const minutes = (new Date().getTime() - schedule.task.lastrestart.getTime()) / 1000 / 60;
+                        if (minutes < agent.maxrestartsminutes) {
+                          schedule.task.restartcounter++;
+                        } else {
+                          schedule.task.restartcounter = 0;
+                        }
+                        schedule.task.lastrestart = new Date();
+                        if (schedule.task.restartcounter < agent.maxrestarts) {
+                          let exists = agent.schedules.find(x => x.name == schedule.name && x.packageid == schedule.packageid);
+                          if (exists != null && schedule.task != null) {
+                            log("Schedule " + schedule.name + " (" + schedule.id + ") stopped after " + minutes.toFixed(2) + " minutes (" + schedule.task.restartcounter + " of " + agent.maxrestarts + ")");
+                            schedule.task.start();
+                          }
+                        } else {
+                          const hascronjobs = agent.schedules.find(x => x.cron != null && x.cron != "" && x.enabled == true);
+                          if (hascronjobs == null && agent.exitonfailedschedule == true) {
+                            log("Schedule " + schedule.name + " (" + schedule.id + ") stopped " + schedule.task.restartcounter + " times, no cron jobs running, exit agent completly!");
+                            process.exit(0);
+                          } else {
+                            log("Schedule " + schedule.name + " (" + schedule.id + ") stopped " + schedule.task.restartcounter + " times, stop schedule");
+                          }
+                        }
+                      } catch (error) {
                         try {
                           _error(error);
                           schedule.task.timeout = null;
                         } catch (e) {
                           _error(e);
                         }
-                      });;
+
+                      }
                     }, 100);
                   }
                 }
@@ -776,7 +802,9 @@ export class agent  {
       }
       if (payload.command == "addcommandstreamid") {
         if (payload.streamqueue == null || payload.streamqueue == "") payload.streamqueue = msg.replyto;
-        if (runner.commandstreams.indexOf(payload.streamqueue) == -1) runner.commandstreams.push(payload.streamqueue);
+        if (payload.streamqueue != null && payload.streamqueue != "" && runner.commandstreams.indexOf(payload.streamqueue) == -1) {
+          runner.commandstreams.push(payload.streamqueue);
+        }
       }
       if (payload.command == "removecommandstreamid") {
         if (payload.streamqueue == null || payload.streamqueue == "") payload.streamqueue = msg.replyto;
@@ -822,9 +850,13 @@ export class agent  {
       }
       if (payload.command == "listprocesses") {
         if (runner.commandstreams.indexOf(msg.replyto) == -1 && msg.replyto != null && msg.replyto != "") {
-          console.log("Add streamqueue " + payload.streamqueue + " to commandstreams")
+          console.log("Add streamqueue " + msg.replyto + " to commandstreams")
           runner.commandstreams.push(msg.replyto);
         }
+        var runner_process = runner.processs;
+        var runner_stream = runner.streams;
+        var commandstreams = runner.commandstreams;
+    
         let processcount = runner.streams.length;
         let processes = [];
         for (let i = processcount; i >= 0; i--) {
