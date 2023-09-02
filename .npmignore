@@ -8,3 +8,4 @@ Dockerfilepowershell
 Dockerfilechromiumold
 Dockerfilechromium
 Dockerfile
+src/instrumentation.ts

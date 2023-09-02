@@ -17,4 +17,4 @@ WORKDIR /tmp
 # load current version
 # RUN npx -y @openiap/nodeagent -noop
 # CMD ["npx", "-y", "@openiap/nodeagent", "-service"]
-CMD ["node", "dist/runagent.js"]
+CMD ["node", "--require", "./dist/Logger.js", "dist/runagent.js"]
