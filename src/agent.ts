@@ -8,6 +8,7 @@ import * as os from "os"
 import * as path from "path";
 import * as fs from "fs"
 import { Stream } from 'stream';
+import { Logger } from "./Logger";
 
 let elog: any = null;
 if (os.platform() === 'win32') {
@@ -87,6 +88,15 @@ export class agent  {
 
   
   public static async init(_client: openiap = undefined) {
+    try {
+      let apiurl = process.env.oidc_config || process.env.apiurl || process.env.grpcapiurl || process.env.wsapiurl || "";
+      if (apiurl == "" && _client != null) {
+        process.env.apiurl = _client.url;
+      }
+      Logger.init();
+    } catch (error) {
+      
+    }
     this.setMaxListeners(500);
     if (_client == null) {
       agent.client = new openiap()
