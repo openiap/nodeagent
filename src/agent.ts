@@ -290,7 +290,7 @@ export class agent  {
     } catch (error) {
       _error(error);
       await new Promise(resolve => setTimeout(resolve, 2000));
-      process.exit(0);
+      // process.exit(0);
     }
   }
   private static async onDisconnected(client: openiap) {
@@ -298,8 +298,14 @@ export class agent  {
   };
 
   public static async localrun(packageid: string, streamid: string, payload: any, env: any, schedule: any): Promise<[number, string, any]> {
+    console.log("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin);
+    var b = true;
     const pck = await packagemanager.getpackage(agent.client, packageid);
+    if(pck == null) {
+      throw new Error("Package " + packageid + " not found");
+    }
     const packagepath = packagemanager.getpackagepath(path.join(os.homedir(), ".openiap", "packages", packageid));
+    console.log("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin);
     if (packagepath == "") {
       log("Package " + packageid + " not found");
       return [2, "Package " + packageid + " not found", payload];
@@ -566,6 +572,8 @@ export class agent  {
                         try {
                           [exitcode, output, payload] = await agent.localrun(schedule.packageid, null, null, schedule.env, schedule);
                         } catch (error) {
+                          var e = error;
+                          console.error(e);
                         }
                         if (schedule.task == null) return;
                         schedule.task.timeout = null;
@@ -591,7 +599,6 @@ export class agent  {
                           const hascronjobs = agent.schedules.find(x => x.cron != null && x.cron != "" && x.enabled == true);
                           if (hascronjobs == null && agent.exitonfailedschedule == true) {
                             log("Schedule " + schedule.name + " (" + schedule.id + ") stopped " + schedule.task.restartcounter + " times, no cron jobs running, exit agent completly!");
-                            process.exit(0);
                           } else {
                             log("Schedule " + schedule.name + " (" + schedule.id + ") stopped " + schedule.task.restartcounter + " times, stop schedule");
                           }

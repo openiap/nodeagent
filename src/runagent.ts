@@ -1,10 +1,20 @@
 import { agent } from "./agent";
+import { runner } from "./runner";
 async function main() {
   try {
     agent.globalpackageid = process.env.forcedpackageid || process.env.packageid || "";
-    process.on('SIGINT', () => { process.exit(0) })
-    process.on('SIGTERM', () => { process.exit(0) })
-    process.on('SIGQUIT', () => { process.exit(0) })
+    const onexit = async () => {
+      for (let s = runner.streams.length - 1; s >= 0; s--) {
+        const stream = runner.streams[s];
+        console.log("*** Kill stream: " + stream.id);
+        runner.kill(agent.client, stream.id);
+      }
+      console.log("*** Exit");;
+      process.exit(0);
+    };
+    process.on('SIGINT', onexit)
+    process.on('SIGTERM', onexit)
+    process.on('SIGQUIT', onexit)
     await agent.init()
     // agent.reloadpackages(true);
     // agent.on("runit", ( streamid, command, parameters, cwd, env) => {

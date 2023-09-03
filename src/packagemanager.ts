@@ -84,7 +84,7 @@ export class packagemanager {
     let pkg: ipackage = null;
     if(fs.existsSync(path.join(packagemanager.packagefolder, id + ".json"))) {
       pkg = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder, id + ".json")).toString())
-      if(pkg.fileid != "local") {
+      if(pkg.fileid != "local" && agent.client.connected && agent.client.signedin) {
         let serverpcks: ipackage[] = null; 
         try { // If offline, this will fail, but we still have the files, so return the local package
           // serverpck = await client.FindOne<ipackage>({ collectionname: "agents", query: { _id: id, "_type": "package" } });
@@ -112,10 +112,15 @@ export class packagemanager {
         }
       }
     } else {
-      pkg = await client.FindOne<ipackage>({ collectionname: "agents", query: { _id: id, "_type": "package" } });
-      if(pkg != null) fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
+      if(agent.client.connected && agent.client.signedin) {
+        pkg = await client.FindOne<ipackage>({ collectionname: "agents", query: { _id: id, "_type": "package" } });
+        if(pkg != null) fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
+      }
     }     
     if(pkg == null) throw new Error("Failed to find package: " + id);
+    if(!agent.client.connected || !agent.client.signedin) {
+      return pkg;
+    }
     // console.log("Downloading file " + pkg.fileid)
     let filename = "";
     if(pkg.fileid != "local") {

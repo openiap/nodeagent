@@ -37,17 +37,33 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var agent_1 = require("./agent");
+var runner_1 = require("./runner");
 function main() {
     return __awaiter(this, void 0, void 0, function () {
-        var error_1;
+        var onexit, error_1;
+        var _this = this;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 5, , 6]);
                     agent_1.agent.globalpackageid = process.env.forcedpackageid || process.env.packageid || "";
-                    process.on('SIGINT', function () { process.exit(0); });
-                    process.on('SIGTERM', function () { process.exit(0); });
-                    process.on('SIGQUIT', function () { process.exit(0); });
+                    onexit = function () { return __awaiter(_this, void 0, void 0, function () {
+                        var s, stream;
+                        return __generator(this, function (_a) {
+                            for (s = runner_1.runner.streams.length - 1; s >= 0; s--) {
+                                stream = runner_1.runner.streams[s];
+                                console.log("*** Kill stream: " + stream.id);
+                                runner_1.runner.kill(agent_1.agent.client, stream.id);
+                            }
+                            console.log("*** Exit");
+                            ;
+                            process.exit(0);
+                            return [2 /*return*/];
+                        });
+                    }); };
+                    process.on('SIGINT', onexit);
+                    process.on('SIGTERM', onexit);
+                    process.on('SIGQUIT', onexit);
                     return [4 /*yield*/, agent_1.agent.init()
                         // agent.reloadpackages(true);
                         // agent.on("runit", ( streamid, command, parameters, cwd, env) => {
@@ -83,4 +99,4 @@ function main() {
     });
 }
 main();
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicnVuYWdlbnQuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi9zcmMvcnVuYWdlbnQudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQSxpQ0FBZ0M7QUFDaEMsU0FBZSxJQUFJOzs7Ozs7O29CQUVmLGFBQUssQ0FBQyxlQUFlLEdBQUcsT0FBTyxDQUFDLEdBQUcsQ0FBQyxlQUFlLElBQUksT0FBTyxDQUFDLEdBQUcsQ0FBQyxTQUFTLElBQUksRUFBRSxDQUFDO29CQUNuRixPQUFPLENBQUMsRUFBRSxDQUFDLFFBQVEsRUFBRSxjQUFRLE9BQU8sQ0FBQyxJQUFJLENBQUMsQ0FBQyxDQUFDLENBQUEsQ0FBQyxDQUFDLENBQUMsQ0FBQTtvQkFDL0MsT0FBTyxDQUFDLEVBQUUsQ0FBQyxTQUFTLEVBQUUsY0FBUSxPQUFPLENBQUMsSUFBSSxDQUFDLENBQUMsQ0FBQyxDQUFBLENBQUMsQ0FBQyxDQUFDLENBQUE7b0JBQ2hELE9BQU8sQ0FBQyxFQUFFLENBQUMsU0FBUyxFQUFFLGNBQVEsT0FBTyxDQUFDLElBQUksQ0FBQyxDQUFDLENBQUMsQ0FBQSxDQUFDLENBQUMsQ0FBQyxDQUFBO29CQUNoRCxxQkFBTSxhQUFLLENBQUMsSUFBSSxFQUFFO3dCQUNsQiw4QkFBOEI7d0JBQzlCLG9FQUFvRTt3QkFDcEUsTUFBTTt3QkFDTiw4Q0FBOEM7d0JBQzlDLHFDQUFxQzt3QkFDckMsTUFBTTt3QkFDTix5REFBeUQ7d0JBQ3pELDRFQUE0RTt3QkFDNUUsNkRBQTZEO3dCQUM3RCxNQUFNO3dCQUNOLCtDQUErQzt3QkFDL0MsdUNBQXVDO3dCQUN2QyxNQUFNO3NCQWJZOztvQkFBbEIsU0FBa0IsQ0FBQTs7O3lCQWNYLElBQUk7b0JBQ1QscUJBQU0sSUFBSSxPQUFPLENBQUMsVUFBQSxPQUFPLElBQUksT0FBQSxVQUFVLENBQUMsT0FBTyxFQUFFLElBQUksQ0FBQyxFQUF6QixDQUF5QixDQUFDLEVBQUE7O29CQUF2RCxTQUF1RCxDQUFDOzs7OztvQkFHMUQsT0FBTyxDQUFDLEtBQUssQ0FBQyxPQUFLLENBQUMsQ0FBQzs7Ozs7O0NBRXhCO0FBRUQsSUFBSSxFQUFFLENBQUMifQ==
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicnVuYWdlbnQuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi9zcmMvcnVuYWdlbnQudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQSxpQ0FBZ0M7QUFDaEMsbUNBQWtDO0FBQ2xDLFNBQWUsSUFBSTs7Ozs7Ozs7b0JBRWYsYUFBSyxDQUFDLGVBQWUsR0FBRyxPQUFPLENBQUMsR0FBRyxDQUFDLGVBQWUsSUFBSSxPQUFPLENBQUMsR0FBRyxDQUFDLFNBQVMsSUFBSSxFQUFFLENBQUM7b0JBQzdFLE1BQU0sR0FBRzs7OzRCQUNiLEtBQVMsQ0FBQyxHQUFHLGVBQU0sQ0FBQyxPQUFPLENBQUMsTUFBTSxHQUFHLENBQUMsRUFBRSxDQUFDLElBQUksQ0FBQyxFQUFFLENBQUMsRUFBRSxFQUFFO2dDQUM3QyxNQUFNLEdBQUcsZUFBTSxDQUFDLE9BQU8sQ0FBQyxDQUFDLENBQUMsQ0FBQztnQ0FDakMsT0FBTyxDQUFDLEdBQUcsQ0FBQyxtQkFBbUIsR0FBRyxNQUFNLENBQUMsRUFBRSxDQUFDLENBQUM7Z0NBQzdDLGVBQU0sQ0FBQyxJQUFJLENBQUMsYUFBSyxDQUFDLE1BQU0sRUFBRSxNQUFNLENBQUMsRUFBRSxDQUFDLENBQUM7NkJBQ3RDOzRCQUNELE9BQU8sQ0FBQyxHQUFHLENBQUMsVUFBVSxDQUFDLENBQUM7NEJBQUEsQ0FBQzs0QkFDekIsT0FBTyxDQUFDLElBQUksQ0FBQyxDQUFDLENBQUMsQ0FBQzs7O3lCQUNqQixDQUFDO29CQUNGLE9BQU8sQ0FBQyxFQUFFLENBQUMsUUFBUSxFQUFFLE1BQU0sQ0FBQyxDQUFBO29CQUM1QixPQUFPLENBQUMsRUFBRSxDQUFDLFNBQVMsRUFBRSxNQUFNLENBQUMsQ0FBQTtvQkFDN0IsT0FBTyxDQUFDLEVBQUUsQ0FBQyxTQUFTLEVBQUUsTUFBTSxDQUFDLENBQUE7b0JBQzdCLHFCQUFNLGFBQUssQ0FBQyxJQUFJLEVBQUU7d0JBQ2xCLDhCQUE4Qjt3QkFDOUIsb0VBQW9FO3dCQUNwRSxNQUFNO3dCQUNOLDhDQUE4Qzt3QkFDOUMscUNBQXFDO3dCQUNyQyxNQUFNO3dCQUNOLHlEQUF5RDt3QkFDekQsNEVBQTRFO3dCQUM1RSw2REFBNkQ7d0JBQzdELE1BQU07d0JBQ04sK0NBQStDO3dCQUMvQyx1Q0FBdUM7d0JBQ3ZDLE1BQU07c0JBYlk7O29CQUFsQixTQUFrQixDQUFBOzs7eUJBY1gsSUFBSTtvQkFDVCxxQkFBTSxJQUFJLE9BQU8sQ0FBQyxVQUFBLE9BQU8sSUFBSSxPQUFBLFVBQVUsQ0FBQyxPQUFPLEVBQUUsSUFBSSxDQUFDLEVBQXpCLENBQXlCLENBQUMsRUFBQTs7b0JBQXZELFNBQXVELENBQUM7Ozs7O29CQUcxRCxPQUFPLENBQUMsS0FBSyxDQUFDLE9BQUssQ0FBQyxDQUFDOzs7Ozs7Q0FFeEI7QUFFRCxJQUFJLEVBQUUsQ0FBQyJ9
