@@ -13,6 +13,7 @@ export declare class instrumentation {
     static meterProvider: MeterProvider;
     static addMeterURL(url: string): void;
     static addTraceURL(url: string): void;
+    private static firstinit;
     static init(): void;
     private static creatememorymeters;
     static setdefaultlabels(): boolean;

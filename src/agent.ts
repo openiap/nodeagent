@@ -33,8 +33,8 @@ export class agent  {
   public static myproject = { version: "" };
   public static num_workitemqueue_jobs = 0;
   public static max_workitemqueue_jobs = 1;
-  public static maxrestarts = 5;
-  public static maxrestartsminutes = 5;
+  public static maxrestarts = 15;
+  public static maxrestartsminutes = 15;
   public static killonpackageupdate = true;
   public static exitonfailedschedule = true;
   public static eventEmitter = new EventEmitter();
@@ -573,6 +573,10 @@ export class agent  {
                       log("Schedule " + schedule.name + " (" + schedule.id + ") is disabled");
                       return;
                     }
+                    let startinms = 100;
+                    if(schedule.task.restartcounter > 0) {
+                      startinms = 5000 + (1000 * schedule.task.restartcounter);
+                    }
                     log("Schedule " + schedule.name + " (" + schedule.id + ") started");
                     schedule.task.stop()
                     schedule.task.timeout = setTimeout(async () => {
@@ -608,6 +612,7 @@ export class agent  {
                           const hascronjobs = agent.schedules.find(x => x.cron != null && x.cron != "" && x.enabled == true);
                           if (hascronjobs == null && agent.exitonfailedschedule == true) {
                             log("Schedule " + schedule.name + " (" + schedule.id + ") stopped " + schedule.task.restartcounter + " times, no cron jobs running, exit agent completly!");
+                            process.exit(0);
                           } else {
                             log("Schedule " + schedule.name + " (" + schedule.id + ") stopped " + schedule.task.restartcounter + " times, stop schedule");
                           }
@@ -621,7 +626,7 @@ export class agent  {
                         }
 
                       }
-                    }, 100);
+                    }, startinms);
                   }
                 }
                 schedule.task.start();
