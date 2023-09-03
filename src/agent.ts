@@ -89,10 +89,6 @@ export class agent  {
   
   public static async init(_client: openiap = undefined) {
     try {
-      let apiurl = process.env.oidc_config || process.env.apiurl || process.env.grpcapiurl || process.env.wsapiurl || "";
-      if (apiurl == "" && _client != null) {
-        process.env.apiurl = _client.url;
-      }
       Logger.init();
     } catch (error) {
       
@@ -149,10 +145,12 @@ export class agent  {
           }
         }
       }
-      oidc_config = protocol + "://" + domain + "/oidc/.well-known/openid-configuration"
-      console.log("auto generated oidc_config: " + oidc_config)
-      process.env.oidc_config = oidc_config;
-    }
+      if(domain != null && domain.indexOf(".") > 0) {
+        oidc_config = protocol + "://" + domain + "/oidc/.well-known/openid-configuration"
+        console.log("auto generated oidc_config: " + oidc_config)
+        process.env.oidc_config = oidc_config;
+      }
+  }
 
     
     
@@ -246,6 +244,7 @@ export class agent  {
     try {
       let u = new URL(client.url);
       process.env.apiurl = client.url;
+      Logger.instrumentation?.init();
       await agent.RegisterAgent()
       if (client.client == null || client.client.user == null) {
         log('connected, but not signed in, close connection again');
