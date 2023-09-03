@@ -25,6 +25,9 @@ let serviceName = "";
 let command = "";
 let verbose = false;
 let service = false;
+let myproject = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
+console.log(myproject.name + "@" + myproject.version);
+
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
   if (arg === '-noop' || arg === '/noop') {
