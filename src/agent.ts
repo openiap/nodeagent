@@ -88,6 +88,7 @@ export class agent  {
 
   
   public static async init(_client: openiap = undefined) {
+    process.env.PIP_BREAK_SYSTEM_PACKAGES = "1";
     try {
       Logger.init();
     } catch (error) {
@@ -128,11 +129,18 @@ export class agent  {
       }
     }
     let oidc_config: string = process.env.oidc_config || process.env.agent_oidc_config;
-    if(oidc_config == null || oidc_config == "") {
+    if((oidc_config == null || oidc_config == "") && (process.env.oidc_userinfo_endpoint == null || process.env.oidc_userinfo_endpoint == "")) {
       let protocol = process.env.protocol || "http";
       let domain = process.env.domain || "";
       if(domain == "") {
         let apiurl = process.env.oidc_config || process.env.apiurl || process.env.grpcapiurl || process.env.wsapiurl || "";
+        if(apiurl == "") {
+          if (fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
+            var assistantConfig = JSON.parse(fs.readFileSync(path.join(os.homedir(), ".openiap", "config.json"), "utf8"));
+            apiurl = assistantConfig.apiurl;
+          }
+      
+        }
         if (apiurl != "") {
           let url = new URL(apiurl);
           domain = (url.hostname.indexOf("grpc") == 0) ? url.hostname.substring(5) : url.hostname;

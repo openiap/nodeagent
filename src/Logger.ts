@@ -1,5 +1,4 @@
-import { openiap } from "@openiap/nodeapi";
-import { Context, HrTime, Span, TraceFlags } from "@opentelemetry/api";
+import { Context, TraceFlags } from "@opentelemetry/api";
 export class Logger {
     public static instrumentation: iinstrumentation;
     public static init() {
