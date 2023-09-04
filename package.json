@@ -37,7 +37,7 @@
         "typescript": "^4.9.4"
     },
     "dependencies": {
-        "@openiap/nodeapi": "^0.0.22",
+        "@openiap/nodeapi": "^0.0.23",
         "@opentelemetry/exporter-metrics-otlp-grpc": "^0.34.0",
         "@opentelemetry/host-metrics": "^0.33.1",
         "@opentelemetry/sdk-node": "^0.34.0",
