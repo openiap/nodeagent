@@ -14,7 +14,7 @@ export declare class instrumentation {
     static addMeterURL(url: string): void;
     static addTraceURL(url: string): void;
     private static firstinit;
-    static init(): void;
+    static init(): boolean;
     private static creatememorymeters;
     static setdefaultlabels(): boolean;
     static setparent(traceId?: string, spanId?: string, traceFlags?: api.TraceFlags): Context;

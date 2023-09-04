@@ -137,7 +137,7 @@ export class agent  {
           let url = new URL(apiurl);
           domain = (url.hostname.indexOf("grpc") == 0) ? url.hostname.substring(5) : url.hostname;
           if(url.port == "443") {
-            protocol = "http";
+            protocol = "https";
           } else if (url.protocol != "grpc:") {
             protocol = url.protocol.substring(0, url.protocol.length - 1);
           } else if (url.hostname == "pc.openiap.io") {

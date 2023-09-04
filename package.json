@@ -1,6 +1,6 @@
 {
     "name": "@openiap/nodeagent",
-    "version": "0.0.82",
+    "version": "0.0.83",
     "description": "",
     "main": "./dist/index.js",
     "module": "./dist/index.js",
@@ -38,10 +38,9 @@
     },
     "dependencies": {
         "@openiap/nodeapi": "^0.0.22",
-        "@opentelemetry/api": "^1.4.1",
-        "@opentelemetry/auto-instrumentations-node": "^0.39.2",
-        "@opentelemetry/exporter-metrics-otlp-grpc": "^0.41.2",
+        "@opentelemetry/exporter-metrics-otlp-grpc": "^0.34.0",
         "@opentelemetry/host-metrics": "^0.33.1",
+        "@opentelemetry/sdk-node": "^0.34.0",
         "adm-zip": "^0.5.10",
         "cross-spawn": "^7.0.3",
         "node-cron": "^3.0.2",
