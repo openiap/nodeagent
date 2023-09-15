@@ -2,6 +2,16 @@ import { api, node } from '@opentelemetry/sdk-node';
 import { Context } from '@opentelemetry/api';
 import { MeterProvider } from '@opentelemetry/sdk-metrics';
 import { Resource } from '@opentelemetry/resources';
+export declare function getNetworkData(): Promise<NetworkData[]>;
+export interface NetworkData {
+    iface: string;
+    rx_bytes: number;
+    rx_dropped: number;
+    rx_errors: number;
+    tx_bytes: number;
+    tx_dropped: number;
+    tx_errors: number;
+}
 export declare class instrumentation {
     static otel_trace_max_node_time_seconds: number;
     static baseurl: string;
