@@ -24,9 +24,9 @@ export declare class instrumentation {
     private static firstinit;
     static spanexporter: MultiSpanExporter;
     static metricexporter: MultiMetricExporter;
-    static init(): boolean;
+    static init(client: openiap): boolean;
     private static creatememorymeters;
-    static setdefaultlabels(): boolean;
+    static setdefaultlabels(client: openiap): boolean;
     static setparent(traceId?: string, spanId?: string, traceFlags?: api.TraceFlags): Context;
 }
 import { InstrumentType, ResourceMetrics, PushMetricExporter, AggregationTemporality } from '@opentelemetry/sdk-metrics';
@@ -42,6 +42,7 @@ export declare class MultiMetricExporter implements PushMetricExporter {
 }
 import { ReadableSpan, SpanExporter } from "@opentelemetry/sdk-trace-base";
 import { ExportResult } from '@opentelemetry/core';
+import { openiap } from '@openiap/nodeapi';
 export declare class MultiSpanExporter implements SpanExporter {
     private exporters;
     constructor(exporters: SpanExporter[]);

@@ -1,3 +1,4 @@
+import { openiap } from "@openiap/nodeapi";
 import { Context, TraceFlags } from "@opentelemetry/api";
 export class Logger {
     public static instrumentation: iinstrumentation;
@@ -9,14 +10,13 @@ export class Logger {
         }
         if (_instrumentation_require != null && Logger.instrumentation == null) {
             Logger.instrumentation = _instrumentation_require.instrumentation;
-            Logger.instrumentation.init();
         } else {
         }
 
     }
 }
 export interface iinstrumentation {
-    init(): void;
+    init(client:openiap): void;
     addMeterURL(url: string): void;
     addTraceURL(url: string): void;
     setparent(traceId: string, spanId: string, traceFlags: TraceFlags): Context;

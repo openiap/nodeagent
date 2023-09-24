@@ -42,6 +42,7 @@ export declare class agent {
     static eventNames(): (string | symbol)[];
     static init(_client?: openiap): Promise<void>;
     static reloadAndParseConfig(): boolean;
+    private static onSignedIn;
     private static onConnected;
     private static onDisconnected;
     static localrun(packageid: string, streamid: string, payload: any, env: any, schedule: any): Promise<[number, string, any]>;

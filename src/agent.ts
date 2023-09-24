@@ -1,4 +1,4 @@
-import { openiap, config, QueueEvent, Workitem } from "@openiap/nodeapi";
+import { openiap, config, QueueEvent, Workitem, SigninResponse, User } from "@openiap/nodeapi";
 import { runner } from "./runner";
 import { ipackage, packagemanager } from "./packagemanager";
 import * as cron from "node-cron";
@@ -103,6 +103,7 @@ export class agent  {
       agent.client = _client;
     }
     agent.client.on('connected', agent.onConnected);
+    agent.client.on('signedin', agent.onSignedIn);
     agent.client.on('disconnected', agent.onDisconnected);
     log("Agent starting!!!")
     if (process.env.maxjobs != null && process.env.maxjobs != null) {
@@ -248,11 +249,13 @@ export class agent  {
     }
     return true;
   }
+  private static async onSignedIn(client: openiap, user: User) {
+    Logger.instrumentation?.init(client);
+  }
   private static async onConnected(client: openiap) {
     try {
       let u = new URL(client.url);
       process.env.apiurl = client.url;
-      Logger.instrumentation?.init();
       await agent.RegisterAgent()
       if (client.client == null || client.client.user == null) {
         log('connected, but not signed in, close connection again');
