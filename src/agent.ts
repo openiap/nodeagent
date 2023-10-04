@@ -541,16 +541,41 @@ export class agent  {
               log("Schedule " + schedule.name + " (" + schedule.id + ") running every " + schedule.cron);
               if (schedule.task == null) {
                 schedule.task = cron.schedule(schedule.cron, async () => {
-                  if (schedule.enabled) {
-                    log("Schedule " + schedule.name + " (" + schedule.id + ") enabled, run now");
-                    agent.localrun(schedule.packageid, null, null, schedule.env, schedule);
-                  } else {
-                    log("Schedule " + + " (" + schedule.id + ") disabled, kill all instances of package " + schedule.packageid + " if running");
+                  const kill = () => {
                     for (let s = runner.streams.length - 1; s >= 0; s--) {
                       const stream = runner.streams[s];
                       if (stream.schedulename == schedule.name) {
                         runner.kill(agent.client, stream.id);
                       }
+                    }
+                  }
+                  const isRunning = () => {
+                    for (let s = runner.streams.length - 1; s >= 0; s--) {
+                      const stream = runner.streams[s];
+                      if (stream.schedulename == schedule.name) {
+                        return true;
+                      }
+                    }
+                    return false;
+                  }
+                  if (schedule.enabled) {
+                    if(schedule.terminateIfRunning == true && isRunning() == true) {
+                      log("Schedule " + + " (" + schedule.id + ") is already running, kill all instances of package " + schedule.packageid + " and start again");
+                      kill();
+                    } else if(schedule.allowConcurrentRuns != true && isRunning() == true) {
+                      log("Schedule " + + " (" + schedule.id + ") is already running, do nothing");
+                      return;
+                    }
+                    log("Schedule " + schedule.name + " (" + schedule.id + ") enabled, run now");
+                    try {
+                      agent.localrun(schedule.packageid, null, null, schedule.env, schedule);
+                    } catch (error) {
+                      console.error(error);                      
+                    }
+                  } else {
+                    if(isRunning() == true) {
+                      log("Schedule " + + " (" + schedule.id + ") disabled, kill all instances of package " + schedule.packageid);
+                      kill();
                     }
                   }
                 });
