@@ -1,5 +1,7 @@
 # FROM node:lts-alpine
-from alpine:3.17
+# from alpine:3.17
+FROM continuumio/miniconda3:23.3.1-0-alpine
+USER root
 
 RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
     echo "http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
@@ -36,7 +38,8 @@ RUN npm install
 COPY dist /tmp/dist
 # COPY . /tmp
 # RUN python -m pip install --upgrade pip
-RUN python -m pip install openiap --break-system-packages
+RUN python -m pip install openiap 
+# --break-system-packages
 # load current version
 # RUN npx -y @openiap/nodeagent -noop
 # CMD ["npx", "-y", "@openiap/nodeagent", "-service"]

@@ -283,13 +283,34 @@ export class packagemanager {
         if (command.endsWith(".py")) {
           var python = runner.findPythonPath();
           if (python == "") throw new Error("Failed locating python, is python installed and in the path?")
-          await runner.pipinstall(client, packagepath, streamid, python)
+          var conda = runner.findCondaPath();
+          var condaname = null;
+          if(conda != null && conda != "") {
+            condaname = await runner.condainstall(client, packagepath, streamid, conda)
+          }
+          if(condaname == null) {
+            await runner.pipinstall(client, packagepath, streamid, python)
+          }
           if (wait) {
-            return await runner.runit(client, packagepath, streamid, python, ["-u", command], true, env)
-          } else {
-            runner.runit(client, packagepath, streamid, python, ["-u", command], true, env)
+            if(condaname != null) {
+              console.log(conda)
+              console.log(["run", "-n", condaname, "python", "-u", command])
+              return await runner.runit(client, packagepath, streamid, conda, ["run", "-n", condaname, "python", "-u", command], true, env)
+            }
+            console.log(python)
+            console.log(["-u", command])
+          return await runner.runit(client, packagepath, streamid, python, ["-u", command], true, env)
+          }
+          if(condaname != null) {
+            console.log(conda)
+            console.log(["run", "-n", condaname, "python", "-u", command])
+            runner.runit(client, packagepath, streamid, conda, ["run", "-n", condaname, "python", "-u", command], true, env)
             return 0;
           }
+          console.log(python)
+          console.log(["-u", command])
+          runner.runit(client, packagepath, streamid, python, ["-u", command], true, env)
+          return 0;
         } else if (command.endsWith(".js") || command == "npm run start") {
           // const nodePath = path.join(app.getAppPath(), 'node_modules', '.bin', 'node');
           // const nodePath = "node"
@@ -297,8 +318,17 @@ export class packagemanager {
           if (nodePath == "") throw new Error("Failed locating node, is node installed and in the path? " + JSON.stringify(process.env.PATH))
           await runner.npminstall(client, packagepath, streamid);
           if (wait) {
+            if(command == "npm run start") {
+              const npmpath = runner.findNPMPath();
+              return await runner.runit(client, packagepath, streamid, npmpath, ["run", "start"], true, env)
+            }
             return await runner.runit(client, packagepath, streamid, nodePath, [command], true, env)
           } else {
+            if(command == "npm run start") {
+              const npmpath = runner.findNPMPath();
+              runner.runit(client, packagepath, streamid, npmpath, ["run", "start"], true, env)
+              return 0;
+            }
             runner.runit(client, packagepath, streamid, nodePath, [command], true, env)
             return 0;
           }

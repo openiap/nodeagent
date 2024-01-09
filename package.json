@@ -1,6 +1,6 @@
 {
     "name": "@openiap/nodeagent",
-    "version": "0.0.88",
+    "version": "0.0.90",
     "description": "",
     "main": "./dist/index.js",
     "module": "./dist/index.js",
@@ -30,6 +30,7 @@
     "funding": "https://github.com/sponsors/skadefro",
     "devDependencies": {
         "@types/adm-zip": "^0.5.0",
+        "@types/js-yaml": "^4.0.9",
         "@types/node-cron": "^3.0.8",
         "@types/pidusage": "^2.0.2",
         "@types/tar": "^6.1.4",
@@ -42,6 +43,7 @@
         "@opentelemetry/sdk-node": "^0.43.0",
         "adm-zip": "^0.5.10",
         "cross-spawn": "^7.0.3",
+        "js-yaml": "^4.1.0",
         "node-cron": "^3.0.2",
         "node-windows": "^1.0.0-beta.6",
         "pidusage": "^3.0.2",

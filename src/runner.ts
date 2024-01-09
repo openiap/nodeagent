@@ -5,6 +5,8 @@ import * as os from "os";
 import * as path from "path";
 import { config, openiap } from '@openiap/nodeapi';
 import { agent } from './agent';
+import * as yaml from "js-yaml";
+
 // import { spawnSync } from 'cross-spawn';
 const ctrossspawn = require('cross-spawn');
 
@@ -259,6 +261,11 @@ export class runner {
         if (result == "") result = runner.findInPath("python")
         return result;
     }
+    public static findCondaPath() {
+        var result = runner.findInPath("conda")
+        if (result == "") result = runner.findInPath("micromamba")
+        return result;
+    }
     public static findPwShPath() {
         var result = runner.findInPath("pwsh")
         if (result == "") result = runner.findInPath("powershell")
@@ -287,6 +294,41 @@ export class runner {
         if (result == "") result = runner.findInPath("chrome");
         return result
     }
+    public static async Generatenpmrc(client: openiap, packagepath: string, streamid: string) {
+        const npmrcFile = path.join(packagepath, ".npmrc");
+        if (fs.existsSync(npmrcFile)) return;
+        let HTTP_PROXY = process.env.HTTP_PROXY;
+        let HTTPS_PROXY = process.env.HTTPS_PROXY;
+        let NO_PROXY = process.env.NO_PROXY;
+        let NPM_REGISTRY = process.env.NPM_REGISTRY;
+        let NPM_TOKEN = process.env.NPM_TOKEN;
+        if(HTTP_PROXY == null || HTTP_PROXY == "" || HTTP_PROXY == "undefined" || HTTP_PROXY == "null") HTTP_PROXY = "";
+        if(HTTPS_PROXY == null || HTTPS_PROXY == "" || HTTPS_PROXY == "undefined" || HTTPS_PROXY == "null") HTTPS_PROXY = "";
+        if(NO_PROXY == null || NO_PROXY == "" || NO_PROXY == "undefined" || NO_PROXY == "null") NO_PROXY = "";
+        if(NPM_REGISTRY == null || NPM_REGISTRY == "" || NPM_REGISTRY == "undefined" || NPM_REGISTRY == "null") NPM_REGISTRY = "";
+        if(NPM_TOKEN == null || NPM_TOKEN == "" || NPM_TOKEN == "undefined" || NPM_TOKEN == "null") NPM_TOKEN = "";
+        if (HTTP_PROXY != "" || HTTPS_PROXY != "" || NPM_REGISTRY != "") {
+            // According to https://docs.npmjs.com/cli/v7/using-npm/config it should be picked up by environment variables, 
+            // HTTP_PROXY, HTTPS_PROXY and NO_PROXY 
+            let content = "";
+            if (HTTP_PROXY != "") content += "proxy=" + HTTP_PROXY + "\n";
+            if (HTTPS_PROXY != "") content += "https-proxy=" + HTTPS_PROXY + "\n";
+            if (NO_PROXY != "") content += "noproxy=" + NO_PROXY + "\n";
+            if(NPM_REGISTRY != null && NPM_REGISTRY != "") {
+                content += "\n" + "registry=" + NPM_REGISTRY;
+                if(NPM_TOKEN != null && NPM_TOKEN != "") {
+                    content += "\n" + NPM_REGISTRY.replace("https:", "").replace("http:", "") + ":_authToken=" + NPM_TOKEN;
+                }
+            } else {
+                content += "\n" + "registry=http://registry.npmjs.org/";
+                if(NPM_TOKEN != null && NPM_TOKEN != "") {
+                    content += "\n" + "//registry.npmjs.org/:_authToken=" + NPM_TOKEN;
+                }
+            }
+
+            fs.writeFileSync(npmrcFile, content);
+          }
+        }
     public static async pipinstall(client: openiap, packagepath: string, streamid: string, pythonpath: string) {
         if (fs.existsSync(path.join(packagepath, "requirements.txt.done"))) return;
         if (fs.existsSync(path.join(packagepath, "requirements.txt"))) {
@@ -300,7 +342,56 @@ export class runner {
             }
         }
     }
+    public static async condaenv(packagepath: string, condapath: string) {
+        let CONDA_PREFIX=process.env.CONDA_PREFIX;
+        if(CONDA_PREFIX == null || CONDA_PREFIX == "") CONDA_PREFIX = "";
+    }
+    public static async condainstall(client: openiap, packagepath: string, streamid: string, condapath: string): Promise<string> {
+        var envname = null;
+        // create envoruiment and install packages
+        var envfile = ""
+        if(fs.existsSync(path.join(packagepath, "conda.yaml"))) envfile = "conda.yaml"
+        if(fs.existsSync(path.join(packagepath, "conda.yml"))) envfile = "conda.yml"
+        if(fs.existsSync(path.join(packagepath, "environment.yml"))) envfile = "environment.yml"
+        if(fs.existsSync(path.join(packagepath, "environment.yaml"))) envfile = "environment.yaml"
+        if (envfile != "") {
+            const fileContents = fs.readFileSync(path.join(packagepath, envfile), 'utf8');
+
+            const data:any = yaml.load(fileContents);
+            if(data != null) envname = data.name;
+            if(envname == null || envname == "") {
+                envname = null;
+                console.error("No name found in conda environment file, skipping conda install");
+            }
+        }
+        if(envname == null) return envname;
+        if (!fs.existsSync(path.join(packagepath, envfile))) return envname;
+        // docker work around
+        if(fs.existsSync("/opt/conda/envs/")){
+            if(fs.existsSync("/opt/conda/envs/" + envname)){
+                runner.notifyStream(client, streamid, "************************");
+                runner.notifyStream(client, streamid, "**** Updating conda env ");
+                runner.notifyStream(client, streamid, "************************");
+                await runner.runit(client, packagepath, streamid, condapath, ["env", "update", "-f", path.join(packagepath, envfile)], false);
+                return envname;;
+            }
+            runner.notifyStream(client, streamid, "************************");
+            runner.notifyStream(client, streamid, "**** Creating conda env ");
+            runner.notifyStream(client, streamid, "************************");
+            await runner.runit(client, packagepath, streamid, condapath, ["env", "update", "-f", path.join(packagepath, envfile)], false);
+            return envname;
+        }
+        if (fs.existsSync(path.join(packagepath, "conda.yaml.done"))) return envname;
+        runner.notifyStream(client, streamid, "************************");
+        runner.notifyStream(client, streamid, "**** Running conda install");
+        runner.notifyStream(client, streamid, "************************");
+        if ((await runner.runit(client, packagepath, streamid, condapath, ["env", "create", "-f", path.join(packagepath, envfile)], false)) == 0) {
+            fs.writeFileSync(path.join(packagepath, "conda.yaml.done"), "done");
+        }
+        return envname;
+    }
     public static async npminstall(client: openiap, packagepath: string, streamid: string): Promise<boolean> {
+        await runner.Generatenpmrc(client, packagepath, streamid);
         if (fs.existsSync(path.join(packagepath, "npm.install.done"))) {
             return false;
         } else if (fs.existsSync(path.join(packagepath, "package.json"))) {

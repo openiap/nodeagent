@@ -30,6 +30,7 @@ export declare class runner {
     static findInPath2(exec: string): string | null;
     static kill(client: openiap, streamid: string): void;
     static findPythonPath(): string;
+    static findCondaPath(): string;
     static findPwShPath(): string;
     static findDotnetPath(): string;
     static findXvfbPath(): string;
@@ -37,7 +38,10 @@ export declare class runner {
     static findNPMPath(): string;
     static findChromiumPath(): string;
     static findChromePath(): string;
+    static Generatenpmrc(client: openiap, packagepath: string, streamid: string): Promise<void>;
     static pipinstall(client: openiap, packagepath: string, streamid: string, pythonpath: string): Promise<void>;
+    static condaenv(packagepath: string, condapath: string): Promise<void>;
+    static condainstall(client: openiap, packagepath: string, streamid: string, condapath: string): Promise<string>;
     static npminstall(client: openiap, packagepath: string, streamid: string): Promise<boolean>;
     static runpythonscript(script: string): Promise<string>;
     static runpythoncode(code: string): Promise<string>;
