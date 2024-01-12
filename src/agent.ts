@@ -136,8 +136,8 @@ export class agent  {
       if(domain == "") {
         let apiurl = process.env.oidc_config || process.env.apiurl || process.env.grpcapiurl || process.env.wsapiurl || "";
         if(apiurl == "") {
-          if (fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
-            var assistantConfig = JSON.parse(fs.readFileSync(path.join(os.homedir(), ".openiap", "config.json"), "utf8"));
+          if (fs.existsSync(path.join(packagemanager.homedir(), ".openiap", "config.json"))) {
+            var assistantConfig = JSON.parse(fs.readFileSync(path.join(packagemanager.homedir(), ".openiap", "config.json"), "utf8"));
             apiurl = assistantConfig.apiurl;
           }
       
@@ -226,8 +226,8 @@ export class agent  {
       return true;
     }
 
-    if (fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
-      agent.assistantConfig = JSON.parse(fs.readFileSync(path.join(os.homedir(), ".openiap", "config.json"), "utf8"));
+    if (fs.existsSync(path.join(packagemanager.homedir(), ".openiap", "config.json"))) {
+      agent.assistantConfig = JSON.parse(fs.readFileSync(path.join(packagemanager.homedir(), ".openiap", "config.json"), "utf8"));
       process.env["NODE_ENV"] = "production";
       if (agent.assistantConfig.apiurl) {
         process.env["apiurl"] = agent.assistantConfig.apiurl;
@@ -243,7 +243,7 @@ export class agent  {
       return true;
     } else {
       if (agent.assistantConfig.apiurl == null || agent.assistantConfig.apiurl == "") {
-        log("failed locating config to load from " + path.join(os.homedir(), ".openiap", "config.json"))
+        log("failed locating config to load from " + path.join(packagemanager.homedir(), ".openiap", "config.json"))
         return false;
       }
     }
@@ -271,7 +271,7 @@ export class agent  {
             } else if (operation == "replace") {
               log("package " + document.name + " (" +  document._id + " ) updated.");
               packagemanager.removepackage(document._id);
-              if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
+              if (!fs.existsSync(packagemanager.packagefolder())) fs.mkdirSync(packagemanager.packagefolder(), { recursive: true });
               await packagemanager.getpackage(agent.client, document._id);
 
               if(agent.killonpackageupdate) {
@@ -324,7 +324,7 @@ export class agent  {
     if(pck == null) {
       throw new Error("Package " + packageid + " not found");
     }
-    const packagepath = packagemanager.getpackagepath(path.join(os.homedir(), ".openiap", "packages", packageid));
+    const packagepath = packagemanager.getpackagepath(path.join(packagemanager.homedir(), ".openiap", "packages", packageid));
     console.log("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin);
     if (packagepath == "") {
       log("Package " + packageid + " not found");
@@ -421,8 +421,8 @@ export class agent  {
         log("queue registered as " + agent.localqueue);
         agent.agentid = res._id;
         let config = { agentid: agent.agentid, jwt: res.jwt, apiurl: agent.client.url };
-        if (fs.existsSync(path.join(os.homedir(), ".openiap", "config.json"))) {
-          config = JSON.parse(fs.readFileSync(path.join(os.homedir(), ".openiap", "config.json"), "utf8"));
+        if (fs.existsSync(path.join(packagemanager.homedir(), ".openiap", "config.json"))) {
+          config = JSON.parse(fs.readFileSync(path.join(packagemanager.homedir(), ".openiap", "config.json"), "utf8"));
         }
         config.agentid = agent.agentid;
 
@@ -435,8 +435,8 @@ export class agent  {
         if (agent.client.url != null && agent.client.url != "") {
           config.apiurl = agent.client.url;
         }
-        if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
-        fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(config));
+        if (!fs.existsSync(packagemanager.packagefolder())) fs.mkdirSync(packagemanager.packagefolder(), { recursive: true });
+        fs.writeFileSync(path.join(packagemanager.homedir(), ".openiap", "config.json"), JSON.stringify(config));
         // }
 
         if (res.schedules == null || !Array.isArray(res.schedules)) res.schedules = [];
@@ -743,7 +743,7 @@ export class agent  {
             return { "command": payload.command, "success": false, error: "payload missing packageid" };
           }
           await packagemanager.getpackage(agent.client, payload.packageid);
-          packagepath = packagemanager.getpackagepath(path.join(os.homedir(), ".openiap", "packages", payload.packageid));
+          packagepath = packagemanager.getpackagepath(path.join(packagemanager.homedir(), ".openiap", "packages", payload.packageid));
 
           workitem = await agent.client.PopWorkitem({ wiq: payload.wiq, includefiles: false, compressed: false });
           if (workitem == null) {

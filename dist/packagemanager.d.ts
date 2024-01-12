@@ -14,7 +14,10 @@ export interface ipackage {
     main: string;
 }
 export declare class packagemanager {
-    static packagefolder: string;
+    private static _homedir;
+    static homedir(): string;
+    static packagefolder(): string;
+    private static _packagefolder;
     static packages: ipackage[];
     static getpackages(client: openiap, languages: string[]): Promise<ipackage[]>;
     static reloadpackage(client: openiap, id: string, force: boolean): Promise<ipackage>;

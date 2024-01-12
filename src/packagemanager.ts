@@ -23,16 +23,42 @@ export interface ipackage {
 }
 
 export class packagemanager {
-  public static packagefolder = path.join(os.homedir(), ".openiap", "packages");
+
+  private static _homedir:string = null;
+  public static homedir() {
+    if(packagemanager._homedir != null) {
+      return packagemanager._homedir;
+    }
+    packagemanager._homedir = os.homedir();
+    if(packagemanager._homedir == "/" || packagemanager._homedir == "") {
+      if(fs.existsSync("/home/openiap") == true) {
+        console.log("homedir overriden to /home/openiap from:", packagemanager._homedir)
+        packagemanager._homedir = "/home/openiap"
+      } else {
+        console.log("homedir overriden to /tmp from:", packagemanager._homedir)
+        packagemanager._homedir = "/tmp"
+      }
+    }
+    return packagemanager._homedir;
+  }
+  public static packagefolder() {
+    if(packagemanager._packagefolder != null) {
+      return packagemanager._packagefolder;
+    }
+    packagemanager._packagefolder = path.join(packagemanager.homedir(), ".openiap", "packages")
+    console.log("packagefolder as:", packagemanager._packagefolder)
+    return packagemanager._packagefolder;
+  }
+  private static _packagefolder:string = null;
   public static packages: ipackage[] = [];
   public static async getpackages(client: openiap, languages: string[]): Promise<ipackage[]> {
     if(client == null) {
-      if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
+      if (!fs.existsSync(packagemanager.packagefolder())) fs.mkdirSync(packagemanager.packagefolder(), { recursive: true });
       var _packages: ipackage[] = [];
-      var files = fs.readdirSync(packagemanager.packagefolder);
+      var files = fs.readdirSync(packagemanager.packagefolder());
       for(var i = 0; i < files.length; i++) {
         if(files[i].endsWith(".json")) {
-          var pkg = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder, files[i])).toString());
+          var pkg = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder(), files[i])).toString());
           if(pkg != null && pkg._type == "package") _packages.push(pkg);
         }
       }
@@ -46,31 +72,29 @@ export class packagemanager {
   public static async reloadpackage(client: openiap, id: string, force: boolean): Promise<ipackage> {
     var pkg = await client.FindOne<ipackage>({ query: { "_type": "package", "_id": id }, collectionname: "agents" });
     if(pkg == null) return null;
-    if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
-    if(force == false && fs.existsSync(path.join(packagemanager.packagefolder, pkg._id + ".json"))) {
-      var document = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder, pkg._id + ".json")).toString());
+    if (!fs.existsSync(packagemanager.packagefolder())) fs.mkdirSync(packagemanager.packagefolder(), { recursive: true });
+    if(force == false && fs.existsSync(path.join(packagemanager.packagefolder(), pkg._id + ".json"))) {
+      var document = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder(), pkg._id + ".json")).toString());
       if(document.version == pkg.version) return pkg;
     }
-    packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder, pkg._id));
+    packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder(), pkg._id));
     if (pkg.fileid != null && pkg.fileid != "") {
-      // console.log("get package " + pkg.name);
       await packagemanager.getpackage(client, pkg._id);
     }
   }
   public static async reloadpackages(client: openiap, languages: string[], force: boolean): Promise<ipackage[]> {
     var packages = await packagemanager.getpackages(client, languages);
-    if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
+    if (!fs.existsSync(packagemanager.packagefolder())) fs.mkdirSync(packagemanager.packagefolder(), { recursive: true });
     for (var i = 0; i < packages.length; i++) {
       try {
-        if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
-        if(force == false && fs.existsSync(path.join(packagemanager.packagefolder, packages[i]._id + ".json"))) {
-          var document = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder, packages[i]._id + ".json")).toString());
+        if (!fs.existsSync(packagemanager.packagefolder())) fs.mkdirSync(packagemanager.packagefolder(), { recursive: true });
+        if(force == false && fs.existsSync(path.join(packagemanager.packagefolder(), packages[i]._id + ".json"))) {
+          var document = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder(), packages[i]._id + ".json")).toString());
           if(document.version == packages[i].version) continue;
         }
-        packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder, packages[i]._id));
-        // fs.writeFileSync(path.join(packagemanager.packagefolder, packages[i]._id + ".json"), JSON.stringify(packages[i], null, 2))
+        packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder(), packages[i]._id));
+        // fs.writeFileSync(path.join(packagemanager.packagefolder(), packages[i]._id + ".json"), JSON.stringify(packages[i], null, 2))
         if (packages[i].fileid != null && packages[i].fileid != "") {
-          // console.log("get package " + packages[i].name + " v" + packages[i].version + " " + packages[i]._id);
           await packagemanager.getpackage(client, packages[i]._id);
         }
       } catch (error) {
@@ -80,10 +104,10 @@ export class packagemanager {
     return packages;
   }
   public static async getpackage(client: openiap, id: string): Promise<ipackage> {
-    if (!fs.existsSync(packagemanager.packagefolder)) fs.mkdirSync(packagemanager.packagefolder, { recursive: true });
+    if (!fs.existsSync(packagemanager.packagefolder())) fs.mkdirSync(packagemanager.packagefolder(), { recursive: true });
     let pkg: ipackage = null;
-    if(fs.existsSync(path.join(packagemanager.packagefolder, id + ".json"))) {
-      pkg = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder, id + ".json")).toString())
+    if(fs.existsSync(path.join(packagemanager.packagefolder(), id + ".json"))) {
+      pkg = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder(), id + ".json")).toString())
       if(pkg.fileid != "local" && agent.client.connected && agent.client.signedin) {
         let serverpcks: ipackage[] = null; 
         try { // If offline, this will fail, but we still have the files, so return the local package
@@ -97,8 +121,8 @@ export class packagemanager {
           }
           if(serverpcks[0].fileid == pkg.fileid) {
             pkg = serverpcks[0];
-            fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
-            const localpath = path.join(packagemanager.packagefolder, id)
+            fs.writeFileSync(path.join(packagemanager.packagefolder(), id + ".json"), JSON.stringify(pkg, null, 2))
+            const localpath = path.join(packagemanager.packagefolder(), id)
             if(fs.existsSync(localpath)) {
               let files = fs.readdirSync(localpath);
               if(files.length > 0 ) {
@@ -107,35 +131,34 @@ export class packagemanager {
             }
           } else {
             pkg = serverpcks[0];
-            fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
+            fs.writeFileSync(path.join(packagemanager.packagefolder(), id + ".json"), JSON.stringify(pkg, null, 2))
           }
         }
       }
     } else {
       if(agent.client.connected && agent.client.signedin) {
         pkg = await client.FindOne<ipackage>({ collectionname: "agents", query: { _id: id, "_type": "package" } });
-        if(pkg != null) fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
+        if(pkg != null) fs.writeFileSync(path.join(packagemanager.packagefolder(), id + ".json"), JSON.stringify(pkg, null, 2))
       }
     }     
     if(pkg == null) throw new Error("Failed to find package: " + id);
     if(!agent.client.connected || !agent.client.signedin) {
       return pkg;
     }
-    // console.log("Downloading file " + pkg.fileid)
     let filename = "";
     if(pkg.fileid != "local") {
       try {
-        const reply = await client.DownloadFile({ id: pkg.fileid, folder: packagemanager.packagefolder });
-        filename = path.join(packagemanager.packagefolder, reply.filename);
+        const reply = await client.DownloadFile({ id: pkg.fileid, folder: packagemanager.packagefolder() });
+        filename = path.join(packagemanager.packagefolder(), reply.filename);
       } catch (error) {
         console.log(error);
       }
       if(filename == "") {
         pkg = await client.FindOne<ipackage>({ collectionname: "agents", query: { _id: id, "_type": "package" } });
-        if(pkg != null) fs.writeFileSync(path.join(packagemanager.packagefolder, id + ".json"), JSON.stringify(pkg, null, 2))
+        if(pkg != null) fs.writeFileSync(path.join(packagemanager.packagefolder(), id + ".json"), JSON.stringify(pkg, null, 2))
         try {
-          const reply = await client.DownloadFile({ id: pkg.fileid, folder: packagemanager.packagefolder });
-          filename = path.join(packagemanager.packagefolder, reply.filename);
+          const reply = await client.DownloadFile({ id: pkg.fileid, folder: packagemanager.packagefolder() });
+          filename = path.join(packagemanager.packagefolder(), reply.filename);
         } catch (error) {
         }
       }
@@ -146,9 +169,9 @@ export class packagemanager {
     try {
       if (path.extname(filename) == ".zip") {
         var zip = new AdmZip(filename);
-        zip.extractAllTo(path.join(packagemanager.packagefolder, id), true);
+        zip.extractAllTo(path.join(packagemanager.packagefolder(), id), true);
       } else if (path.extname(filename) == ".tar.gz" || path.extname(filename) == ".tgz") {
-        var dest = path.join(packagemanager.packagefolder, id);
+        var dest = path.join(packagemanager.packagefolder(), id);
         if (!fs.existsSync(dest)) {
           fs.mkdirSync(dest, { recursive: true });
         }
@@ -228,7 +251,7 @@ export class packagemanager {
   }
   public static async runpackage(client: openiap, id: string, streamid: string, streamqueues: string[], stream: Readable, wait: boolean, env: any = {}, schedule: any = undefined): Promise<number> {
     if (streamid == null || streamid == "") throw new Error("streamid is null or empty");
-    if(packagemanager.packagefolder == null || packagemanager.packagefolder == "") throw new Error("packagemanager.packagefolder is null or empty");
+    if(packagemanager.packagefolder() == null || packagemanager.packagefolder() == "") throw new Error("packagemanager.packagefolder is null or empty");
     try {
       let pck: ipackage = null;
       let s: runner_stream = null;
@@ -276,7 +299,7 @@ export class packagemanager {
           }
         }
       }
-      var packagepath = packagemanager.getpackagepath(path.join(packagemanager.packagefolder, id));
+      var packagepath = packagemanager.getpackagepath(path.join(packagemanager.packagefolder(), id));
       if (fs.existsSync(packagepath)) {
         let command = packagemanager.getscriptpath(packagepath)
         if (command == "" || command == null) throw new Error("Failed locating a command to run, EXIT")
@@ -354,7 +377,7 @@ export class packagemanager {
         }
       } else {
         if (packagepath == null || packagepath == "") {
-          runner.notifyStream(client, streamid, "Package not found in " + packagemanager.packagefolder);
+          runner.notifyStream(client, streamid, "Package not found in " + packagemanager.packagefolder());
         } else {
           runner.notifyStream(client, streamid, "Package not found in " + packagepath);
         }
@@ -367,7 +390,7 @@ export class packagemanager {
     return 0;
   }
   public static async removepackage(id: string) {
-    var ppath = path.join(packagemanager.packagefolder, id);
+    var ppath = path.join(packagemanager.packagefolder(), id);
     packagemanager.deleteDirectoryRecursiveSync(ppath);
 
   }

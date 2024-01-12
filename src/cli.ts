@@ -273,7 +273,7 @@ async function main() {
   } else {
     console.log("Not running as service")
   }
-  const home_configfile = path.join(os.homedir(), ".openiap", "config.json")
+  const home_configfile = path.join(packagemanager.homedir(), ".openiap", "config.json")
   const win32_configfile = path.join("C:\\WINDOWS\\system32\\config\\systemprofile\\", ".openiap", "config.json")
   const darwin_configfile = "/var/root/.openiap/config.json"
   if (command === 'install' || command == "") {
@@ -305,8 +305,8 @@ async function main() {
       const jwt = await agenttools.WaitForToken(assistantConfig.apiurl, tokenkey);
       assistantConfig.jwt = jwt;
     }
-    // if (!fs.existsSync(path.join(os.homedir(), ".openiap"))) fs.mkdirSync(path.join(os.homedir(), ".openiap"), { recursive: true });
-    // fs.writeFileSync(path.join(os.homedir(), ".openiap", "config.json"), JSON.stringify(assistantConfig));
+    // if (!fs.existsSync(path.join(packagemanager.homedir(), ".openiap"))) fs.mkdirSync(path.join(packagemanager.homedir(), ".openiap"), { recursive: true });
+    // fs.writeFileSync(path.join(packagemanager.homedir(), ".openiap", "config.json"), JSON.stringify(assistantConfig));
 
     console.log(`Installing service "${serviceName}"...`);
     await installService(serviceName, serviceName, 'runagent.js');
