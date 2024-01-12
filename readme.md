@@ -16,6 +16,12 @@ Run this to clean npx cache on macos/linux
 ```bash
 rm -rf $(npm get cache)/_npx && sudo rm -rf /root/.npm/_npx
 ```
+Run this to clean npx cache on windows
+```bash
+npm cache clean --force
+npx clear-npx-cache
+```
+
 
 test running in console
 ```bash

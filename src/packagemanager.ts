@@ -401,10 +401,18 @@ export class packagemanager {
         if (fs.lstatSync(curPath).isDirectory()) { // recurse
           packagemanager.deleteDirectoryRecursiveSync(curPath);
         } else { // delete file
-          fs.unlinkSync(curPath);
+          try {
+            fs.unlinkSync(curPath);  
+          } catch (error) {
+            console.log(error.message + " while unlinkSync " + curPath)
+          }
         }
       });
+      try {
       fs.rmdirSync(dirPath);
+      } catch (error) {
+        console.log(error.message + " while rmdirSync " + dirPath)
+      }
     }
   }
 }

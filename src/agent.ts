@@ -268,12 +268,8 @@ export class agent  {
             if (operation == "insert") {
               log("package " + document.name + " inserted, reload packages");
               await agent.reloadpackages(false)
-            } else if (operation == "replace") {
+            } else if (operation == "replace" || operation == "delete") {
               log("package " + document.name + " (" +  document._id + " ) updated.");
-              packagemanager.removepackage(document._id);
-              if (!fs.existsSync(packagemanager.packagefolder())) fs.mkdirSync(packagemanager.packagefolder(), { recursive: true });
-              await packagemanager.getpackage(agent.client, document._id);
-
               if(agent.killonpackageupdate) {
                 log("Kill all instances of package " + document.name + " (" + document._id + ") if running");
                 for (let s = runner.streams.length - 1; s >= 0; s--) {
@@ -283,9 +279,14 @@ export class agent  {
                   }
                 }
               }
-            } else if (operation == "delete") {
-              log("package " + document.name + " deleted, cleanup after package");
               packagemanager.removepackage(document._id);
+              if (operation == "replace") {
+                if (!fs.existsSync(packagemanager.packagefolder())) fs.mkdirSync(packagemanager.packagefolder(), { recursive: true });
+                await packagemanager.getpackage(agent.client, document._id);
+              }
+            // } else if (operation == "delete") {
+            //   log("package " + document.name + " deleted, cleanup after package");
+            //   packagemanager.removepackage(document._id);
             }
           } else if (document._type == "agent") {
             if (document._id == agent.agentid) {
@@ -849,6 +850,21 @@ export class agent  {
         if (payload.id == null || payload.id == "") throw new Error("id is required");
         runner.kill(agent.client, payload.id);
         return { "command": "kill", "success": true };
+      }
+      if (payload.command == "reinstallpackage") {
+        if (payload.id == null || payload.id == "") payload.id = payload.streamid;
+        if (payload.id == null || payload.id == "") throw new Error("id is required");
+        
+        log("Reinstall package " + payload.id);
+        log("Kill all instances of package " + payload.id + " if running");
+        for (let s = runner.streams.length - 1; s >= 0; s--) {
+          const stream = runner.streams[s];
+          if (stream.packageid == payload.id) {
+            runner.kill(agent.client, stream.id);
+          }
+        }
+        packagemanager.removepackage(payload.id);
+        return { "command": "reinstallpackage", "success": true };
       }
       if (payload.command == "killall") {
         let processcount = runner.processs.length;
