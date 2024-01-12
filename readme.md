@@ -22,8 +22,24 @@ npm cache clean --force
 npx clear-npx-cache
 ```
 
-
 test running in console
 ```bash
 npx -y @openiap/nodeagent -service
+```
+
+To remove service
+```bash
+npx -y @openiap/nodeagent -uninstall
+```
+To remove service, and remove from system
+```bash
+npx -y @openiap/nodeagent -uninstall
+npx clear-npx-cache
+```
+
+To re-install service
+```bash
+npx -y @openiap/nodeagent -uninstall
+npx clear-npx-cache
+npx -y @openiap/nodeagent
 ```
