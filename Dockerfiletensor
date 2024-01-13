@@ -1,26 +1,78 @@
-# FROM node:lts-alpine
-# from python:alpine3.17
-# FROM alpine:3.17
-# FROM mambaorg/micromamba:1.5.1-alpine
 FROM continuumio/miniconda3:23.3.1-0
 USER root
-RUN apt-get update && \
-    apt-get install -y nano git nodejs npm python3 python3-pip g++ wget libstdc++6 python3-numpy && \
-    rm -rf /var/lib/apt/lists/*
 
-WORKDIR /tmp
-COPY package.json /tmp/package.json
-COPY package-lock.json /tmp/package-lock.json
-COPY bin /tmp/bin
+
+# Install necessary packages
+RUN apt-get update && \
+    apt-get install -y nano git python3 python3-pip g++ wget libstdc++6 python3-numpy && \
+    rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /usr/local/lib/node_modules
+
+# Download and install updated nodejs
+# ENV NODE_PACKAGE_URL  https://unofficial-builds.nodejs.org/download/release/v18.16.0/node-v18.16.0-linux-x64-musl.tar.gz
+ENV NODE_PACKAGE_URL  https://nodejs.org/dist/latest-v18.x/node-v18.19.0-linux-x64.tar.gz
+WORKDIR /opt
+RUN wget $NODE_PACKAGE_URL
+RUN mkdir -p /opt/nodejs
+RUN tar -zxvf *.tar.gz --directory /opt/nodejs --strip-components=1
+RUN rm *.tar.gz
+RUN ln -s /opt/nodejs/bin/node /usr/local/bin/node
+RUN ln -s /opt/nodejs/bin/npm /usr/local/bin/npm
+RUN /usr/local/bin/node --version
+RUN /usr/local/bin/npm --version
+
+RUN npm install -g npm@9.6.6
+
+RUN adduser --disabled-password --gecos '' openiapuser
+RUN mkdir -p /home/openiap/.openiap/packages
+# RUN chown -R openiapuser:root /home/openiap && chmod -R g+rwX /home/openiap
+# RUN chown -R openiapuser:root /usr/local/lib/node_modules && chmod -R g+rwX /usr/local/lib/node_modules
+RUN chown -R openiapuser:root /home/openiap && chmod -R 775 /home/openiap
+RUN chown -R openiapuser:root /usr/local/lib/node_modules && chmod -R 775 /usr/local/lib/node_modules
+
+USER openiapuser
+WORKDIR /home/openiap
+
+# Copy files with appropriate permissions
+COPY --chown=openiapuser:root package.json /home/openiap/package.json
+COPY --chown=openiapuser:root package-lock.json /home/openiap/package-lock.json
+COPY --chown=openiapuser:root bin /home/openiap/bin
 
 RUN npm install
 
-COPY dist /tmp/dist
-# COPY . /tmp
-WORKDIR /tmp
-# RUN python -m pip install --upgrade pip
-# RUN python -m pip install openiap
-# load current version
-# RUN npx -y @openiap/nodeagent -noop
-# CMD ["npx", "-y", "@openiap/nodeagent", "-service"]
+# OpenShift hack
+COPY --chown=openiapuser:root package.json /.npm/package.json
+RUN chmod 777 /.npm
+RUN rm -r /.npm/*
+
+COPY --chown=openiapuser:root dist /home/openiap/dist
+
 CMD ["node", "--require", "./dist/Logger.js", "dist/runagent.js"]
+
+
+# # FROM node:lts-alpine
+# # from python:alpine3.17
+# # FROM alpine:3.17
+# # FROM mambaorg/micromamba:1.5.1-alpine
+# FROM continuumio/miniconda3:23.3.1-0
+# USER root
+# RUN apt-get update && \
+#     apt-get install -y nano git nodejs npm python3 python3-pip g++ wget libstdc++6 python3-numpy && \
+#     rm -rf /var/lib/apt/lists/*
+
+# WORKDIR /tmp
+# COPY package.json /tmp/package.json
+# COPY package-lock.json /tmp/package-lock.json
+# COPY bin /tmp/bin
+
+# RUN npm install
+
+# COPY dist /tmp/dist
+# # COPY . /tmp
+# WORKDIR /tmp
+# # RUN python -m pip install --upgrade pip
+# # RUN python -m pip install openiap
+# # load current version
+# # RUN npx -y @openiap/nodeagent -noop
+# # CMD ["npx", "-y", "@openiap/nodeagent", "-service"]
+# CMD ["node", "--require", "./dist/Logger.js", "dist/runagent.js"]
