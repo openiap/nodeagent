@@ -307,6 +307,12 @@ async function main() {
     }
     // if (!fs.existsSync(path.join(packagemanager.homedir(), ".openiap"))) fs.mkdirSync(path.join(packagemanager.homedir(), ".openiap"), { recursive: true });
     // fs.writeFileSync(path.join(packagemanager.homedir(), ".openiap", "config.json"), JSON.stringify(assistantConfig));
+    try {
+      fs.writeFileSync(home_configfile, JSON.stringify(assistantConfig));
+    } catch (error) {
+      console.error("Error writing config to " + home_configfile + "\n" + error.message)
+      
+    }
 
     console.log(`Installing service "${serviceName}"...`);
     await installService(serviceName, serviceName, 'runagent.js');
