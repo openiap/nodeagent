@@ -1,5 +1,6 @@
 import { agent } from "./agent";
 import { runner } from "./runner";
+import { sleep } from "./util";
 async function main() {
   try {
     agent.globalpackageid = process.env.forcedpackageid || process.env.packageid || "";
@@ -7,7 +8,7 @@ async function main() {
       for (let s = runner.streams.length - 1; s >= 0; s--) {
         const stream = runner.streams[s];
         console.log("*** Kill stream: " + stream.id);
-        runner.kill(agent.client, stream.id);
+        await runner.kill(agent.client, stream.id);
       }
       console.log("*** Exit");;
       process.exit(0);
@@ -30,7 +31,7 @@ async function main() {
     //   console.log("***** streamremoved")
     // });
     while (true) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await sleep(10);
     }
   } catch (error) {
     console.error(error);

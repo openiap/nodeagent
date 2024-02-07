@@ -24,16 +24,6 @@ export class ClientConnection {
   public socket: net.Socket;
   public cache: CacheItem[];
 }
-// export async function FindFreePort(prefered: number): Promise<number> {
-//   return new Promise(res => {
-//       const srv = net.createServer();
-//       srv.listen(0, () => {
-//           // @ts-ignore
-//           const port = srv.address().port
-//           srv.close((err) => res(port))
-//       });
-//   })
-// }
 export async function FindFreePort(preferred: number): Promise<number> {
   return new Promise((resolve, reject) => {
     let srv = net.createServer();

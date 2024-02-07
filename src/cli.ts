@@ -285,6 +285,21 @@ async function main() {
     let port:number = hostport.split(":")[1] as any;
     let portname:string = hostport.split(":")[1];
     let remoteagent = hostport.split(":")[0];
+    let localport = port;
+    if(hostport.split(":").length > 2) {
+      localport = hostport.split(":")[2] as any;
+    }
+    let uselocalport = localport;
+    try {
+      uselocalport = await FindFreePort(localport);
+    } catch (error) {
+      // if port is < 1024 we get an error, then find a random free port over 1024
+      uselocalport = await FindFreePort(0);
+    }
+    if(uselocalport != localport) {
+      console.log("Port " + localport + " is in use. Using " + uselocalport + " instead.")
+      localport = uselocalport;
+    }
 
     if(portname === null || portname === undefined || (portname as any) === "" || remoteagent == null || remoteagent == "") {
       console.log("Invalid proxy. Use format <remoteagent>:<remoteport or portname>")
@@ -308,7 +323,6 @@ async function main() {
     console.log("connect")
     await agent.client.connect();
     console.log("ClientPortMapper")
-    let localport = await FindFreePort(port);
     const listener = new ClientPortMapper(agent.client, localport, portname, port, remoteagent);
     return;
   } else {

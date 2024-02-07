@@ -38,6 +38,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var agent_1 = require("./agent");
 var runner_1 = require("./runner");
+var util_1 = require("./util");
 function main() {
     return __awaiter(this, void 0, void 0, function () {
         var onexit, error_1;
@@ -50,15 +51,27 @@ function main() {
                     onexit = function () { return __awaiter(_this, void 0, void 0, function () {
                         var s, stream;
                         return __generator(this, function (_a) {
-                            for (s = runner_1.runner.streams.length - 1; s >= 0; s--) {
-                                stream = runner_1.runner.streams[s];
-                                console.log("*** Kill stream: " + stream.id);
-                                runner_1.runner.kill(agent_1.agent.client, stream.id);
+                            switch (_a.label) {
+                                case 0:
+                                    s = runner_1.runner.streams.length - 1;
+                                    _a.label = 1;
+                                case 1:
+                                    if (!(s >= 0)) return [3 /*break*/, 4];
+                                    stream = runner_1.runner.streams[s];
+                                    console.log("*** Kill stream: " + stream.id);
+                                    return [4 /*yield*/, runner_1.runner.kill(agent_1.agent.client, stream.id)];
+                                case 2:
+                                    _a.sent();
+                                    _a.label = 3;
+                                case 3:
+                                    s--;
+                                    return [3 /*break*/, 1];
+                                case 4:
+                                    console.log("*** Exit");
+                                    ;
+                                    process.exit(0);
+                                    return [2 /*return*/];
                             }
-                            console.log("*** Exit");
-                            ;
-                            process.exit(0);
-                            return [2 /*return*/];
                         });
                     }); };
                     process.on('SIGINT', onexit);
@@ -84,7 +97,7 @@ function main() {
                     _a.label = 2;
                 case 2:
                     if (!true) return [3 /*break*/, 4];
-                    return [4 /*yield*/, new Promise(function (resolve) { return setTimeout(resolve, 1000); })];
+                    return [4 /*yield*/, (0, util_1.sleep)(10)];
                 case 3:
                     _a.sent();
                     return [3 /*break*/, 2];
@@ -99,4 +112,4 @@ function main() {
     });
 }
 main();
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicnVuYWdlbnQuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi9zcmMvcnVuYWdlbnQudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQSxpQ0FBZ0M7QUFDaEMsbUNBQWtDO0FBQ2xDLFNBQWUsSUFBSTs7Ozs7Ozs7b0JBRWYsYUFBSyxDQUFDLGVBQWUsR0FBRyxPQUFPLENBQUMsR0FBRyxDQUFDLGVBQWUsSUFBSSxPQUFPLENBQUMsR0FBRyxDQUFDLFNBQVMsSUFBSSxFQUFFLENBQUM7b0JBQzdFLE1BQU0sR0FBRzs7OzRCQUNiLEtBQVMsQ0FBQyxHQUFHLGVBQU0sQ0FBQyxPQUFPLENBQUMsTUFBTSxHQUFHLENBQUMsRUFBRSxDQUFDLElBQUksQ0FBQyxFQUFFLENBQUMsRUFBRSxFQUFFO2dDQUM3QyxNQUFNLEdBQUcsZUFBTSxDQUFDLE9BQU8sQ0FBQyxDQUFDLENBQUMsQ0FBQztnQ0FDakMsT0FBTyxDQUFDLEdBQUcsQ0FBQyxtQkFBbUIsR0FBRyxNQUFNLENBQUMsRUFBRSxDQUFDLENBQUM7Z0NBQzdDLGVBQU0sQ0FBQyxJQUFJLENBQUMsYUFBSyxDQUFDLE1BQU0sRUFBRSxNQUFNLENBQUMsRUFBRSxDQUFDLENBQUM7NkJBQ3RDOzRCQUNELE9BQU8sQ0FBQyxHQUFHLENBQUMsVUFBVSxDQUFDLENBQUM7NEJBQUEsQ0FBQzs0QkFDekIsT0FBTyxDQUFDLElBQUksQ0FBQyxDQUFDLENBQUMsQ0FBQzs7O3lCQUNqQixDQUFDO29CQUNGLE9BQU8sQ0FBQyxFQUFFLENBQUMsUUFBUSxFQUFFLE1BQU0sQ0FBQyxDQUFBO29CQUM1QixPQUFPLENBQUMsRUFBRSxDQUFDLFNBQVMsRUFBRSxNQUFNLENBQUMsQ0FBQTtvQkFDN0IsT0FBTyxDQUFDLEVBQUUsQ0FBQyxTQUFTLEVBQUUsTUFBTSxDQUFDLENBQUE7b0JBQzdCLHFCQUFNLGFBQUssQ0FBQyxJQUFJLEVBQUU7d0JBQ2xCLDhCQUE4Qjt3QkFDOUIsb0VBQW9FO3dCQUNwRSxNQUFNO3dCQUNOLDhDQUE4Qzt3QkFDOUMscUNBQXFDO3dCQUNyQyxNQUFNO3dCQUNOLHlEQUF5RDt3QkFDekQsNEVBQTRFO3dCQUM1RSw2REFBNkQ7d0JBQzdELE1BQU07d0JBQ04sK0NBQStDO3dCQUMvQyx1Q0FBdUM7d0JBQ3ZDLE1BQU07c0JBYlk7O29CQUFsQixTQUFrQixDQUFBOzs7eUJBY1gsSUFBSTtvQkFDVCxxQkFBTSxJQUFJLE9BQU8sQ0FBQyxVQUFBLE9BQU8sSUFBSSxPQUFBLFVBQVUsQ0FBQyxPQUFPLEVBQUUsSUFBSSxDQUFDLEVBQXpCLENBQXlCLENBQUMsRUFBQTs7b0JBQXZELFNBQXVELENBQUM7Ozs7O29CQUcxRCxPQUFPLENBQUMsS0FBSyxDQUFDLE9BQUssQ0FBQyxDQUFDOzs7Ozs7Q0FFeEI7QUFFRCxJQUFJLEVBQUUsQ0FBQyJ9
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicnVuYWdlbnQuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi9zcmMvcnVuYWdlbnQudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQSxpQ0FBZ0M7QUFDaEMsbUNBQWtDO0FBQ2xDLCtCQUErQjtBQUMvQixTQUFlLElBQUk7Ozs7Ozs7O29CQUVmLGFBQUssQ0FBQyxlQUFlLEdBQUcsT0FBTyxDQUFDLEdBQUcsQ0FBQyxlQUFlLElBQUksT0FBTyxDQUFDLEdBQUcsQ0FBQyxTQUFTLElBQUksRUFBRSxDQUFDO29CQUM3RSxNQUFNLEdBQUc7Ozs7O29DQUNKLENBQUMsR0FBRyxlQUFNLENBQUMsT0FBTyxDQUFDLE1BQU0sR0FBRyxDQUFDOzs7eUNBQUUsQ0FBQSxDQUFDLElBQUksQ0FBQyxDQUFBO29DQUN0QyxNQUFNLEdBQUcsZUFBTSxDQUFDLE9BQU8sQ0FBQyxDQUFDLENBQUMsQ0FBQztvQ0FDakMsT0FBTyxDQUFDLEdBQUcsQ0FBQyxtQkFBbUIsR0FBRyxNQUFNLENBQUMsRUFBRSxDQUFDLENBQUM7b0NBQzdDLHFCQUFNLGVBQU0sQ0FBQyxJQUFJLENBQUMsYUFBSyxDQUFDLE1BQU0sRUFBRSxNQUFNLENBQUMsRUFBRSxDQUFDLEVBQUE7O29DQUExQyxTQUEwQyxDQUFDOzs7b0NBSEcsQ0FBQyxFQUFFLENBQUE7OztvQ0FLbkQsT0FBTyxDQUFDLEdBQUcsQ0FBQyxVQUFVLENBQUMsQ0FBQztvQ0FBQSxDQUFDO29DQUN6QixPQUFPLENBQUMsSUFBSSxDQUFDLENBQUMsQ0FBQyxDQUFDOzs7O3lCQUNqQixDQUFDO29CQUNGLE9BQU8sQ0FBQyxFQUFFLENBQUMsUUFBUSxFQUFFLE1BQU0sQ0FBQyxDQUFBO29CQUM1QixPQUFPLENBQUMsRUFBRSxDQUFDLFNBQVMsRUFBRSxNQUFNLENBQUMsQ0FBQTtvQkFDN0IsT0FBTyxDQUFDLEVBQUUsQ0FBQyxTQUFTLEVBQUUsTUFBTSxDQUFDLENBQUE7b0JBQzdCLHFCQUFNLGFBQUssQ0FBQyxJQUFJLEVBQUU7d0JBQ2xCLDhCQUE4Qjt3QkFDOUIsb0VBQW9FO3dCQUNwRSxNQUFNO3dCQUNOLDhDQUE4Qzt3QkFDOUMscUNBQXFDO3dCQUNyQyxNQUFNO3dCQUNOLHlEQUF5RDt3QkFDekQsNEVBQTRFO3dCQUM1RSw2REFBNkQ7d0JBQzdELE1BQU07d0JBQ04sK0NBQStDO3dCQUMvQyx1Q0FBdUM7d0JBQ3ZDLE1BQU07c0JBYlk7O29CQUFsQixTQUFrQixDQUFBOzs7eUJBY1gsSUFBSTtvQkFDVCxxQkFBTSxJQUFBLFlBQUssRUFBQyxFQUFFLENBQUMsRUFBQTs7b0JBQWYsU0FBZSxDQUFDOzs7OztvQkFHbEIsT0FBTyxDQUFDLEtBQUssQ0FBQyxPQUFLLENBQUMsQ0FBQzs7Ozs7O0NBRXhCO0FBRUQsSUFBSSxFQUFFLENBQUMifQ==

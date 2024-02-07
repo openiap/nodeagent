@@ -1,4 +1,4 @@
-import { spawn, execSync, ChildProcessWithoutNullStreams } from 'child_process';
+import { exec,  spawn, execSync, ChildProcessWithoutNullStreams } from 'child_process';
 import { Stream, Readable } from 'stream';
 import * as fs from "fs";
 import * as os from "os";
@@ -7,6 +7,7 @@ import { config, openiap } from '@openiap/nodeapi';
 import { agent } from './agent';
 import * as yaml from "js-yaml";
 import { ipackageport } from './packagemanager';
+import { sleep } from './util';
 
 // import { spawnSync } from 'cross-spawn';
 const ctrossspawn = require('cross-spawn');
@@ -246,12 +247,92 @@ export class runner {
             // throw error;
         }
     }
-    public static kill(client: openiap, streamid: string) {
+    private static async _kill(pid: number) {
+        // exec(isWindows ? `taskkill /PID ${childPid} /T /F` : `kill -9 ${childPid}`, (err, stdout, stderr) => {
+        //     if (err) reject(err);
+        //     else resolve(stdout);
+        // });
+        const isWindows = process.platform === 'win32';
+        return new Promise((resolve, reject) => {
+            if (isWindows) {
+                exec(`taskkill /PID ${pid} /T /F`, (err, stdout, stderr) => {
+                    if (err) reject(err);
+                    else resolve(stdout);
+                });
+            } else {
+                exec(`kill -9 ${pid}`, (err, stdout, stderr) => {
+                    if (err) reject(err);
+                    else resolve(stdout);
+                });
+            }
+        });
+    }
+    public static async killProcessAndChildren(client: openiap, streamid: string, pid: number) {
+        try {
+            const subpids = runner.findChildProcesses(pid);
+            for(let i = 0; i < subpids.length; i++) {
+                try {
+                    await runner.killProcessAndChildren(client, streamid, subpids[i] as any);
+                    await runner.notifyStream(client, streamid, "Send SIGTERM to child process " + subpids[i] + " of process " + pid);
+                    console.log("Send SIGTERM to child process " + subpids[i] + " of process " + pid);
+                    await runner._kill(subpids[i] as any);
+                } catch (error) {
+                    runner.notifyStream(client, streamid, "Failed to kill sub process " + subpids[i] + " " + error.message);
+                }
+            }
+        } catch (error) {
+            runner.notifyStream(client, streamid, "Failed to kill sub process " + pid + " " + error.message);
+        }
+    }
+    public static async kill(client: openiap, streamid: string) {
         const p = runner.processs.filter(x => x.id == streamid);
         for (var i = 0; i < p.length; i++) {
-            runner.notifyStream(client, streamid, "Sent kill signal to process " + p[i].p.pid);
+            const pid = p[i].p.pid;
+            await runner.killProcessAndChildren(client, streamid, pid);
+
+            runner.notifyStream(client, streamid, "Send SIGTERM to process " + pid);
+            console.log("Send SIGTERM to process " + pid);
+            await sleep(10);
             p[i].forcekilled = true;
-            p[i].p.kill();
+            p[i].p.kill('SIGTERM');
+            let killDate = new Date();
+            while (p[i].p.exitCode == null) {
+                await sleep(10);
+                if(new Date().getTime() - killDate.getTime() > 5000) {
+                    break;
+                }
+            }
+            if(p[i].p.exitCode == null) {
+                runner.notifyStream(client, streamid, "Send SIGINT to process " + pid);
+                console.log("Send SIGINT to process " + pid);
+                await sleep(10);
+                p[i].forcekilled = true;
+                p[i].p.kill('SIGINT');
+                killDate = new Date();
+                while (p[i].p.exitCode == null) {
+                    await sleep(10);
+                    if(new Date().getTime() - killDate.getTime() > 5000) {
+                        break;
+                    }
+                }
+            }
+            if(p[i].p.exitCode == null) {
+                runner.notifyStream(client, streamid, "Send SIGKILL to process " + pid);
+                console.log("Send SIGKILL to process " + pid);
+                await sleep(10);
+                p[i].forcekilled = true;
+                p[i].p.kill('SIGKILL');
+                killDate = new Date();
+                while (p[i].p.exitCode == null) {
+                    await sleep(10);
+                    if(new Date().getTime() - killDate.getTime() > 5000) {
+                        break;
+                    }
+                }
+            }
+            if(p[i].p.exitCode == null) {
+                runner.notifyStream(client, streamid, "Failed to kill process " + pid);
+            }
         }
     }
     public static findPythonPath() {
@@ -434,5 +515,24 @@ export class runner {
         var tempfilename = path.join(os.tmpdir(), "temp.py");
         fs.writeFileSync(tempfilename, code);
         return await this.runpythonscript(tempfilename);
+    }
+    public static findChildProcesses(pid: number): string[] {
+        const isWindows = process.platform === 'win32';
+
+        try {
+            if (isWindows) {
+                const stdout = execSync(`wmic process where (ParentProcessId=${pid}) get ProcessId`, { encoding: 'utf-8' });
+                const pids = stdout.split(/\r?\n/).slice(1).filter(line => line.trim() !== '').map(line => line.trim());
+                return pids;
+            } else {
+                const stdout = execSync(`pgrep -P ${pid}`, { encoding: 'utf-8' });
+                // Adjusted error handling for Unix-like systems
+                const pids = stdout.split(/\n/).filter(pid => pid !== '');
+                return pids;
+            }
+        } catch (error) {
+            // Handle errors here
+            throw error;
+        }
     }
 }

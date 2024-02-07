@@ -30,7 +30,9 @@ export declare class runner {
     static runit(client: openiap, packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean, env?: any): Promise<number>;
     static findInPath(exec: string): string | null;
     static findInPath2(exec: string): string | null;
-    static kill(client: openiap, streamid: string): void;
+    private static _kill;
+    static killProcessAndChildren(client: openiap, streamid: string, pid: number): Promise<void>;
+    static kill(client: openiap, streamid: string): Promise<void>;
     static findPythonPath(): string;
     static findCondaPath(): string;
     static findPwShPath(): string;
@@ -47,4 +49,5 @@ export declare class runner {
     static npminstall(client: openiap, packagepath: string, streamid: string): Promise<boolean>;
     static runpythonscript(script: string): Promise<string>;
     static runpythoncode(code: string): Promise<string>;
+    static findChildProcesses(pid: number): string[];
 }

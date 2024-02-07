@@ -10,6 +10,7 @@ import * as fs from "fs"
 import { Stream } from 'stream';
 import { Logger } from "./Logger";
 import { FindFreePort, HostPortMapper } from "./PortMapper";
+import { sleep } from "./util";
 
 let elog: any = null;
 if (os.platform() === 'win32') {
@@ -297,7 +298,7 @@ export class agent  {
                 for (let s = runner.streams.length - 1; s >= 0; s--) {
                   const stream = runner.streams[s];
                   if (stream.packageid == document._id) {
-                    runner.kill(agent.client, stream.id);
+                    await runner.kill(agent.client, stream.id);
                   }
                 }
               }
@@ -332,7 +333,7 @@ export class agent  {
       log("watch registered with id " + watchid);
     } catch (error) {
       _error(error);
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await sleep(2000);
       // process.exit(0);
     }
   }
@@ -506,7 +507,7 @@ export class agent  {
                 for (let s = runner.streams.length - 1; s >= 0; s--) {
                   const stream = runner.streams[s];
                   if (stream.schedulename == _schedule.name) {
-                    runner.kill(agent.client, stream.id);
+                    await runner.kill(agent.client, stream.id);
                   }
                 }
                 if(schedule.enabled && schedule.task != null) {
@@ -531,7 +532,7 @@ export class agent  {
               for (let s = runner.streams.length - 1; s >= 0; s--) {
                 const stream = runner.streams[s];
                 if (stream.schedulename == _schedule.name) {
-                  runner.kill(agent.client, stream.id);
+                  await runner.kill(agent.client, stream.id);
                 }
               }
 
@@ -559,7 +560,7 @@ export class agent  {
               for (let s = runner.streams.length - 1; s >= 0; s--) {
                 const stream = runner.streams[s];
                 if (stream.schedulename == schedule.name) {
-                  runner.kill(agent.client, stream.id);
+                  await runner.kill(agent.client, stream.id);
                 }
               }
             } else {
@@ -570,7 +571,9 @@ export class agent  {
                     for (let s = runner.streams.length - 1; s >= 0; s--) {
                       const stream = runner.streams[s];
                       if (stream.schedulename == schedule.name) {
-                        runner.kill(agent.client, stream.id);
+                        runner.kill(agent.client, stream.id).catch((error) => {
+                          _error(error);
+                        });
                       }
                     }
                   }
@@ -620,7 +623,9 @@ export class agent  {
                       for (let s = runner.streams.length - 1; s >= 0; s--) {
                         const stream = runner.streams[s];
                         if (stream.schedulename == schedule.name) {
-                          runner.kill(agent.client, stream.id);
+                          runner.kill(agent.client, stream.id).catch((error) => {
+                            _error(error);
+                          });
                         }
                       }
                     }
@@ -699,7 +704,7 @@ export class agent  {
               for (let s = runner.streams.length - 1; s >= 0; s--) {
                 const stream = runner.streams[s];
                 if (stream.schedulename == schedule.name) {
-                  runner.kill(agent.client, stream.id);
+                  await runner.kill(agent.client, stream.id);
                 }
               }
             }
@@ -872,7 +877,7 @@ export class agent  {
       if (payload.command == "kill") {
         if (payload.id == null || payload.id == "") payload.id = payload.streamid;
         if (payload.id == null || payload.id == "") throw new Error("id is required");
-        runner.kill(agent.client, payload.id);
+        await runner.kill(agent.client, payload.id);
         return { "command": "kill", "success": true };
       }
       if (payload.command == "reinstallpackage") {
@@ -884,7 +889,7 @@ export class agent  {
         for (let s = runner.streams.length - 1; s >= 0; s--) {
           const stream = runner.streams[s];
           if (stream.packageid == payload.id) {
-            runner.kill(agent.client, stream.id);
+            await runner.kill(agent.client, stream.id);
           }
         }
         packagemanager.removepackage(payload.id);
@@ -893,7 +898,7 @@ export class agent  {
       if (payload.command == "killall") {
         let processcount = runner.processs.length;
         for (let i = processcount; i >= 0; i--) {
-          runner.kill(agent.client, runner.processs[i].id);
+          await runner.kill(agent.client, runner.processs[i].id);
         }
         return { "command": "killall", "success": true, "count": processcount };
       }

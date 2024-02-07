@@ -43,6 +43,10 @@ RUN rm -r /.npm/*
 
 COPY --chown=openiapuser:root dist /home/openiap/dist
 
+ENV HOME='/home/openiap'
+# ENV MAMBA_USER='openiapuser'
+ENV USER='openiapuser'
+
 CMD ["node", "--require", "./dist/Logger.js", "dist/runagent.js"]
 
 
