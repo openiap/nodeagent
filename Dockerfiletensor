@@ -1,10 +1,11 @@
-FROM continuumio/miniconda3:23.3.1-0
+# FROM continuumio/miniconda3:23.3.1-0
+FROM mambaorg/micromamba:1.5.6-lunar
 USER root
 
 
-# Install necessary packages
+# Install necessary packages ? libstdc++
 RUN apt-get update && \
-    apt-get install -y nano git python3 python3-pip g++ wget libstdc++6 python3-numpy && \
+    apt-get install -y nano git python3 python3-pip g++ wget  python3-numpy && \
     rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /usr/local/lib/node_modules
 

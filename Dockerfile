@@ -16,7 +16,7 @@ RUN npm install -g npm@9.6.6
 
 # Install necessary packages
 # RUN apk add --update nano git python3 py3-pip g++ wget libstdc++6 py3-numpy && rm -rf /var/cache/apk/*
-RUN apk add --update nano git python3 py3-pip g++ wget libstdc++ py3-numpy && rm -rf /var/cache/apk/*
+RUN apk add --update nano git python3 py3-pip g++ wget py3-numpy && rm -rf /var/cache/apk/*
 RUN mkdir -p /usr/local/lib/node_modules
 
 RUN adduser -D -g 'OpenIAP user' -h /home/openiap openiapuser

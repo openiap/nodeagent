@@ -135,18 +135,14 @@ export class runner {
                         // var shellcommand = '"' + command + '" "' + parameters.join(" ") + '"';
                         command = xvfb;
                         parameters = [];
-                        // parameters.push(`-e`);
-                        // parameters.push(`/tmp/xvfb.log`);
                         parameters.push(`--server-args="-screen 0 1920x1080x24 -ac"`);
-                        // parameters.push(`--server-args="-ac"`);
-                        // xvfb-run --auto-servernum --server-num=1 
                         parameters.push(`--auto-servernum`);
                         parameters.push(`--server-num=1`);
                         parameters.push(shellcommand);
                         parameters = parameters.concat(_parameters);
                     }
                 }
-                // console.log('Running command:', command);
+                console.log('Running command:', command + " " + parameters.join(" "));
                 // if (parameters != null && Array.isArray(parameters)) console.log('With parameters:', parameters.join(" "));
                 const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
                 // console.log('Current working directory:', packagepath);

@@ -1,6 +1,7 @@
 # FROM python:slim
 # FROM  python:3.11.6-slim-bullseye
-FROM continuumio/miniconda3:23.3.1-0-alpine
+# FROM continuumio/miniconda3:23.3.1-0-alpine
+FROM mambaorg/micromamba:alpine3.19
 USER root
 
 RUN apk add --update nano git nodejs npm python3 py3-pip g++ wget && rm -rf /var/cache/apk/*

@@ -1,6 +1,7 @@
 # FROM node:lts-alpine
 # from alpine:3.17
-FROM continuumio/miniconda3:23.3.1-0-alpine
+# FROM continuumio/miniconda3:23.3.1-0-alpine
+FROM mambaorg/micromamba:alpine3.19
 USER root
 
 RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
@@ -8,12 +9,21 @@ RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repos
     echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
     apk --no-cache update && \
     apk add --no-cache --virtual .build-deps gifsicle pngquant optipng libjpeg-turbo-utils udev ttf-opensans && \
-    apk add --no-cache nodejs npm python3 py3-pip alpine-sdk chromium-chromedriver chromium xvfb bash  && \
-    apk add --no-cache nodejs musl-dev linux-headers g++ gcc python3-dev && \
-    npm cache clean --force && \
+    apk add --no-cache nano python3 py3-pip alpine-sdk chromium-chromedriver chromium xvfb xvfb-run bash  && \
+    apk add --no-cache musl-dev linux-headers g++ gcc python3-dev && \
     rm -rf /var/cache/apk /root/.npm/
 
-# apk add --no-cache   gfortran build-base wget freetype-dev libpng-dev openblas-dev && \
+# Download and install updated nodejs
+ENV NODE_PACKAGE_URL  https://unofficial-builds.nodejs.org/download/release/v18.16.0/node-v18.16.0-linux-x64-musl.tar.gz
+RUN apk add libstdc++
+WORKDIR /opt
+RUN wget $NODE_PACKAGE_URL
+RUN mkdir -p /opt/nodejs
+RUN tar -zxvf *.tar.gz --directory /opt/nodejs --strip-components=1
+RUN rm *.tar.gz
+RUN ln -s /opt/nodejs/bin/node /usr/local/bin/node
+RUN ln -s /opt/nodejs/bin/npm /usr/local/bin/npm
+RUN npm install -g npm@9.6.6
 
 # fake chrome and force parameters
 COPY bin/chromium-browser.sh /tmp/chromium-browser
@@ -29,18 +39,40 @@ ENV OPENSSL_CONF=/dev/null
 # tell puppeteer to skip installing chrome. We'll be using the installed package.
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 
-WORKDIR /tmp
-COPY package.json /tmp/package.json
-COPY package-lock.json /tmp/package-lock.json
-COPY bin /tmp/bin
+
+RUN adduser -D -g 'OpenIAP user' -h /home/openiap openiapuser
+RUN mkdir -p /home/openiap/.openiap/packages
+# RUN chown -R openiapuser:root /home/openiap && chmod -R g+rwX /home/openiap
+# RUN chown -R openiapuser:root /usr/local/lib/node_modules && chmod -R g+rwX /usr/local/lib/node_modules
+RUN chown -R openiapuser:root /home/openiap && chmod -R 775 /home/openiap
+RUN chown -R openiapuser:root /usr/local/lib && chmod -R 775 /usr/local/lib
+
+USER openiapuser
+WORKDIR /home/openiap
+
+# Copy files with appropriate permissions
+COPY --chown=openiapuser:root package.json /home/openiap/package.json
+COPY --chown=openiapuser:root package-lock.json /home/openiap/package-lock.json
+COPY --chown=openiapuser:root bin /home/openiap/bin
+
 RUN npm install
 
-COPY dist /tmp/dist
-# COPY . /tmp
-# RUN python -m pip install --upgrade pip
-RUN python -m pip install openiap 
-# --break-system-packages
-# load current version
-# RUN npx -y @openiap/nodeagent -noop
-# CMD ["npx", "-y", "@openiap/nodeagent", "-service"]
+# OpenShift hack
+COPY --chown=openiapuser:root package.json /.npm/package.json
+RUN chmod 777 /.npm
+RUN rm -r /.npm/*
+
+COPY --chown=openiapuser:root dist /home/openiap/dist
+
 CMD ["node", "--require", "./dist/Logger.js", "dist/runagent.js"]
+
+
+# WORKDIR /tmp
+# COPY package.json /tmp/package.json
+# COPY package-lock.json /tmp/package-lock.json
+# COPY bin /tmp/bin
+# RUN npm install
+
+# COPY dist /tmp/dist
+# # CMD ["npx", "-y", "@openiap/nodeagent", "-service"]
+# CMD ["node", "--require", "./dist/Logger.js", "dist/runagent.js"]
