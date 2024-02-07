@@ -4,6 +4,7 @@
 import { ChildProcessWithoutNullStreams } from 'child_process';
 import { Readable } from 'stream';
 import { openiap } from '@openiap/nodeapi';
+import { ipackageport } from './packagemanager';
 export declare class runner_process {
     id: string;
     pid: number;
@@ -18,6 +19,7 @@ export declare class runner_stream {
     packagename: string;
     schedulename: string;
     buffer: Buffer;
+    ports: ipackageport[];
 }
 export declare class runner {
     static processs: runner_process[];

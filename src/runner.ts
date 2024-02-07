@@ -6,6 +6,7 @@ import * as path from "path";
 import { config, openiap } from '@openiap/nodeapi';
 import { agent } from './agent';
 import * as yaml from "js-yaml";
+import { ipackageport } from './packagemanager';
 
 // import { spawnSync } from 'cross-spawn';
 const ctrossspawn = require('cross-spawn');
@@ -26,6 +27,7 @@ export class runner_stream {
     packagename: string;
     schedulename: string;
     buffer: Buffer;
+    ports: ipackageport[];
 }
 let lastping = new Date();
 export class runner {
@@ -211,10 +213,10 @@ export class runner {
                 if (lines.length > 0) return lines[0]
             } else {
                 if (result.stderr != null && result.stderr.toString() != "") {
-                    console.log(result.stderr.toString());
+                    // console.log(result.stderr.toString());
                 }
                 if (result.stdout != null && result.stdout.toString() != "") {
-                    console.log(result.stdout.toString());
+                    // console.log(result.stdout.toString());
                 }
             }
             return "";

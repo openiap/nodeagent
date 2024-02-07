@@ -1,4 +1,5 @@
-FROM continuumio/miniconda3:23.3.1-0-alpine
+# FROM continuumio/miniconda3:23.3.1-0-alpine
+FROM mambaorg/micromamba:alpine3.19
 USER root
 
 # Download and install updated nodejs
@@ -14,7 +15,8 @@ RUN ln -s /opt/nodejs/bin/npm /usr/local/bin/npm
 RUN npm install -g npm@9.6.6
 
 # Install necessary packages
-RUN apk add --update nano git python3 py3-pip g++ wget libstdc++6 py3-numpy && rm -rf /var/cache/apk/*
+# RUN apk add --update nano git python3 py3-pip g++ wget libstdc++6 py3-numpy && rm -rf /var/cache/apk/*
+RUN apk add --update nano git python3 py3-pip g++ wget libstdc++ py3-numpy && rm -rf /var/cache/apk/*
 RUN mkdir -p /usr/local/lib/node_modules
 
 RUN adduser -D -g 'OpenIAP user' -h /home/openiap openiapuser

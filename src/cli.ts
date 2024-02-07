@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 
+import { openiap } from "@openiap/nodeapi";
+import { agent } from "./agent";
 import { agenttools } from "./agenttools";
 import { packagemanager } from "./packagemanager";
 import { runner } from "./runner";
+import { ClientPortMapper, FindFreePort } from "./PortMapper";
 
 // console.log(JSON.stringify(process.env.PATH, null, 2));
 const os = require('os');
@@ -25,6 +28,8 @@ let serviceName = "";
 let command = "";
 let verbose = false;
 let service = false;
+let hostport:string = null;
+let localport:string = null;
 let myproject = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
 console.log(myproject.name + "@" + myproject.version);
 
@@ -37,6 +42,10 @@ for (let i = 0; i < args.length; i++) {
     verbose = true;
   } else if (arg === '-svc' || arg === "-svr" || arg === '-service' || arg === '/svc' || arg === '/service') {
     service = true;
+  } else if (arg === '-p' || arg === '/p') {
+    localport = args[i + 1];
+  } else if (arg.startsWith('-p=') || arg.startsWith('/p=')) {
+    localport = arg.split('=')[1];
   } else if (arg === 'install' || arg === '/install' || arg === '-install' || arg === 'i' || arg === '/i' || arg === '-i') {
     command = 'install';
   } else if (arg === 'uninstall' || arg === '/uninstall' || arg === '-uninstall' || arg === 'u' || arg === '/u' || arg === '-u') {
@@ -47,7 +56,9 @@ for (let i = 0; i < args.length; i++) {
     serviceName = args[i + 1];
   } else if (arg.startsWith('-servicename=') || arg.startsWith('/servicename=')) {
     serviceName = arg.split('=')[1];
-  } else if (!serviceName) {
+  } else if (arg.indexOf(":") > -1) {
+    hostport = arg;
+} else if (!serviceName) {
     serviceName = arg;
   }
 }
@@ -269,6 +280,36 @@ async function main() {
     let scriptPath = path.join(__dirname, "runagent.js");
     console.log("run " + scriptPath)
     RunStreamed(nodepath, [scriptPath], true)
+    return;
+  } else if (hostport != null && hostport != "") {
+    let port:number = hostport.split(":")[1] as any;
+    let portname:string = hostport.split(":")[1];
+    let remoteagent = hostport.split(":")[0];
+
+    if(portname === null || portname === undefined || (portname as any) === "" || remoteagent == null || remoteagent == "") {
+      console.log("Invalid proxy. Use format <remoteagent>:<remoteport or portname>")
+      process.exit(1);
+    }
+    // is remoteport a number or string ?
+    if(portname.match(/^\d+$/)) {
+      portname = "PORT" + port;
+      port = parseInt(port as any);
+    } else {
+      port = undefined;
+    }
+    if(!remoteagent.endsWith("agent")) {
+      remoteagent += "agent";
+    }
+    agent.client = new openiap()
+    agent.client.allowconnectgiveup = true;
+    agent.client.agent = "nodeagent";
+    console.log("reloadAndParseConfig")
+    agent.reloadAndParseConfig();
+    console.log("connect")
+    await agent.client.connect();
+    console.log("ClientPortMapper")
+    let localport = await FindFreePort(port);
+    const listener = new ClientPortMapper(agent.client, localport, portname, port, remoteagent);
     return;
   } else {
     console.log("Not running as service")

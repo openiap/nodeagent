@@ -1,6 +1,12 @@
 /// <reference types="node" />
 import { openiap } from "@openiap/nodeapi";
 import { Readable } from 'stream';
+export interface ipackageport {
+    port: number;
+    portname: string;
+    protocol: string;
+    web: boolean;
+}
 export interface ipackage {
     _id: string;
     name: string;
@@ -12,6 +18,7 @@ export interface ipackage {
     chrome: boolean;
     chromium: boolean;
     main: string;
+    ports: ipackageport[];
 }
 export declare class packagemanager {
     private static _homedir;

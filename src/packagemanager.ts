@@ -8,7 +8,14 @@ import * as tar from "tar";
 import { config } from '@openiap/nodeapi';
 import { runner, runner_stream } from "./runner";
 import { agent } from "./agent";
+import { FindFreePort } from "./PortMapper";
 const { info, err } = config;
+export interface ipackageport {
+  port: number;
+  portname: string;
+  protocol: string;
+  web: boolean;
+}
 export interface ipackage {
   _id: string;
   name: string;
@@ -20,6 +27,7 @@ export interface ipackage {
   chrome: boolean;
   chromium: boolean;
   main: string;
+  ports: ipackageport[];
 }
 
 export class packagemanager {
@@ -234,11 +242,12 @@ export class packagemanager {
     if (fs.existsSync(path.join(packagepath, "index.ps1"))) return path.join(packagepath, "index.ps1");
     if (fs.existsSync(path.join(packagepath, "main.ps1"))) return path.join(packagepath, "main.ps1");
   }
-  private static addstream(streamid: string, streamqueues: string[], stream: Readable, pck: ipackage) {
+  private static async addstream(streamid: string, streamqueues: string[], stream: Readable, pck: ipackage, env: any) {
     let s = runner.streams.find(x => x.id == streamid)
     if (s != null) throw new Error("Stream " + streamid + " already exists")
     s = new runner_stream();
     s.id = streamid;
+    s.ports = [];
     s.stream = stream;
     s.streamqueues = streamqueues;
     if(pck != null) {
@@ -246,6 +255,25 @@ export class packagemanager {
       s.packageid = pck._id;
     }
     runner.streams.push(s);
+
+    if(pck.ports != null) {
+      for(let i = 0; i < pck.ports.length; i++) {
+        let port: number = pck.ports[i].port;
+        if(port == null || (port as any) == "") port = 0;
+        port = await FindFreePort(port);
+        // @ts-ignore
+        if(pck.ports[i].name != null && pck.ports[i].portname == null) pck.ports[i].portname = pck.ports[i].name;
+        var newp = { port: port, portname: pck.ports[i].portname, protocol: pck.ports[i].protocol, web: pck.ports[i].web };
+        if(newp.portname == null || newp.portname == "") { newp.portname = "PORT" + port; }
+        s.ports.push(newp);
+        if(env != null) {
+          env[pck.ports[i].portname] = port;
+          if(pck.ports.length == 1) {
+            env["PORT"] = port;
+          }
+        }
+      }
+    }
     agent.emit("streamadded", s);
     return s;
   }
@@ -257,11 +285,11 @@ export class packagemanager {
       let s: runner_stream = null;
       try {
         pck = await packagemanager.getpackage(client, id);
-        s = packagemanager.addstream(streamid, streamqueues, stream, pck)
+        s = await packagemanager.addstream(streamid, streamqueues, stream, pck, env)
       } catch (error) {
         throw error;
       }
-      if(s == null) s = packagemanager.addstream(streamid, streamqueues, stream, pck)
+      if(s == null) s = await packagemanager.addstream(streamid, streamqueues, stream, pck, env)
 
       if(pck == null) throw new Error("Failed to find package: " + id);
       s.packagename = pck.name;

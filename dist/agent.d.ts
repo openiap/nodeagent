@@ -2,6 +2,7 @@
 import { openiap } from "@openiap/nodeapi";
 import { ipackage } from "./packagemanager";
 import { EventEmitter } from "events";
+import { HostPortMapper } from "./PortMapper";
 export declare class agent_schedule_task {
     constructor(copyfrom: agent_schedule_task);
 }
@@ -25,6 +26,7 @@ export declare class agent {
     static exitonfailedschedule: boolean;
     static eventEmitter: EventEmitter;
     static globalpackageid: string;
+    static portlisteners: HostPortMapper[];
     static addListener(eventName: string | symbol, listener: (...args: any[]) => void): void;
     static on(eventName: string | symbol, listener: (...args: any[]) => void): void;
     static once(eventName: string | symbol, listener: (...args: any[]) => void): void;
@@ -40,7 +42,9 @@ export declare class agent {
     static prependListener(eventName: string | symbol, listener: (...args: any[]) => void): void;
     static prependOnceListener(eventName: string | symbol, listener: (...args: any[]) => void): void;
     static eventNames(): (string | symbol)[];
+    private static PortMapperCleanTimer;
     static init(_client?: openiap): Promise<void>;
+    static PortMapperClean(): void;
     static reloadAndParseConfig(): boolean;
     private static onSignedIn;
     private static onConnected;
