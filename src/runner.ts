@@ -434,39 +434,42 @@ export class runner {
         if(fs.existsSync(path.join(packagepath, "environment.yml"))) envfile = "environment.yml"
         if(fs.existsSync(path.join(packagepath, "environment.yaml"))) envfile = "environment.yaml"
         if (envfile != "") {
-            const fileContents = fs.readFileSync(path.join(packagepath, envfile), 'utf8');
+            let fileContents = fs.readFileSync(path.join(packagepath, envfile), 'utf8');
 
             const data:any = yaml.load(fileContents);
             if(data != null) envname = data.name;
             if(envname == null || envname == "") {
-                envname = null;
-                console.error("No name found in conda environment file, skipping conda install");
+                data.name = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                envname = data.name
+                console.error("No name found in conda environment file, auto generated name: " + envname);
+                fileContents = yaml.dump(data)
+                fs.writeFileSync(path.join(packagepath, envfile), fileContents);
             }
         }
         if(envname == null) return envname;
         if (!fs.existsSync(path.join(packagepath, envfile))) return envname;
-        // docker work around
+        let param = ["env", "create", "-f", path.join(packagepath, envfile)]
+        if(condapath.indexOf("micromamba") != -1) {
+            param = ["env", "create", "-y", "-f", path.join(packagepath, envfile)]
+        }
         if(fs.existsSync("/opt/conda/envs/")){
             if(fs.existsSync("/opt/conda/envs/" + envname)){
-                runner.notifyStream(client, streamid, "************************");
-                runner.notifyStream(client, streamid, "**** Updating conda env ");
-                runner.notifyStream(client, streamid, "************************");
-                await runner.runit(client, packagepath, streamid, condapath, ["env", "update", "-f", path.join(packagepath, envfile)], false);
+                let param = ["env", "update", "-f", path.join(packagepath, envfile)];
+                if(condapath.indexOf("micromamba") != -1) {
+                    param = ["env", "update", "-y", "-f", path.join(packagepath, envfile)];
+                }
+                console.log(condapath, param.join(" "));
+                ctrossspawn.sync(condapath, param, { stdio: 'inherit' });
                 return envname;;
             }
-            runner.notifyStream(client, streamid, "************************");
-            runner.notifyStream(client, streamid, "**** Creating conda env ");
-            runner.notifyStream(client, streamid, "************************");
-            await runner.runit(client, packagepath, streamid, condapath, ["env", "update", "-f", path.join(packagepath, envfile)], false);
+            console.log(condapath, param.join(" "));
+            ctrossspawn.sync(condapath, param, { stdio: 'inherit' });
             return envname;
         }
         if (fs.existsSync(path.join(packagepath, "conda.yaml.done"))) return envname;
-        runner.notifyStream(client, streamid, "************************");
-        runner.notifyStream(client, streamid, "**** Running conda install");
-        runner.notifyStream(client, streamid, "************************");
-        if ((await runner.runit(client, packagepath, streamid, condapath, ["env", "create", "-f", path.join(packagepath, envfile)], false)) == 0) {
-            fs.writeFileSync(path.join(packagepath, "conda.yaml.done"), "done");
-        }
+        console.log(condapath, param.join(" "));
+        ctrossspawn.sync(condapath, param, { stdio: 'inherit' });
+        fs.writeFileSync(path.join(packagepath, "conda.yaml.done"), "Delete me to, force reinstalling packages doing next run");
         return envname;
     }
     public static async npminstall(client: openiap, packagepath: string, streamid: string): Promise<boolean> {
