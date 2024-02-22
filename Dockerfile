@@ -36,10 +36,9 @@ COPY --chown=openiapuser:root bin /home/openiap/bin
 
 RUN npm install
 
-# OpenShift hack
 COPY --chown=openiapuser:root package.json /.npm/package.json
-RUN chmod 777 /.npm
-RUN rm -r /.npm/*
+RUN chmod 777 /home/openiap/.npm
+RUN rm -r /home/openiap/.npm/*
 
 COPY --chown=openiapuser:root dist /home/openiap/dist
 

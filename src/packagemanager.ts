@@ -427,6 +427,7 @@ export class packagemanager {
       fs.readdirSync(dirPath).forEach((file, index) => {
         const curPath = path.join(dirPath, file);
         if (fs.lstatSync(curPath).isDirectory()) { // recurse
+          if(file == "node_modules" && process.env.skip_node_modules != null && process.env.skip_node_modules != "") return;
           packagemanager.deleteDirectoryRecursiveSync(curPath);
         } else { // delete file
           try {
