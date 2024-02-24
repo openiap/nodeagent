@@ -44,7 +44,11 @@ export class runner {
         }
         s.stream.push(message);
         if(addtobuffer) agent.emit("stream", s, message);
-
+        if(process.env.DEBUG != null && process.env.DEBUG != "") {
+            if (message != null) {
+                console.log(message.toString());
+            }
+        }
         if(addtobuffer && message != null) {
             if(s.buffer == null) s.buffer = Buffer.from("");
             if(Buffer.isBuffer(message)) {

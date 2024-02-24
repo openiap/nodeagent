@@ -1,84 +1,52 @@
-# FROM node:lts-alpine
-# from alpine:3.17
-# FROM continuumio/miniconda3:23.3.1-0-alpine
-FROM mambaorg/micromamba:alpine3.19
-USER root
-
-RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
-    echo "http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
-    echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
-    apk --no-cache update && \
-    apk add --no-cache --virtual .build-deps gifsicle pngquant optipng libjpeg-turbo-utils udev ttf-opensans && \
-    apk add --no-cache nano python3 py3-pip alpine-sdk chromium-chromedriver chromium xvfb xvfb-run bash  && \
-    apk add --no-cache musl-dev linux-headers g++ gcc python3-dev && \
-    rm -rf /var/cache/apk /root/.npm/
-
-# Download and install updated nodejs
-ENV NODE_PACKAGE_URL  https://unofficial-builds.nodejs.org/download/release/v18.16.0/node-v18.16.0-linux-x64-musl.tar.gz
-RUN apk add libstdc++
-WORKDIR /opt
-RUN wget $NODE_PACKAGE_URL
-RUN mkdir -p /opt/nodejs
-RUN tar -zxvf *.tar.gz --directory /opt/nodejs --strip-components=1
-RUN rm *.tar.gz
-RUN ln -s /opt/nodejs/bin/node /usr/local/bin/node
-RUN ln -s /opt/nodejs/bin/npm /usr/local/bin/npm
-RUN npm install -g npm@9.6.6
+FROM node:lts-bookworm-slim
+RUN apt-get update && apt-get install -y \
+    nano git curl \ 
+    udev build-essential \
+    chromium-driver chromium xvfb \
+    libssl-dev openssl  \
+    && rm -rf /var/lib/apt/lists/*
 
 # fake chrome and force parameters
-COPY bin/chromium-browser.sh /tmp/chromium-browser
-RUN mv /usr/bin/chromium-browser /usr/bin/chromium-browser-original \
-  && ln -sfv /tmp/chromium-browser /usr/bin/chromium-browser
-RUN chmod +x /usr/bin/chromium-browser
-RUN ln -sf /usr/bin/chromium-browser /usr/bin/google-chrome
+COPY bin/chromium.sh /tmp/chromium
+RUN mv /usr/bin/chromium /usr/bin/chromium-original \
+  && ln -sfv /tmp/chromium /usr/bin/chromium
+RUN chmod +x /usr/bin/chromium
+RUN ln -sf /usr/bin/chromium /usr/bin/google-chrome
 
-# tagui hack's 
-RUN ln -sf /usr/bin/python3 /usr/bin/python
-ENV OPENSSL_CONF=/dev/null
+# Set up environment for Chromium and Chromedriver
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    CHROMIUM_PATH=/usr/bin/chromium \
+    CHROMEDRIVER_PATH=/usr/bin/chromedriver
 
-# tell puppeteer to skip installing chrome. We'll be using the installed package.
-ENV PUPPETEER_SKIP_DOWNLOAD=true
+# Download and install Micromamba
+ENV MAMBA_ROOT_PREFIX=/opt/micromamba
+RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba && \
+    ./bin/micromamba shell init -s bash -p $MAMBA_ROOT_PREFIX
+RUN mkdir -p /opt/micromamba/envs && chmod 777 /opt/micromamba/envs
 
-
-RUN adduser -D -g 'OpenIAP user' -h /home/openiap openiapuser
-RUN mkdir -p /home/openiap/.openiap/packages
-# RUN chown -R openiapuser:root /home/openiap && chmod -R g+rwX /home/openiap
-# RUN chown -R openiapuser:root /usr/local/lib/node_modules && chmod -R g+rwX /usr/local/lib/node_modules
-RUN chown -R openiapuser:root /home/openiap && chmod -R 775 /home/openiap
-RUN chown -R openiapuser:root /usr/local/lib && chmod -R 775 /usr/local/lib
+# Create a non-root user
+RUN useradd -ms /bin/bash openiapuser
+RUN mkdir -p /home/openiapuser/.mamba && \
+    chown -R openiapuser:openiapuser /home/openiapuser/.mamba
 
 USER openiapuser
-WORKDIR /home/openiap
+WORKDIR /home/openiapuser
+
+# Initialize Micromamba for the user
+RUN echo 'eval "$(micromamba shell hook --shell=bash)"' >> ~/.bashrc
 
 # Copy files with appropriate permissions
-COPY --chown=openiapuser:root package.json /home/openiap/package.json
-COPY --chown=openiapuser:root package-lock.json /home/openiap/package-lock.json
-COPY --chown=openiapuser:root bin /home/openiap/bin
+COPY --chown=openiapuser package.json package-lock.json ./
 
+# Install NPM packages
 RUN npm install
+# Openshift hack
+RUN chmod -R 777 /home/openiapuser
+RUN rm -r /home/openiapuser/.npm/*
 
-# OpenShift hack
-COPY --chown=openiapuser:root package.json /.npm/package.json
-RUN chmod 777 /.npm
-RUN rm -r /.npm/*
-RUN chmod 777 /home/openiap/.npm
-RUN rm -r /home/openiap/.npm/*
-
-COPY --chown=openiapuser:root dist /home/openiap/dist
-
-ENV HOME='/home/openiap'
-# ENV MAMBA_USER='openiapuser'
+# Copy the rest of your application
+COPY --chown=openiapuser . .
+ENV HOME='/home/openiapuser'
 ENV USER='openiapuser'
 
 CMD ["node", "--require", "./dist/Logger.js", "dist/runagent.js"]
-
-
-# WORKDIR /tmp
-# COPY package.json /tmp/package.json
-# COPY package-lock.json /tmp/package-lock.json
-# COPY bin /tmp/bin
-# RUN npm install
-
-# COPY dist /tmp/dist
-# # CMD ["npx", "-y", "@openiap/nodeagent", "-service"]
-# CMD ["node", "--require", "./dist/Logger.js", "dist/runagent.js"]
