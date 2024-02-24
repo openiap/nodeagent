@@ -198,7 +198,7 @@ export class HostPortMapper {
     } catch (error) {
       console.error("SendCache.cleanup", error.message);
     }
-    this.sendTimer = setTimeout(() => this.SendCache(), 100);
+    this.sendTimer = setTimeout(() => this.SendCache(), 0);
   }
 }
 
@@ -372,6 +372,6 @@ export class ClientPortMapper {
     } catch (error) {
       console.error("SendCache.cleanup", error.message);
     }
-    this.sendTimer = setTimeout(() => this.SendCache(), 100);
+    this.sendTimer = setTimeout(() => this.SendCache(), 0);
   }
 }
