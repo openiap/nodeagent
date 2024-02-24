@@ -180,12 +180,16 @@ export class HostPortMapper {
       }
       this.connections.forEach((connection, id) => {
         if (connection.socket != null) {
+          const start = new Date();
           while (connection.cache.length > 0) {
             const item = connection.cache.find(x => x.seq == connection.seq);
             if(item != null) {
               connection.socket.write(item.data);
               connection.cache.splice(connection.cache.indexOf(item), 1);
               connection.seq++;
+            }
+            if(new Date().getTime() - start.getTime() > 2000) { // 2000ms
+              break;
             }
           }
         }
@@ -354,12 +358,16 @@ export class ClientPortMapper {
     try {
       this.connections.forEach((connection, id) => {
         if (connection.socket != null) {
+          const start = new Date();
           while (connection.cache.length > 0) {
             const item = connection.cache.find(x => x.seq == connection.seq);
             if(item != null) {
               connection.socket.write(item.data);
               connection.cache.splice(connection.cache.indexOf(item), 1);
               connection.seq++;
+            }
+            if(new Date().getTime() - start.getTime() > 2000) { // 2000ms
+              break;
             }
           }
         }
