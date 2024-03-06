@@ -462,25 +462,41 @@ export class runner {
                 if(condapath.indexOf("micromamba") != -1) {
                     param = ["env", "update", "-y", "-f", path.join(packagepath, envfile)];
                 }
+                runner.notifyStream(client, streamid, "*******************************");
+                runner.notifyStream(client, streamid, "**** Running update environment");
+                runner.notifyStream(client, streamid, "*******************************");
+    
                 console.log(condapath, param.join(" "));
-                ctrossspawn.sync(condapath, param, { stdio: 'inherit' });
-                return envname;;
+                if ((await runner.runit(client, packagepath, streamid, condapath, param, false)) == 0) {
+                    return envname;
+                }
+                throw new Error("Failed to update environment");
             }
             console.log(condapath, param.join(" "));
-            ctrossspawn.sync(condapath, param, { stdio: 'inherit' });
+            runner.notifyStream(client, streamid, "*******************************");
+            runner.notifyStream(client, streamid, "**** Running create environment");
+            runner.notifyStream(client, streamid, "*******************************");
+            if ((await runner.runit(client, packagepath, streamid, condapath, param, false)) == 0) {
+                return envname;
+            }
+            throw new Error("Failed to create environment");
+        }
+        runner.notifyStream(client, streamid, "*******************************");
+        runner.notifyStream(client, streamid, "**** Running create environment");
+        runner.notifyStream(client, streamid, "*******************************");
+        console.log(condapath, param.join(" "));
+        if ((await runner.runit(client, packagepath, streamid, condapath, param, false)) == 0) {
             return envname;
         }
-        if (fs.existsSync(path.join(packagepath, "conda.yaml.done"))) return envname;
-        console.log(condapath, param.join(" "));
-        ctrossspawn.sync(condapath, param, { stdio: 'inherit' });
-        fs.writeFileSync(path.join(packagepath, "conda.yaml.done"), "Delete me to, force reinstalling packages doing next run");
-        return envname;
+        throw new Error("Failed to create environment");
     }
     public static async npminstall(client: openiap, packagepath: string, streamid: string): Promise<boolean> {
+
         await runner.Generatenpmrc(client, packagepath, streamid);
-        if (fs.existsSync(path.join(packagepath, "npm.install.done"))) {
-            return false;
-        } else if (fs.existsSync(path.join(packagepath, "package.json"))) {
+        if (fs.existsSync(path.join(packagepath, "package.json"))) {
+            console.log("************************");
+            console.log("**** Running npm install");
+            console.log("************************");
             const nodePath = runner.findNodePath();
             runner.notifyStream(client, streamid, "************************");
             runner.notifyStream(client, streamid, "**** Running npm install");
@@ -488,7 +504,6 @@ export class runner {
             const npmpath = runner.findNPMPath();
             if (npmpath == "") throw new Error("Failed locating NPM, is it installed and in the path?")
             if ((await runner.runit(client, packagepath, streamid, npmpath, ["install"], false)) == 0) {
-                fs.writeFileSync(path.join(packagepath, "npm.install.done"), "done");
                 return true;
             }
         }

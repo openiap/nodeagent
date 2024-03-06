@@ -343,7 +343,6 @@ export class agent  {
 
   public static async localrun(packageid: string, streamid: string, payload: any, env: any, schedule: any): Promise<[number, string, any]> {
     console.log("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin);
-    var b = true;
     const pck = await packagemanager.getpackage(agent.client, packageid);
     if(pck == null) {
       throw new Error("Package " + packageid + " not found");
@@ -371,27 +370,27 @@ export class agent  {
       if (streamid == null || streamid == "") {
         streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       }
-      let stream = new Stream.Readable({
+      let _stream = new Stream.Readable({
         read(size) { }
       });
-      let buffer: Buffer = Buffer.from("");
-      stream.on('data', async (data) => {
-        if (data == null) return;
-        if (Buffer.isBuffer(data)) {
-          buffer = Buffer.concat([buffer, data]);
-        } else {
-          buffer = Buffer.concat([buffer, Buffer.from(data)]);
-        }
-        if(buffer.length > 1000000) {
-            // keep first 500k and remove rest
-            buffer = buffer.subarray(0, 500000);
-        }
-      });
+      // let buffer: Buffer = Buffer.from("");
+      //_stream.on('data', async (data) => {
+        // if (data == null) return;
+        // if (Buffer.isBuffer(data)) {
+        //   buffer = Buffer.concat([buffer, data]);
+        // } else {
+        //   buffer = Buffer.concat([buffer, Buffer.from(data)]);
+        // }
+        // if(buffer.length > 1000000) {
+        //     // keep first 500k and remove rest
+        //     buffer = buffer.subarray(0, 500000);
+        // }
+      //});
       // stream.on('end', async () => { log("process ended"); });
       log("run package " + pck.name + " (" + packageid + ")");
       const ids: string[] = [];
       
-      const exitcode = await packagemanager.runpackage(agent.client, packageid, streamid, [], stream, true, _env, schedule);
+      const { exitcode, stream } = await packagemanager.runpackage(agent.client, packageid, streamid, [], _stream, true, _env, schedule);
       // log("run complete");
 
       let wipayload = payload;
@@ -403,7 +402,7 @@ export class agent  {
           log("Error loading payload from " + wipath + " " + (error.message ? error.message : error));
         }
       }
-      return [exitcode, buffer.toString(), wipayload];
+      return [exitcode, stream.buffer.toString(), wipayload];
     } catch (error) {
       _error(error);
     }

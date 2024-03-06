@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import { openiap } from "@openiap/nodeapi";
 import { Readable } from 'stream';
+import { runner_stream } from "./runner";
 export interface ipackageport {
     port: number;
     portname: string;
@@ -33,7 +34,10 @@ export declare class packagemanager {
     static getpackagepath(packagepath: string, first?: boolean): string;
     static getscriptpath(packagepath: string): string;
     private static addstream;
-    static runpackage(client: openiap, id: string, streamid: string, streamqueues: string[], stream: Readable, wait: boolean, env?: any, schedule?: any): Promise<number>;
+    static runpackage(client: openiap, id: string, streamid: string, streamqueues: string[], stream: Readable, wait: boolean, env?: any, schedule?: any): Promise<{
+        exitcode: number;
+        stream: runner_stream;
+    }>;
     static removepackage(id: string): Promise<void>;
     static deleteDirectoryRecursiveSync(dirPath: string): void;
 }

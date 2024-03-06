@@ -277,7 +277,7 @@ export class packagemanager {
     agent.emit("streamadded", s);
     return s;
   }
-  public static async runpackage(client: openiap, id: string, streamid: string, streamqueues: string[], stream: Readable, wait: boolean, env: any = {}, schedule: any = undefined): Promise<number> {
+  public static async runpackage(client: openiap, id: string, streamid: string, streamqueues: string[], stream: Readable, wait: boolean, env: any = {}, schedule: any = undefined): Promise<{exitcode: number, stream: runner_stream}> {
     if (streamid == null || streamid == "") throw new Error("streamid is null or empty");
     if(packagemanager.packagefolder() == null || packagemanager.packagefolder() == "") throw new Error("packagemanager.packagefolder is null or empty");
     try {
@@ -303,9 +303,6 @@ export class packagemanager {
       for (var i = processcount; i >= 0; i--) {
         var p = runner.streams[i];
         if (p == null) continue;
-        if(p.schedulename == null || p.schedulename == "") {
-          var b = true;
-        }
         processes.push({
           "id": p.id,
           "streamqueues": runner.commandstreams,
@@ -346,22 +343,22 @@ export class packagemanager {
             if(condaname != null) {
               console.log(conda)
               console.log(["run", "-n", condaname, "python", "-u", command])
-              return await runner.runit(client, packagepath, streamid, conda, ["run", "-n", condaname, "python", "-u", command], true, env)
+              return {exitcode: await runner.runit(client, packagepath, streamid, conda, ["run", "-n", condaname, "python", "-u", command], true, env), stream: s}
             }
             console.log(python)
             console.log(["-u", command])
-          return await runner.runit(client, packagepath, streamid, python, ["-u", command], true, env)
+            return {exitcode: await runner.runit(client, packagepath, streamid, python, ["-u", command], true, env), stream: s}
           }
           if(condaname != null) {
             console.log(conda)
             console.log(["run", "-n", condaname, "python", "-u", command])
             runner.runit(client, packagepath, streamid, conda, ["run", "-n", condaname, "python", "-u", command], true, env)
-            return 0;
+            return {exitcode: 0, stream: s};
           }
           console.log(python)
           console.log(["-u", command])
           runner.runit(client, packagepath, streamid, python, ["-u", command], true, env)
-          return 0;
+          return {exitcode: 0, stream: s};
         } else if (command.endsWith(".js") || command == "npm run start") {
           // const nodePath = path.join(app.getAppPath(), 'node_modules', '.bin', 'node');
           // const nodePath = "node"
@@ -371,36 +368,36 @@ export class packagemanager {
           if (wait) {
             if(command == "npm run start") {
               const npmpath = runner.findNPMPath();
-              return await runner.runit(client, packagepath, streamid, npmpath, ["run", "start"], true, env)
+              return {exitcode: await runner.runit(client, packagepath, streamid, npmpath, ["run", "start"], true, env), stream: s};
             }
-            return await runner.runit(client, packagepath, streamid, nodePath, [command], true, env)
+            return {exitcode: await runner.runit(client, packagepath, streamid, nodePath, [command], true, env), stream: s};
           } else {
             if(command == "npm run start") {
               const npmpath = runner.findNPMPath();
               runner.runit(client, packagepath, streamid, npmpath, ["run", "start"], true, env)
-              return 0;
+              return {exitcode: 0, stream: s};
             }
             runner.runit(client, packagepath, streamid, nodePath, [command], true, env)
-            return 0;
+            return {exitcode: 0, stream: s};
           }
         } else if (command.endsWith(".ps1")) {
           const pwshPath = runner.findPwShPath();
           if (pwshPath == "") throw new Error("Failed locating powershell, is powershell installed and in the path? " + JSON.stringify(process.env.PATH))
           if (wait) {
             var exitcode = await runner.runit(client, packagepath, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true, env);
-            return exitcode
+            return {exitcode, stream: s};
           } else {
             runner.runit(client, packagepath, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true, env)
-            return 0;
+            return {exitcode: 0, stream: s};
           }
         } else {
           var dotnet = runner.findDotnetPath();
           if (dotnet == "") throw new Error("Failed locating dotnet, is dotnet installed and in the path?")
           if (wait) {
-            return await runner.runit(client, packagepath, streamid, dotnet, ["run"], true, env)
+            return {exitcode: await runner.runit(client, packagepath, streamid, dotnet, ["run"], true, env), stream: s};
           } else {
             runner.runit(client, packagepath, streamid, dotnet, ["run"], true, env)
-            return 0;
+            return {exitcode: 0, stream: s};
           }
         }
       } else {
@@ -415,7 +412,7 @@ export class packagemanager {
       runner.notifyStream(client, streamid, error.message);
       runner.removestream(client, streamid, false, "");
     }
-    return 0;
+    return {exitcode: 0, stream: null};
   }
   public static async removepackage(id: string) {
     var ppath = path.join(packagemanager.packagefolder(), id);

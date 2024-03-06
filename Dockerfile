@@ -1,7 +1,7 @@
 FROM node:lts-bookworm-slim
 RUN apt-get update && apt-get install -y \
     nano git curl \ 
-    udev build-essential \
+    python3-pip udev build-essential \
     libssl-dev openssl  \
     && rm -rf /var/lib/apt/lists/*
 
