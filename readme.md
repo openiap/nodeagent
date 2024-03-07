@@ -7,16 +7,23 @@ npm i @openiap/nodeagent
 
 # run as 
 
-to install on linux/macos/windows
+to install on linux/macos
 ```bash
 npx -y @openiap/nodeagent
 ```
 
-Run this to clean npx cache on macos/linux
+On windows, make sure you are running as local system. This is due to, the service will be running as local system as well.
+So then NPX script needs access to the same locations as the service will be running as ( and have the same envoriment variables )
+You can do that by downloading [PSTools](https://download.sysinternals.com/files/PSTools.zip) and running psexec
 ```bash
-rm -rf $(npm get cache)/_npx && sudo rm -rf /root/.npm/_npx
+PsExec.exe -s -i cmd.exe
 ```
-Run this to clean npx cache on windows
+and in the new window that opens, just follow the guides for linux/mac, for instance, for installing the servvice, run
+```bash
+npx -y @openiap/nodeagent
+```
+
+Run this to clean npx cache
 ```bash
 npm cache clean --force
 npx clear-npx-cache
