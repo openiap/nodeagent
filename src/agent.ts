@@ -9,7 +9,7 @@ import * as path from "path";
 import * as fs from "fs"
 import { Stream } from 'stream';
 import { Logger } from "./Logger";
-import { FindFreePort, HostPortMapper } from "./PortMapper";
+import { HostPortMapper } from "./PortMapper";
 import { sleep } from "./util";
 
 let elog: any = null;
