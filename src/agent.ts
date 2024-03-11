@@ -181,7 +181,6 @@ export class agent  {
     }
     agent.localqueue = "";
     agent.languages = ["nodejs"];
-    // let client = new openiap();
     config.doDumpStack = true
     if (!agent.reloadAndParseConfig()) {
       return;
@@ -290,7 +289,7 @@ export class agent  {
           if (document._type == "package") {
             if (operation == "insert") {
               log("package " + document.name + " inserted, reload packages");
-              await agent.reloadpackages(false)
+              // await agent.reloadpackages(false)
             } else if (operation == "replace" || operation == "delete") {
               log("package " + document.name + " (" +  document._id + " ) updated.");
               if(agent.killonpackageupdate) {
@@ -305,11 +304,8 @@ export class agent  {
               packagemanager.removepackage(document._id);
               if (operation == "replace") {
                 if (!fs.existsSync(packagemanager.packagefolder())) fs.mkdirSync(packagemanager.packagefolder(), { recursive: true });
-                await packagemanager.getpackage(agent.client, document._id);
+                await packagemanager.getpackage(agent.client, document._id, false);
               }
-            // } else if (operation == "delete") {
-            //   log("package " + document.name + " deleted, cleanup after package");
-            //   packagemanager.removepackage(document._id);
             }
           } else if (document._type == "agent") {
             if (document._id == agent.agentid) {
@@ -334,16 +330,82 @@ export class agent  {
     } catch (error) {
       _error(error);
       await sleep(2000);
-      // process.exit(0);
     }
   }
   private static async onDisconnected(client: openiap) {
     log("Disconnected");
   };
-
   public static async localrun(packageid: string, streamid: string, payload: any, env: any, schedule: any): Promise<[number, string, any]> {
     console.log("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin);
-    const pck = await packagemanager.getpackage(agent.client, packageid);
+    const pck = await packagemanager.getpackage(agent.client, packageid, true);
+    if(pck == null) {
+      throw new Error("Package " + packageid + " not found");
+    }
+    const packagepath = packagemanager.getpackagepath(path.join(packagemanager.homedir(), ".openiap", "packages", packageid));
+    console.log("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin);
+    if (packagepath == "") {
+      log("Package " + packageid + " not found");
+      return [2, "Package " + packageid + " not found", payload];
+    }
+    if (streamid == null || streamid == "") {
+      streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    }
+    const runfolder = path.join(packagemanager.homedir(), ".openiap", "runtime", streamid);
+    if(fs.existsSync(runfolder)) {
+      throw new Error("Stream " + streamid + " already running (folder exists)");
+    }
+    var _env = {"payloadfile": ""};
+    const payloadfile = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + ".json";
+    const wipath = path.join(runfolder, payloadfile);
+    if(env != null) _env = Object.assign(_env, env);
+
+    try {
+      if (fs.existsSync(wipath)) { fs.unlinkSync(wipath); }
+      if (payload != null) { _env = Object.assign(_env, payload); }
+      _env["payloadfile"] = payloadfile;
+
+      if (payload != null) {
+        let wijson = JSON.stringify(payload, null, 2);
+        if (!fs.existsSync(runfolder)) fs.mkdirSync(runfolder, { recursive: true });
+        fs.writeFileSync(wipath, wijson);
+      }
+      let _stream = new Stream.Readable({
+        read(size) { }
+      });
+      log("run package " + pck.name + " (" + packageid + ")");
+      const { exitcode, stream } = await packagemanager.runpackage(agent.client, packageid, streamid, [], _stream, true, _env, schedule);
+      let wipayload = payload;
+      if (fs.existsSync(wipath)) {
+        try {
+          wipayload = JSON.parse(fs.readFileSync(wipath).toString());
+          if (fs.existsSync(wipath)) { fs.unlinkSync(wipath); }
+        } catch (error) {
+          log("Error loading payload from " + wipath + " " + (error.message ? error.message : error));
+        }
+      }
+      return [exitcode, stream.buffer?.toString(), wipayload];
+    } catch (error) {
+      _error(error);
+      let wipayload = payload;
+      if (fs.existsSync(wipath)) {
+        try {
+          wipayload = JSON.parse(fs.readFileSync(wipath).toString());
+          if (fs.existsSync(wipath)) { fs.unlinkSync(wipath); }
+        } catch (error) {
+          log("Error loading payload from " + wipath + " " + (error.message ? error.message : error));
+        }
+      }
+      return [-1, error.message, wipayload];
+    } finally {
+      try {
+        packagemanager.deleteDirectoryRecursiveSync(runfolder);
+      } catch (error) {        
+      }
+    }
+  }
+  public static async localrun_old(packageid: string, streamid: string, payload: any, env: any, schedule: any): Promise<[number, string, any]> {
+    console.log("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin);
+    const pck = await packagemanager.getpackage(agent.client, packageid, true);
     if(pck == null) {
       throw new Error("Package " + packageid + " not found");
     }
@@ -373,25 +435,10 @@ export class agent  {
       let _stream = new Stream.Readable({
         read(size) { }
       });
-      // let buffer: Buffer = Buffer.from("");
-      //_stream.on('data', async (data) => {
-        // if (data == null) return;
-        // if (Buffer.isBuffer(data)) {
-        //   buffer = Buffer.concat([buffer, data]);
-        // } else {
-        //   buffer = Buffer.concat([buffer, Buffer.from(data)]);
-        // }
-        // if(buffer.length > 1000000) {
-        //     // keep first 500k and remove rest
-        //     buffer = buffer.subarray(0, 500000);
-        // }
-      //});
-      // stream.on('end', async () => { log("process ended"); });
       log("run package " + pck.name + " (" + packageid + ")");
       const ids: string[] = [];
       
       const { exitcode, stream } = await packagemanager.runpackage(agent.client, packageid, streamid, [], _stream, true, _env, schedule);
-      // log("run complete");
 
       let wipayload = payload;
       if (fs.existsSync(wipath)) {
@@ -451,9 +498,6 @@ export class agent  {
         }
         config.agentid = agent.agentid;
 
-        // if (process.env["apiurl"] != null && process.env["apiurl"] != "") {
-        //   log("Skip updating config.json as apiurl is set in environment variable (probably running as a service)")
-        // } else {
         if (res.jwt != null && res.jwt != "") {
           process.env.jwt = res.jwt;
         }
@@ -462,7 +506,6 @@ export class agent  {
         }
         if (!fs.existsSync(packagemanager.packagefolder())) fs.mkdirSync(packagemanager.packagefolder(), { recursive: true });
         fs.writeFileSync(path.join(packagemanager.homedir(), ".openiap", "config.json"), JSON.stringify(config));
-        // }
 
         if (res.schedules == null || !Array.isArray(res.schedules)) res.schedules = [];
         if (agent.globalpackageid != "" && agent.globalpackageid != null) {
@@ -484,9 +527,6 @@ export class agent  {
             if (schedule.env == null) schedule.env = {};
             if (schedule.cron == null || schedule.cron == "") schedule.cron = "";
             let updated = false;
-            // if (JSON.stringify(_schedule.env) != JSON.stringify(schedule.env) || _schedule.cron != schedule.cron || _schedule.enabled != schedule.enabled) {
-            //   updated = true;
-            // }
             var keys = Object.keys(_schedule);
             for (var i = 0; i < keys.length; i++) {
               const key = keys[i];
@@ -540,8 +580,6 @@ export class agent  {
             }
           }
         }
-        // console.log("streams: " + runner.streams.length + " current schedules: " + agent.schedules.length + " new schedules: " + res.schedules.length)
-        //agent.schedules = res.schedules;
         for (let p = 0; p < agent.schedules.length; p++) {
           const schedule = agent.schedules[p];
           if (schedule.packageid == null || schedule.packageid == "") {
@@ -736,12 +774,9 @@ export class agent  {
 
   private static async onQueueMessage(msg: QueueEvent, payload: any, user: any, jwt: string) {
     try {
-      // const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       let streamid = msg.correlationId;
       if (payload != null && payload.payload != null && payload.command == null) payload = payload.payload;
       if (payload.streamid != null && payload.streamid != "") streamid = payload.streamid;
-      // log("onQueueMessage");
-      // log(payload);
       let streamqueue = msg.replyto;
       if (payload.queuename != null && payload.queuename != "") {
         streamqueue = payload.queuename;
@@ -771,7 +806,7 @@ export class agent  {
             log("payload missing packageid " + JSON.stringify(payload, null, 2));
             return { "command": payload.command, "success": false, error: "payload missing packageid" };
           }
-          await packagemanager.getpackage(agent.client, payload.packageid);
+          await packagemanager.getpackage(agent.client, payload.packageid, true);
           packagepath = packagemanager.getpackagepath(path.join(packagemanager.homedir(), ".openiap", "packages", payload.packageid));
 
           workitem = await agent.client.PopWorkitem({ wiq: payload.wiq, includefiles: false, compressed: false });
@@ -797,8 +832,6 @@ export class agent  {
             if (file.filename == "output.txt") continue;
             const reply = await this.client.DownloadFile({ id: file._id, folder: packagepath });
             log("Downloaded file: " + reply.filename);
-            // log("Downloaded file: " + file.filename);
-            // fs.writeFileSync(path.join(packagepath, file.filename), file.file);
           }
           const [exitcode, output, newpayload] = await agent.localrun(payload.packageid, streamid, workitem.payload, env, null);
           try {
@@ -925,18 +958,6 @@ export class agent  {
           console.log("Add streamqueue " + payload.streamqueue + " to commandstreams")
           runner.commandstreams.push(payload.streamqueue);
         }
-        // for (let i = processcount; i >= 0; i--) {
-        //   let p = runner.streams[i];
-        //   if (p == null) continue
-        //   if (p.id == payload.id) {
-        //     counter++;
-        //     // p.streamqueue = payload.streamqueue;
-        //     if(runner.commandstreams.indexOf(payload.streamqueue) == -1 && payload.streamqueue != null && payload.streamqueue != "") {
-        //       runner.commandstreams.push(payload.streamqueue);
-        //     }
-        //   }
-        // }
-        // const s = runner.ensurestream(streamid, payload.streamqueue);
         const s = runner.streams.find(x => x.id == streamid)
         if (s?.buffer != null && s?.buffer.length > 0) {
           let _message = Buffer.from(s.buffer);
@@ -946,7 +967,6 @@ export class agent  {
             log(error.message ? error.message : error);
           }
         }
-        // runner.notifyStream(agent.client, payload.id, s.buffer, false)
         return { "command": "setstreamid", "success": true, "count": counter, };
       }
       if (payload.command == "listprocesses") {
@@ -1004,7 +1024,6 @@ export class agent  {
           }
         }
         return;
-        // return { "command": "portclose", "success": true};
       }
       if(payload.command == "portdata") {
         if(payload.id == null || payload.id == "") return { "command": "portdata", "success": false, "error": "id is required" };
@@ -1025,7 +1044,7 @@ export class agent  {
           }
           portlistener.newConnection(payload.id, msg.replyto); // Ensure connection
           portlistener.IncommingData(payload.id, payload.seq, Buffer.from(payload.buf)); // Forward data
-          return // { "command": "portdata", "success": true};
+          return 
         }
         var _streams: any[] = [];
         let filteredstreams = runner.streams;

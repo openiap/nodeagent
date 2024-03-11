@@ -7,7 +7,6 @@ import { packagemanager } from "./packagemanager";
 import { runner } from "./runner";
 import { ClientPortMapper, FindFreePort } from "./PortMapper";
 
-// console.log(JSON.stringify(process.env.PATH, null, 2));
 const os = require('os');
 const path = require('path');
 const prompts = require('./prompt-sync')();
@@ -360,8 +359,6 @@ async function main() {
       const jwt = await agenttools.WaitForToken(assistantConfig.apiurl, tokenkey);
       assistantConfig.jwt = jwt;
     }
-    // if (!fs.existsSync(path.join(packagemanager.homedir(), ".openiap"))) fs.mkdirSync(path.join(packagemanager.homedir(), ".openiap"), { recursive: true });
-    // fs.writeFileSync(path.join(packagemanager.homedir(), ".openiap", "config.json"), JSON.stringify(assistantConfig));
     try {
       fs.writeFileSync(home_configfile, JSON.stringify(assistantConfig));
     } catch (error) {

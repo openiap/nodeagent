@@ -9,7 +9,6 @@ import * as yaml from "js-yaml";
 import { ipackageport } from './packagemanager';
 import { sleep } from './util';
 
-// import { spawnSync } from 'cross-spawn';
 const ctrossspawn = require('cross-spawn');
 
 const { info, err } = config;
@@ -22,7 +21,6 @@ export class runner_process {
 export class runner_stream {
     id: string;
     stream: Readable;
-    // streamqueue: string;
     streamqueues: string[];
     packageid: string;
     packagename: string;
@@ -36,7 +34,6 @@ export class runner {
     public static streams: runner_stream[] = [];
     public static commandstreams: string[] = [];
     public static async notifyStream(client: openiap, streamid: string, message: Buffer | string, addtobuffer: boolean = true): Promise<void> {
-        // const s = this.ensurestream(streamid, "");
         const s = runner.streams.find(x => x.id == streamid)
         if(s == null) return;
         if (message != null && !Buffer.isBuffer(message)) {
@@ -126,18 +123,11 @@ export class runner {
     public static async runit(client: openiap, packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean, env: any = {}): Promise<number> {
         return new Promise((resolve, reject) => {
             try {
-                // console.log('runit: Running command:', command);
-                // , stdio: ['pipe', 'pipe', 'pipe']
-                // , stdio: 'pipe'
-                // if(command.indexOf(" ") > -1 && !command.startsWith('"')) {
-                //     command = '"' + command + '"'
-                // }
                 if (clearstream) {
                     var xvfb = runner.findXvfbPath()
                     if (xvfb != null && xvfb != "") {
                         var shellcommand = command;
                         var _parameters = parameters;
-                        // var shellcommand = '"' + command + '" "' + parameters.join(" ") + '"';
                         command = xvfb;
                         parameters = [];
                         parameters.push(`--server-args="-screen 0 1920x1080x24 -ac"`);
@@ -148,9 +138,7 @@ export class runner {
                     }
                 }
                 console.log('Running command:', command + " " + parameters.join(" "));
-                // if (parameters != null && Array.isArray(parameters)) console.log('With parameters:', parameters.join(" "));
                 const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
-                // console.log('Current working directory:', packagepath);
 
                 agent.emit("runit", { streamid, command, parameters, cwd: packagepath, env: { ...process.env, ...env } });
 
@@ -170,7 +158,6 @@ export class runner {
                 childProcess.stdio[1]?.on('data', catchoutput);
                 childProcess.stdio[2]?.on('data', catchoutput);
                 childProcess.stdio[3]?.on('data', catchoutput);
-                // childProcess.stdout.on('exit', (code: number) => {
                 childProcess.on('close', (code: number) => {
                     // @ts-ignore
                     if (code == false || code == null) {
@@ -214,16 +201,13 @@ export class runner {
                 if (lines.length > 0) return lines[0]
             } else {
                 if (result.stderr != null && result.stderr.toString() != "") {
-                    // console.log(result.stderr.toString());
                 }
                 if (result.stdout != null && result.stdout.toString() != "") {
-                    // console.log(result.stdout.toString());
                 }
             }
             return "";
         } catch (error) {
             return "";
-            // throw error;
         }
     }
     public static findInPath2(exec: string): string | null {
@@ -248,14 +232,9 @@ export class runner {
             return "";
         } catch (error) {
             return "";
-            // throw error;
         }
     }
     private static async _kill(pid: number) {
-        // exec(isWindows ? `taskkill /PID ${childPid} /T /F` : `kill -9 ${childPid}`, (err, stdout, stderr) => {
-        //     if (err) reject(err);
-        //     else resolve(stdout);
-        // });
         const isWindows = process.platform === 'win32';
         return new Promise((resolve, reject) => {
             if (isWindows) {
