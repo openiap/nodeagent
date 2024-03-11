@@ -50,6 +50,7 @@ export declare class agent {
     private static onConnected;
     private static onDisconnected;
     static localrun(packageid: string, streamid: string, payload: any, env: any, schedule: any): Promise<[number, string, any]>;
+    static localrun_old(packageid: string, streamid: string, payload: any, env: any, schedule: any): Promise<[number, string, any]>;
     static reloadpackages(force: boolean): Promise<ipackage[]>;
     static RegisterAgent(): Promise<void>;
     private static onQueueMessage;

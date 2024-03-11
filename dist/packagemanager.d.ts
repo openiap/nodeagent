@@ -30,10 +30,14 @@ export declare class packagemanager {
     static getpackages(client: openiap, languages: string[]): Promise<ipackage[]>;
     static reloadpackage(client: openiap, id: string, force: boolean): Promise<ipackage>;
     static reloadpackages(client: openiap, languages: string[], force: boolean): Promise<ipackage[]>;
-    static getpackage(client: openiap, id: string): Promise<ipackage>;
+    static getpackage(client: openiap, id: string, download: boolean): Promise<ipackage>;
     static getpackagepath(packagepath: string, first?: boolean): string;
     static getscriptpath(packagepath: string): string;
     private static addstream;
+    static runpackage_old(client: openiap, id: string, streamid: string, streamqueues: string[], stream: Readable, wait: boolean, env?: any, schedule?: any): Promise<{
+        exitcode: number;
+        stream: runner_stream;
+    }>;
     static runpackage(client: openiap, id: string, streamid: string, streamqueues: string[], stream: Readable, wait: boolean, env?: any, schedule?: any): Promise<{
         exitcode: number;
         stream: runner_stream;
