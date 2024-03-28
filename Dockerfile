@@ -1,8 +1,10 @@
 FROM node:lts-bookworm-slim
+# procps - for access to ps command like pkill and pgrep
 RUN apt-get update && apt-get install -y \
     nano git curl \ 
     python3-pip udev build-essential \
     libssl-dev openssl  \
+    procps \ 
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install Micromamba
