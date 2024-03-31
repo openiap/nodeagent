@@ -39,7 +39,7 @@ COPY --chown=openiapuser:root package.json /home/openiap/package.json
 COPY --chown=openiapuser:root package-lock.json /home/openiap/package-lock.json
 COPY --chown=openiapuser:root bin /home/openiap/bin
 
-RUN npm install
+RUN npm install --omit=dev --production --verbose
 
 # OpenShift hack
 COPY --chown=openiapuser:root package.json /.npm/package.json

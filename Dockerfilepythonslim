@@ -21,7 +21,7 @@ WORKDIR /tmp
 COPY package.json /tmp/package.json
 COPY package-lock.json /tmp/package-lock.json
 COPY bin /tmp/bin
-RUN npm install
+RUN npm install --omit=dev --production --verbose
 
 COPY dist /tmp/dist
 
