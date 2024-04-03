@@ -65,7 +65,8 @@ export class packagemanager {
       var _packages: ipackage[] = [];
       var files = fs.readdirSync(packagemanager.packagefolder());
       for(var i = 0; i < files.length; i++) {
-        if(files[i].endsWith(".json")) {
+        if(files[i] == null) {
+        } else if(files[i].endsWith(".json")) {
           var pkg = JSON.parse(fs.readFileSync(path.join(packagemanager.packagefolder(), files[i])).toString());
           if(pkg != null && pkg._type == "package") _packages.push(pkg);
         }
@@ -132,10 +133,12 @@ export class packagemanager {
             fs.writeFileSync(path.join(packagemanager.packagefolder(), id + ".json"), JSON.stringify(pkg, null, 2))
             const localpath = path.join(packagemanager.packagefolder(), id)
             if(fs.existsSync(localpath)) {
-              let files = fs.readdirSync(localpath);
-              if(files.length > 0 ) {
-                return pkg;
-              }
+              const packagepath = packagemanager.getpackagepath(path.join(packagemanager.homedir(), ".openiap", "packages", id));
+              if(packagepath != null && packagepath != "") return pkg; 
+              // let files = fs.readdirSync(localpath);
+              // if(files.length > 0 ) {
+              //   return pkg;
+              // }
             }
           } else {
             pkg = serverpcks[0];
@@ -179,10 +182,14 @@ export class packagemanager {
     }
     try {
       if (path.extname(filename) == ".zip") {
+        packagemanager.deleteDirectoryRecursiveSync(path.join(packagemanager.packagefolder(), id));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         var zip = new AdmZip(filename);
         zip.extractAllTo(path.join(packagemanager.packagefolder(), id), true);
       } else if (path.extname(filename) == ".tar.gz" || path.extname(filename) == ".tgz") {
         var dest = path.join(packagemanager.packagefolder(), id);
+        packagemanager.deleteDirectoryRecursiveSync(dest);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         if (!fs.existsSync(dest)) {
           fs.mkdirSync(dest, { recursive: true });
         }
@@ -193,7 +200,10 @@ export class packagemanager {
           })
         } catch (error) {
           console.error(error)
-          throw error;
+          await tar.x({
+            file: filename,
+            C: dest
+          })
         }
       }
     } catch (error) {
@@ -280,141 +290,6 @@ export class packagemanager {
     agent.emit("streamadded", s);
     return s;
   }
-  public static async runpackage_old(client: openiap, id: string, streamid: string, streamqueues: string[], stream: Readable, wait: boolean, env: any = {}, schedule: any = undefined): Promise<{exitcode: number, stream: runner_stream}> {
-    if (streamid == null || streamid == "") throw new Error("streamid is null or empty");
-    if(packagemanager.packagefolder() == null || packagemanager.packagefolder() == "") throw new Error("packagemanager.packagefolder is null or empty");
-    try {
-      let pck: ipackage = null;
-      let s: runner_stream = null;
-      try {
-        pck = await packagemanager.getpackage(client, id, true);
-        s = await packagemanager.addstream(streamid, streamqueues, stream, pck, env)
-      } catch (error) {
-        throw error;
-      }
-      if(s == null) s = await packagemanager.addstream(streamid, streamqueues, stream, pck, env)
-
-      if(pck == null) throw new Error("Failed to find package: " + id);
-      s.packagename = pck.name;
-      s.packageid = pck._id;
-      s.schedulename = "";
-      if(schedule != null) {
-        s.schedulename = schedule.name;
-      }
-      var processcount = runner.streams.length;
-      var processes = [];
-      for (var i = processcount; i >= 0; i--) {
-        var p = runner.streams[i];
-        if (p == null) continue;
-        processes.push({
-          "id": p.id,
-          "streamqueues": runner.commandstreams,
-          "packagename": p.packagename,
-          "packageid": p.packageid,
-          "schedulename": p.schedulename,
-        });
-      }
-      let message = { "command": "listprocesses", "success": true, "count": processcount, "processes": processes }
-
-      for (let i = runner.commandstreams.length - 1; i >= 0; i--) {
-        const streamqueue = runner.commandstreams[i];
-        if(streamqueue != streamid) {
-          try {
-            await client.QueueMessage({ queuename: streamqueue, data: message, correlationId: streamid });
-          } catch (error) {
-            console.log("runpackage, remove streamqueue " + streamqueue);
-            runner.commandstreams.splice(i, 1);
-          }
-        }
-      }
-      var packagepath = packagemanager.getpackagepath(path.join(packagemanager.packagefolder(), id));
-      if (fs.existsSync(packagepath)) {
-        let command = packagemanager.getscriptpath(packagepath)
-        if (command == "" || command == null) throw new Error("Failed locating a command to run, EXIT")
-        if (command.endsWith(".py")) {
-          var python = runner.findPythonPath();
-          if (python == "") throw new Error("Failed locating python, is python installed and in the path?")
-          var conda = runner.findCondaPath();
-          var condaname = null;
-          if(conda != null && conda != "") {
-            condaname = await runner.condainstall(client, packagepath, streamid, conda)
-          }
-          if(condaname == null) {
-            await runner.pipinstall(client, packagepath, streamid, python)
-          }
-          if (wait) {
-            if(condaname != null) {
-              console.log(conda)
-              console.log(["run", "-n", condaname, "python", "-u", command])
-              return {exitcode: await runner.runit(client, packagepath, streamid, conda, ["run", "-n", condaname, "python", "-u", command], true, env), stream: s}
-            }
-            console.log(python)
-            console.log(["-u", command])
-            return {exitcode: await runner.runit(client, packagepath, streamid, python, ["-u", command], true, env), stream: s}
-          }
-          if(condaname != null) {
-            console.log(conda)
-            console.log(["run", "-n", condaname, "python", "-u", command])
-            runner.runit(client, packagepath, streamid, conda, ["run", "-n", condaname, "python", "-u", command], true, env)
-            return {exitcode: 0, stream: s};
-          }
-          console.log(python)
-          console.log(["-u", command])
-          runner.runit(client, packagepath, streamid, python, ["-u", command], true, env)
-          return {exitcode: 0, stream: s};
-        } else if (command.endsWith(".js") || command == "npm run start") {
-          const nodePath = runner.findNodePath();
-          if (nodePath == "") throw new Error("Failed locating node, is node installed and in the path? " + JSON.stringify(process.env.PATH))
-          await runner.npminstall(client, packagepath, streamid);
-          if (wait) {
-            if(command == "npm run start") {
-              const npmpath = runner.findNPMPath();
-              return {exitcode: await runner.runit(client, packagepath, streamid, npmpath, ["run", "start"], true, env), stream: s};
-            }
-            return {exitcode: await runner.runit(client, packagepath, streamid, nodePath, [command], true, env), stream: s};
-          } else {
-            if(command == "npm run start") {
-              const npmpath = runner.findNPMPath();
-              runner.runit(client, packagepath, streamid, npmpath, ["run", "start"], true, env)
-              return {exitcode: 0, stream: s};
-            }
-            runner.runit(client, packagepath, streamid, nodePath, [command], true, env)
-            return {exitcode: 0, stream: s};
-          }
-        } else if (command.endsWith(".ps1")) {
-          const pwshPath = runner.findPwShPath();
-          if (pwshPath == "") throw new Error("Failed locating powershell, is powershell installed and in the path? " + JSON.stringify(process.env.PATH))
-          if (wait) {
-            var exitcode = await runner.runit(client, packagepath, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true, env);
-            return {exitcode, stream: s};
-          } else {
-            runner.runit(client, packagepath, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true, env)
-            return {exitcode: 0, stream: s};
-          }
-        } else {
-          var dotnet = runner.findDotnetPath();
-          if (dotnet == "") throw new Error("Failed locating dotnet, is dotnet installed and in the path?")
-          if (wait) {
-            return {exitcode: await runner.runit(client, packagepath, streamid, dotnet, ["run"], true, env), stream: s};
-          } else {
-            runner.runit(client, packagepath, streamid, dotnet, ["run"], true, env)
-            return {exitcode: 0, stream: s};
-          }
-        }
-      } else {
-        if (packagepath == null || packagepath == "") {
-          runner.notifyStream(client, streamid, "Package not found in " + packagemanager.packagefolder());
-        } else {
-          runner.notifyStream(client, streamid, "Package not found in " + packagepath);
-        }
-        runner.removestream(client, streamid, false, "");
-      }
-    } catch (error) {
-      runner.notifyStream(client, streamid, error.message);
-      runner.removestream(client, streamid, false, "");
-    }
-    return {exitcode: 0, stream: null};
-  }
   public static async runpackage(client: openiap, id: string, streamid: string, streamqueues: string[], stream: Readable, wait: boolean, env: any = {}, schedule: any = undefined): Promise<{exitcode: number, stream: runner_stream}> {
     if (streamid == null || streamid == "") throw new Error("streamid is null or empty");
     if(packagemanager.packagefolder() == null || packagemanager.packagefolder() == "") throw new Error("packagemanager.packagefolder is null or empty");
@@ -429,7 +304,9 @@ export class packagemanager {
       }
       if(s == null) s = await packagemanager.addstream(streamid, streamqueues, stream, pck, env)
 
-      if(pck == null) throw new Error("Failed to find package: " + id);
+      if(pck == null) {
+        throw new Error("Failed to find package: " + id);
+      }
       s.packagename = pck.name;
       s.packageid = pck._id;
       s.schedulename = "";
@@ -468,7 +345,9 @@ export class packagemanager {
         throw new Error("Failed to find package: " + id);
       }
       let command = packagemanager.getscriptpath(packagepath)
-      if (command == "" || command == null) throw new Error("Failed locating a command to run, EXIT")
+      if (command == "" || command == null) {
+        throw new Error("Failed locating a command to run, EXIT")
+      }
       if (command.endsWith(".py")) {
         var python = runner.findPythonPath();
         if (python == "") throw new Error("Failed locating python, is python installed and in the path?")
@@ -502,6 +381,9 @@ export class packagemanager {
       if (!fs.existsSync(runfolder)) fs.mkdirSync(runfolder, { recursive: true });
       fs.cpSync(packagepath, runfolder, { recursive: true });
       command = packagemanager.getscriptpath(runfolder)
+      if (command == "" || command == null) {
+        throw new Error("Failed locating a command to run in run folder, EXIT")
+      }
       if(!fs.existsSync(packagepath)) {
         throw new Error("Failed to find package: " + id);
       }
