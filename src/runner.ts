@@ -138,7 +138,8 @@ export class runner {
                     }
                 }
                 console.log('Running command:', command + " " + parameters.join(" "));
-                const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
+                // const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
+                const childProcess = ctrossspawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
 
                 agent.emit("runit", { streamid, command, parameters, cwd: packagepath, env: { ...process.env, ...env } });
 
@@ -469,6 +470,7 @@ export class runner {
         }
         throw new Error("Failed to create environment");
     }
+    // spawn EINVAL  - https://github.com/nodejs/node/issues/52554
     public static async npminstall(client: openiap, packagepath: string, streamid: string): Promise<boolean> {
 
         await runner.Generatenpmrc(client, packagepath, streamid);
