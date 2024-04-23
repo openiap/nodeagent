@@ -383,7 +383,7 @@ export class agent  {
           log("Error loading payload from " + wipath + " " + (error.message ? error.message : error));
         }
       }
-      return [exitcode, stream.buffer?.toString(), wipayload];
+      return [exitcode, stream?.buffer?.toString(), wipayload];
     } catch (error) {
       _error(error);
       let wipayload = payload;
@@ -449,7 +449,7 @@ export class agent  {
           log("Error loading payload from " + wipath + " " + (error.message ? error.message : error));
         }
       }
-      return [exitcode, stream.buffer.toString(), wipayload];
+      return [exitcode, stream?.buffer.toString(), wipayload];
     } catch (error) {
       _error(error);
     }
