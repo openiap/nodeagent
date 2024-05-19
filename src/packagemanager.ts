@@ -255,7 +255,7 @@ export class packagemanager {
     if (fs.existsSync(path.join(packagepath, "index.ps1"))) return path.join(packagepath, "index.ps1");
     if (fs.existsSync(path.join(packagepath, "main.ps1"))) return path.join(packagepath, "main.ps1");
   }
-  private static async addstream(streamid: string, streamqueues: string[], stream: Readable, pck: ipackage, env: any) {
+  private static async addstream(client: openiap, streamid: string, streamqueues: string[], stream: Readable, pck: ipackage, env: any) {
     let s = runner.streams.find(x => x.id == streamid)
     if (s != null) throw new Error("Stream " + streamid + " already exists")
     s = new runner_stream();
@@ -268,12 +268,21 @@ export class packagemanager {
       s.packageid = pck._id;
     }
     runner.streams.push(s);
+    if(process.env.SKIP_FREE_PORT_CHECK != null || env.SKIP_FREE_PORT_CHECK  != null) {
+      agent.emit("streamadded", s);
+      return s;
+    }
 
     if(pck.ports != null) {
       for(let i = 0; i < pck.ports.length; i++) {
         let port: number = pck.ports[i].port;
         if(port == null || (port as any) == "") port = 0;
-        port = await FindFreePort(port);
+        let newport = await FindFreePort(port);
+        if(newport != port) {
+          console.log("port " + port + " is in use, using " + newport + " instead for " + pck.ports[i].portname);
+          runner.notifyStream(client, streamid, "port " + port + " is in use, using " + newport + " instead for " + pck.ports[i].portname);
+          port = newport
+        }
         // @ts-ignore
         if(pck.ports[i].name != null && pck.ports[i].portname == null) pck.ports[i].portname = pck.ports[i].name;
         var newp = { port: port, portname: pck.ports[i].portname, protocol: pck.ports[i].protocol, web: pck.ports[i].web };
@@ -284,6 +293,19 @@ export class packagemanager {
           if(pck.ports.length == 1) {
             env["PORT"] = port;
           }
+        }
+      }
+    }
+    if(env != null) {
+      if(env.PORT != null && env.PORT != "") {
+        let port:number = parseInt(env.PORT);
+        if(port > 0) {
+          let newport = await FindFreePort(port);
+          if(port != newport) {
+            console.log("port " + port + " is in use, using " + newport + " instead for envoriment variable PORT");
+            runner.notifyStream(client, streamid, "port " + port + " is in use, using " + newport + " instead for envoriment variable PORT");
+            env.PORT = newport;
+          }            
         }
       }
     }
@@ -298,11 +320,11 @@ export class packagemanager {
       let s: runner_stream = null;
       try {
         pck = await packagemanager.getpackage(client, id, true);
-        s = await packagemanager.addstream(streamid, streamqueues, stream, pck, env)
+        s = await packagemanager.addstream(client, streamid, streamqueues, stream, pck, env)
       } catch (error) {
         throw error;
       }
-      if(s == null) s = await packagemanager.addstream(streamid, streamqueues, stream, pck, env)
+      if(s == null) s = await packagemanager.addstream(client, streamid, streamqueues, stream, pck, env)
 
       if(pck == null) {
         throw new Error("Failed to find package: " + id);
