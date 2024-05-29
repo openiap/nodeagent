@@ -372,8 +372,8 @@ export class packagemanager {
       }
       if (command.endsWith(".py")) {
         var python = runner.findPythonPath();
-        if (python == "") throw new Error("Failed locating python, is python installed and in the path?")
         var conda = runner.findCondaPath();
+        if (python == "" && conda == "") throw new Error("Failed locating python or conda or micromamba, if installed is it added to the path environment variable?")
         var condaname = null;
         const lockfile = path.join(packagepath, "conda.lock");
         if(!fs.existsSync(lockfile)) {
@@ -384,6 +384,8 @@ export class packagemanager {
             await runner.pipinstall(client, packagepath, streamid, python)
           }
           fs.writeFileSync(lockfile, "installed");
+        } else {
+          condaname = await runner.condainstall(client, packagepath, streamid, conda)
         }
       } else if (command.endsWith(".js") || command == "npm run start") {
         const nodePath = runner.findNodePath();

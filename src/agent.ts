@@ -189,6 +189,11 @@ export class agent  {
       let pypath = runner.findPythonPath();
       if (pypath != null && pypath != "") {
         agent.languages.push("python");
+      } else {
+        let condapath = runner.findCondaPath();
+        if (condapath != null && condapath != "") {
+          agent.languages.push("python");
+        }
       }
     } catch (error) {
 
