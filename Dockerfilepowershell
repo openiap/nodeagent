@@ -1,47 +1,20 @@
-# FROM node:lts-alpine
-# from python:alpine3.17
-FROM alpine:3.17
-RUN apk add --update git nodejs npm python3 py3-pip g++ \
-    ca-certificates \
-    less \
-    ncurses-terminfo-base \
-    krb5-libs \
-    libgcc \
-    libintl \
-    libssl1.1 \
-    libstdc++ \
-    tzdata \
-    userspace-rcu \
-    zlib \
-    icu-libs \
-    curl \
-    && rm -rf /var/cache/apk/* 
+FROM openiap/nodeagent:0.0.91-43
 
-RUN apk -X https://dl-cdn.alpinelinux.org/alpine/edge/main add --no-cache \
-    lttng-ust
+USER root
 
-# https://learn.microsoft.com/en-us/powershell/scripting/install/install-alpine?view=powershell-7.3
-# Download the powershell '.tar.gz' archive
-RUN curl -L https://github.com/PowerShell/PowerShell/releases/download/v7.3.4/powershell-7.3.4-linux-alpine-x64.tar.gz -o /tmp/powershell.tar.gz && \
-mkdir -p /opt/microsoft/powershell/7 && \
-tar zxf /tmp/powershell.tar.gz -C /opt/microsoft/powershell/7 && \
-chmod +x /opt/microsoft/powershell/7/pwsh && \
-rm /tmp/powershell.tar.gz && \
-ln -s /opt/microsoft/powershell/7/pwsh /usr/bin/pwsh
-RUN pwsh -c "Install-Module -Name Az -Force -Confirm:0"
+# Install necessary dependencies
+RUN apt-get update -y && \
+    apt-get install -y wget gnupg apt-transport-https
+# Download and install the Microsoft package for Debian 11
+RUN wget -q https://packages.microsoft.com/config/debian/11/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \
+    dpkg -i packages-microsoft-prod.deb
+# Import the Microsoft GPG keys
+RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/microsoft-archive-keyring.gpg
+# Add the Microsoft repository
+RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/debian/11/prod bullseye main" > /etc/apt/sources.list.d/microsoft-prod.list
+# Update package lists
+RUN apt-get update -y
+# Install PowerShell
+RUN apt-get install -y powershell
 
-WORKDIR /tmp
-COPY package.json /tmp/package.json
-COPY package-lock.json /tmp/package-lock.json
-COPY bin /tmp/bin
-RUN npm install --omit=dev --production --verbose
-
-COPY dist /tmp/dist
-# COPY . /tmp
-
-# RUN python -m pip install --upgrade pip
-# RUN python -m pip install openiap
-# load current version
-# RUN npx -y @openiap/nodeagent -noop
-# CMD ["npx", "-y", "@openiap/nodeagent", "-service"]
-CMD ["node", "--require", "./dist/Logger.js", "dist/runagent.js"]
+USER openiapuser
