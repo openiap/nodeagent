@@ -277,7 +277,7 @@ export class agent  {
     return true;
   }
   private static async onSignedIn(client: openiap, user: User) {
-    Logger.instrumentation?.init(client);
+    // Logger.instrumentation?.init(client);
   }
   private static async onConnected(client: openiap) {
     try {
@@ -288,6 +288,8 @@ export class agent  {
         log('connected, but not signed in, close connection again');
         return client.Close();
       }
+      Logger.instrumentation?.init(client);
+
       log("registering watch on agents")
       let watchid = await client.Watch({ paths: [], collectionname: "agents" }, async (operation: string, document: any) => {
         try {
