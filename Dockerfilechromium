@@ -1,7 +1,7 @@
 FROM node:lts-bookworm-slim
 # procps - for access to ps command like pkill and pgrep
 RUN apt-get update && apt-get install -y \
-    nano git curl \ 
+    nano git curl php \ 
     python3-pip udev build-essential \
     chromium-driver chromium xvfb \
     libssl-dev openssl  \
@@ -30,6 +30,9 @@ RUN mkdir -p /opt/micromamba/envs && chmod 777 /opt/micromamba/envs
 RUN useradd -ms /bin/bash openiapuser
 RUN mkdir -p /home/openiapuser/.mamba && \
     chown -R openiapuser:openiapuser /home/openiapuser/.mamba
+
+RUN apt-get update && apt-get install -y python-is-python3 && rm -rf /var/lib/apt/lists/*
+
 
 USER openiapuser
 WORKDIR /home/openiapuser

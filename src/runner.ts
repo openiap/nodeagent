@@ -123,7 +123,8 @@ export class runner {
     public static async runit(client: openiap, packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean, env: any = {}): Promise<number> {
         return new Promise((resolve, reject) => {
             try {
-                if (clearstream) {
+                let usingxvf = false;
+                //if (clearstream) {
                     var xvfb = runner.findXvfbPath()
                     if (xvfb != null && xvfb != "") {
                         var shellcommand = command;
@@ -135,8 +136,9 @@ export class runner {
                         parameters.push(`--server-num=1`);
                         parameters.push(shellcommand);
                         parameters = parameters.concat(_parameters);
+                        usingxvf = true;
                     }
-                }
+                //}
                 console.log('Running command:', command + " " + parameters.join(" "));
                 // const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
                 const childProcess = ctrossspawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
@@ -146,7 +148,11 @@ export class runner {
                 const pid = childProcess.pid;
                 const p: runner_process = { id: streamid, pid, p: childProcess, forcekilled: false }
                 runner.processs.push(p);
-                runner.notifyStream(client, streamid, `Child process started as pid ${pid}`);
+                if(usingxvf) {
+                    runner.notifyStream(client, streamid, `Child process started as pid ${pid} using xvfb`);
+                } else {
+                    runner.notifyStream(client, streamid, `Child process started as pid ${pid}`);
+                }                
                 const catchoutput = (data: any) => {
                     if (data != null) {
                         var s: string = data.toString();
