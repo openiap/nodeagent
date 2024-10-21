@@ -5,7 +5,10 @@ export class Logger {
     public static init() {
         let _instrumentation_require: any = null;
         try {
-            _instrumentation_require = require("./instrumentation");
+            if (process.env.enable_analytics != null && process.env.enable_analytics.toLowerCase() == "false") {
+            } else {
+                _instrumentation_require = require("./instrumentation");
+            }
         } catch (error) {
         }
         if (_instrumentation_require != null && Logger.instrumentation == null) {
