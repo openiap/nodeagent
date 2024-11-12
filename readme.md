@@ -51,12 +51,6 @@ npx clear-npx-cache
 npx -y @openiap/nodeagent
 ```
 
-To proxy a port from another agent, you first supply the agentname and next the port name.
-You define the port name when you publish the package, (see [ports](#ports))
-```bash
-npx @openiap/nodeagent agent1:web
-```
-
 When a package gets published from vs.code it should have these fields in your package.json
 ```json
     "openiap": {

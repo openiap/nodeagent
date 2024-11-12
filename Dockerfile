@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 # Download and install Micromamba
 ENV MAMBA_ROOT_PREFIX=/opt/micromamba
 RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba && \
-    ./bin/micromamba shell init -s bash -p $MAMBA_ROOT_PREFIX
+    ./bin/micromamba shell init -s bash -r $MAMBA_ROOT_PREFIX
 RUN mkdir -p /opt/micromamba/envs && chmod 777 /opt/micromamba/envs
 
 # Create a non-root user

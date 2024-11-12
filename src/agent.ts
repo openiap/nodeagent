@@ -9,7 +9,7 @@ import * as path from "path";
 import * as fs from "fs"
 import { Stream } from 'stream';
 import { Logger } from "./Logger";
-import { HostPortMapper } from "./PortMapper";
+// import { HostPortMapper } from "./PortMapper";
 import { sleep } from "./util";
 
 let elog: any = null;
@@ -28,7 +28,7 @@ export class agent  {
   public static assistantConfig: any = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" };
   public static agentid = "";
   public static localqueue = "";
-  public static languages = ["nodejs"];
+  public static languages = ["nodejs", "exec"];
   public static dockeragent: boolean = false;
   public static lastreload = new Date();
   public static schedules: any[] = [];
@@ -41,7 +41,7 @@ export class agent  {
   public static exitonfailedschedule = true;
   public static eventEmitter = new EventEmitter();
   public static globalpackageid: string = "";
-  public static portlisteners: HostPortMapper[] = [];
+  // public static portlisteners: HostPortMapper[] = [];
   public static addListener(eventName: string | symbol, listener: (...args: any[]) => void) {
     agent.eventEmitter.addListener(eventName, listener);
   }
@@ -89,16 +89,16 @@ export class agent  {
   }
   
 
-  private static PortMapperCleanTimer: NodeJS.Timer;  
+  // private static PortMapperCleanTimer: NodeJS.Timer;  
   public static async init(_client: openiap = undefined) {
     process.env.PIP_BREAK_SYSTEM_PACKAGES = "1";
     try {
       Logger.init();
     } catch (error) {
     }
-    if(agent.PortMapperCleanTimer == null) {
-      agent.PortMapperClean();
-    }
+    // if(agent.PortMapperCleanTimer == null) {
+    //   agent.PortMapperClean();
+    // }
     this.setMaxListeners(500);
     if (_client == null) {
       agent.client = new openiap()
@@ -180,7 +180,7 @@ export class agent  {
       agent.dockeragent = true;
     }
     agent.localqueue = "";
-    agent.languages = ["nodejs"];
+    agent.languages = ["nodejs", "exec"];
     config.doDumpStack = true
     if (!agent.reloadAndParseConfig()) {
       return;
@@ -214,30 +214,36 @@ export class agent  {
     } catch (error) {
 
     }
-
+    try {
+      let cargopath = runner.findCargoPath();
+      if (cargopath != null && cargopath != "") {
+        agent.languages.push("rust");
+      }
+    } catch (error) {
+    }
     if (_client == null) {
       await agent.client.connect();
     }
   }
-  public static PortMapperClean() {
-    try {
-      for(let i = 0; i < agent.portlisteners.length; i++) {
-        const portlistener = agent.portlisteners[i];
-        if(portlistener == null) continue;
-        if(portlistener.lastUsed.getTime() + 600000 < new Date().getTime()) { // 10 minutes
-          log("Port " + portlistener.portname + " not used for 10 minutes, remove it");
-          agent.portlisteners.splice(i, 1);
-          i--;
-          portlistener.dispose();
-        } else {
-          portlistener.RemoveOldConnections();
-        }
-      }
-    } catch (error) {
-      _error(error);      
-    }
-    agent.PortMapperCleanTimer = setTimeout(() => agent.PortMapperClean(), 100);
-  }
+  // public static PortMapperClean() {
+  //   try {
+  //     for(let i = 0; i < agent.portlisteners.length; i++) {
+  //       const portlistener = agent.portlisteners[i];
+  //       if(portlistener == null) continue;
+  //       if(portlistener.lastUsed.getTime() + 600000 < new Date().getTime()) { // 10 minutes
+  //         log("Port " + portlistener.portname + " not used for 10 minutes, remove it");
+  //         agent.portlisteners.splice(i, 1);
+  //         i--;
+  //         portlistener.dispose();
+  //       } else {
+  //         portlistener.RemoveOldConnections();
+  //       }
+  //     }
+  //   } catch (error) {
+  //     _error(error);      
+  //   }
+  //   agent.PortMapperCleanTimer = setTimeout(() => agent.PortMapperClean(), 100);
+  // }
   public static reloadAndParseConfig(): boolean {
     config.doDumpStack = true
     agent.assistantConfig = {};
@@ -1002,90 +1008,91 @@ export class agent  {
         }
         return { "command": "listprocesses", "success": true, "count": processcount, "processes": processes };
       }
-      if(payload.command == "portclose") {
-        if(payload.id == null || payload.id == "") return { "command": "portclose", "success": false, "error": "id is required" };
-        let _streamid = payload.streamid;
-        if(_streamid == null || _streamid == "") _streamid = null;
-        let portname = payload.portname;
-        if(portname == null || portname == "") portname = null;
-        if(portname == null) return { "command": "portclose", "success": false, "error": "portname is required" };
-        var _streams: any[] = [];
-        let filteredstreams = runner.streams;
-        if(_streamid != null) filteredstreams = filteredstreams.filter(x => x.id == _streamid);
-        for(let i = 0; i < filteredstreams.length; i++) {
-          const s = runner.streams[i];
-          for(let y = 0; y < s.ports.length; y++) {
-            const p = s.ports[y];
-            if(p.portname == portname) {
-              _streams.push({ "streamid": s.id, "port": p.port, "portname": p.portname });
-              break;
-            }
-          }
-        }
-        if(_streams.length != 1) {
-          return { "command": "portclose", "success": false, "error": "Unknown forwarding port (" + payload.portname + ":" + (payload.port || "") + "/" + _streams.length + ")" };
-        } else {
-          var portlistener = agent.portlisteners.find(x => x.streamid == _streams[0].id && x.portname == _streams[0].portname);
-          if(portlistener != null) {
-            portlistener.removeConnection(payload.id);
-          }
-        }
-        return;
-      }
-      if(payload.command == "portdata") {
-        if(payload.id == null || payload.id == "") return { "command": "portdata", "success": false, "error": "id is required" };
-        if(payload.seq === null || payload.seq === undefined || payload.seq === "") return { "command": "portdata", "success": false, "error": "seq is required" };
-        payload.seq = parseInt(payload.seq);
-        if(Number.isNaN(payload.seq)) return { "command": "portdata", "success": false, "error": "seq is not a number" }
-        if(msg.replyto == null || msg.replyto == "") return { "command": "portdata", "success": false, "error": "replyto is required" };
-        let _streamid = payload.streamid;
-        if(_streamid == null || _streamid == "") _streamid = null;
-        let portname = payload.portname;
-        if(portname == null || portname == "") portname = null;
-        if(portname == null) return { "command": "portdata", "success": false, "error": "portname is required" };
-        if(_streamid == null && portname != null && payload.port !== null && payload.port !== undefined) {
-          var portlistener = agent.portlisteners.find(x => x.port == payload.port && x.portname == portname);
-          if(portlistener == null) {
-            portlistener = new HostPortMapper(agent.client, parseInt(payload.port), portname, "127.0.0.1", undefined);
-            agent.portlisteners.push(portlistener);
-          }
-          portlistener.newConnection(payload.id, msg.replyto); // Ensure connection
-          portlistener.IncommingData(payload.id, payload.seq, Buffer.from(payload.buf)); // Forward data
-          return 
-        }
-        var _streams: any[] = [];
-        let filteredstreams = runner.streams;
-        if(_streamid != null) filteredstreams = filteredstreams.filter(x => x.id == _streamid);
-        for(let i = 0; i < filteredstreams.length; i++) {
-          const s = runner.streams[i];
-          for(let y = 0; y < s.ports.length; y++) {
-            const p = s.ports[y];
-            if(p.portname == portname) {
-              _streams.push({ "streamid": s.id, "port": p.port, "portname": p.portname });
-              break;
-            }
-          }
-        }
-        if(_streams.length != 1) {
-          return { "command": "portdata", "success": false, "error": "Unknown forwarding port (" + payload.portname + ":" + (payload.port || "") + "/" + _streams.length + ")" };
-        } else {
-          var portlistener = agent.portlisteners.find(x => x.streamid == _streams[0].id && x.portname == _streams[0].portname);
-          if(portlistener == null) {
-            portlistener = new HostPortMapper(agent.client, _streams[0].port, _streams[0].portname, "127.0.0.1", _streams[0].id);
-            agent.portlisteners.push(portlistener);
-          }
-          portlistener.newConnection(payload.id, msg.replyto); // Ensure connection
-          portlistener.IncommingData(payload.id, payload.seq, Buffer.from(payload.buf)); // Forward data
-        }
-        return null;
-      }
+      // if(payload.command == "portclose") {
+      //   if(payload.id == null || payload.id == "") return { "command": "portclose", "success": false, "error": "id is required" };
+      //   let _streamid = payload.streamid;
+      //   if(_streamid == null || _streamid == "") _streamid = null;
+      //   let portname = payload.portname;
+      //   if(portname == null || portname == "") portname = null;
+      //   if(portname == null) return { "command": "portclose", "success": false, "error": "portname is required" };
+      //   var _streams: any[] = [];
+      //   let filteredstreams = runner.streams;
+      //   if(_streamid != null) filteredstreams = filteredstreams.filter(x => x.id == _streamid);
+      //   for(let i = 0; i < filteredstreams.length; i++) {
+      //     const s = runner.streams[i];
+      //     for(let y = 0; y < s.ports.length; y++) {
+      //       const p = s.ports[y];
+      //       if(p.portname == portname) {
+      //         _streams.push({ "streamid": s.id, "port": p.port, "portname": p.portname });
+      //         break;
+      //       }
+      //     }
+      //   }
+      //   if(_streams.length != 1) {
+      //     return { "command": "portclose", "success": false, "error": "Unknown forwarding port (" + payload.portname + ":" + (payload.port || "") + "/" + _streams.length + ")" };
+      //   } else {
+      //     var portlistener = agent.portlisteners.find(x => x.streamid == _streams[0].id && x.portname == _streams[0].portname);
+      //     if(portlistener != null) {
+      //       portlistener.removeConnection(payload.id);
+      //     }
+      //   }
+      //   return;
+      // }
+      // if(payload.command == "portdata") {
+      //   if(payload.id == null || payload.id == "") return { "command": "portdata", "success": false, "error": "id is required" };
+      //   if(payload.seq === null || payload.seq === undefined || payload.seq === "") return { "command": "portdata", "success": false, "error": "seq is required" };
+      //   payload.seq = parseInt(payload.seq);
+      //   if(Number.isNaN(payload.seq)) return { "command": "portdata", "success": false, "error": "seq is not a number" }
+      //   if(msg.replyto == null || msg.replyto == "") return { "command": "portdata", "success": false, "error": "replyto is required" };
+      //   let _streamid = payload.streamid;
+      //   if(_streamid == null || _streamid == "") _streamid = null;
+      //   let portname = payload.portname;
+      //   if(portname == null || portname == "") portname = null;
+      //   if(portname == null) return { "command": "portdata", "success": false, "error": "portname is required" };
+      //   if(_streamid == null && portname != null && payload.port !== null && payload.port !== undefined) {
+      //     var portlistener = agent.portlisteners.find(x => x.port == payload.port && x.portname == portname);
+      //     if(portlistener == null) {
+      //       portlistener = new HostPortMapper(agent.client, parseInt(payload.port), portname, "127.0.0.1", undefined);
+      //       agent.portlisteners.push(portlistener);
+      //     }
+      //     portlistener.newConnection(payload.id, msg.replyto); // Ensure connection
+      //     portlistener.IncommingData(payload.id, payload.seq, Buffer.from(payload.buf)); // Forward data
+      //     return 
+      //   }
+      //   var _streams: any[] = [];
+      //   let filteredstreams = runner.streams;
+      //   if(_streamid != null) filteredstreams = filteredstreams.filter(x => x.id == _streamid);
+      //   for(let i = 0; i < filteredstreams.length; i++) {
+      //     const s = runner.streams[i];
+      //     for(let y = 0; y < s.ports.length; y++) {
+      //       const p = s.ports[y];
+      //       if(p.portname == portname) {
+      //         _streams.push({ "streamid": s.id, "port": p.port, "portname": p.portname });
+      //         break;
+      //       }
+      //     }
+      //   }
+      //   if(_streams.length != 1) {
+      //     return { "command": "portdata", "success": false, "error": "Unknown forwarding port (" + payload.portname + ":" + (payload.port || "") + "/" + _streams.length + ")" };
+      //   } else {
+      //     var portlistener = agent.portlisteners.find(x => x.streamid == _streams[0].id && x.portname == _streams[0].portname);
+      //     if(portlistener == null) {
+      //       portlistener = new HostPortMapper(agent.client, _streams[0].port, _streams[0].portname, "127.0.0.1", _streams[0].id);
+      //       agent.portlisteners.push(portlistener);
+      //     }
+      //     portlistener.newConnection(payload.id, msg.replyto); // Ensure connection
+      //     portlistener.IncommingData(payload.id, payload.seq, Buffer.from(payload.buf)); // Forward data
+      //   }
+      //   return null;
+      // }
     } catch (error) {
       _error(error);
       log(JSON.stringify({ "command": payload.command, "success": false, error: JSON.stringify(error.message) }))
       return { "command": payload.command, "success": false, error: JSON.stringify(error.message) };
     } finally {
-      const sumports = agent.portlisteners.map(x => x.connections.size).reduce((a, b) => a + b, 0);
-      log("commandstreams:" + runner.commandstreams.length + " portlisteners:" + agent.portlisteners.length + " ports: " + sumports);
+      // const sumports = agent.portlisteners.map(x => x.connections.size).reduce((a, b) => a + b, 0);
+      // log("commandstreams:" + runner.commandstreams.length + " portlisteners:" + agent.portlisteners.length + " ports: " + sumports);
+      log("commandstreams:" + runner.commandstreams.length);
     }
   }
 

@@ -120,6 +120,67 @@ export class runner {
             }
         }
     }
+    public static getExecutablePath(baseFolder:string, command:string) {
+        const arch = os.arch(); // e.g., 'x64', 'arm64', 'ia32'
+        const platform = os.platform(); // e.g., 'linux', 'darwin', 'win32'
+        const isWindows = platform === 'win32';
+        const extensions = isWindows ? ['.exe', '.cmd', '.com'] : [''];
+    
+        const platformArch = `${platform}-${arch}`;
+        const executables = [];
+    
+        // Helper function to check if a file is executable
+        const isExecutable = (file:string) => {
+            const ext = path.extname(file).toLowerCase();
+            if (isWindows) {
+                return extensions.includes(ext);
+            } else {
+                try {
+                    const stats = fs.statSync(file);
+                    return stats.isFile() && (stats.mode & 0o111);
+                } catch {
+                    return false;
+                }
+            }
+        };
+    
+        // List all files in the base folder
+        const files = fs.readdirSync(baseFolder);
+    
+        // Collect all executable files
+        for (const file of files) {
+            const filePath = path.join(baseFolder, file);
+            if (isExecutable(filePath)) {
+                executables.push(file);
+            }
+        }
+    
+        // If only one executable is found, return it
+        if (executables.length === 1) {
+            return path.join(baseFolder, executables[0]);
+        }
+    
+        // Try to find an exact match with platform-arch
+        const exactMatches = executables.filter((file) =>
+            file.includes(platformArch)
+        );
+        if (exactMatches.length === 1) {
+            return path.join(baseFolder, exactMatches[0]);
+        }
+    
+        // If no exact match, try to find a match with just the platform
+        const platformMatches = executables.filter((file) =>
+            file.includes(platform)
+        );
+        if (platformMatches.length === 1) {
+            return path.join(baseFolder, platformMatches[0]);
+        }
+    
+        // If still ambiguous, return an error with the list of executables found
+        throw new Error(
+            `Multiple executables found: ${executables.join(', ')}. Unable to determine the correct one.`
+        );
+    }
     public static async runit(client: openiap, packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean, env: any = {}): Promise<number> {
         return new Promise((resolve, reject) => {
             try {
@@ -140,6 +201,7 @@ export class runner {
                     }
                 //}
                 console.log('Running command:', command + " " + parameters.join(" "));
+                console.log('In Working directory:', packagepath);
                 // const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
                 const childProcess = ctrossspawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
 
@@ -351,6 +413,10 @@ export class runner {
     }
     public static findNPMPath() {
         const child = (process.platform === 'win32' ? 'npm.cmd' : 'npm')
+        return runner.findInPath(child)
+    }
+    public static findCargoPath() {
+        const child = (process.platform === 'win32' ? 'cargo.cmd' : 'cargo')
         return runner.findInPath(child)
     }
     public static findChromiumPath() {

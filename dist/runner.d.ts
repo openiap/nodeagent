@@ -27,6 +27,7 @@ export declare class runner {
     static commandstreams: string[];
     static notifyStream(client: openiap, streamid: string, message: Buffer | string, addtobuffer?: boolean): Promise<void>;
     static removestream(client: openiap, streamid: string, success: boolean, buffer: string): void;
+    static getExecutablePath(baseFolder: string, command: string): string;
     static runit(client: openiap, packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean, env?: any): Promise<number>;
     static findInPath(exec: string): string | null;
     static findInPath2(exec: string): string | null;
@@ -40,6 +41,7 @@ export declare class runner {
     static findXvfbPath(): string;
     static findNodePath(): string;
     static findNPMPath(): string;
+    static findCargoPath(): string;
     static findChromiumPath(): string;
     static findChromePath(): string;
     static Generatenpmrc(client: openiap, packagepath: string, streamid: string): Promise<void>;

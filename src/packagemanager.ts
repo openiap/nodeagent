@@ -366,108 +366,139 @@ export class packagemanager {
       if(!fs.existsSync(packagepath)) {
         throw new Error("Failed to find package: " + id);
       }
-      let command = packagemanager.getscriptpath(packagepath)
-      if (command == "" || command == null) {
-        throw new Error("Failed locating a command to run, EXIT")
-      }
-      if (command.endsWith(".py")) {
-        var python = runner.findPythonPath();
-        var conda = runner.findCondaPath();
-        if (python == "" && conda == "") throw new Error("Failed locating python or conda or micromamba, if installed is it added to the path environment variable?")
-        var condaname = null;
-        const lockfile = path.join(packagepath, "conda.lock");
-        if(!fs.existsSync(lockfile)) {
-          if(conda != null && conda != "") {
-            condaname = await runner.condainstall(client, packagepath, streamid, conda)
-          }
-          if(condaname == null) {
-            await runner.pipinstall(client, packagepath, streamid, python)
-          }
-          fs.writeFileSync(lockfile, "installed");
+      if(pck.language == "rust") {
+        var cargo = runner.findCargoPath();
+        if (cargo == "") throw new Error("Failed locating cargo, is rust installed and in the path?")
+        if (!fs.existsSync(runfolder)) fs.mkdirSync(runfolder, { recursive: true });
+        fs.cpSync(packagepath, runfolder, { recursive: true });
+        if (wait) {
+          return {exitcode: await runner.runit(client, runfolder, streamid, cargo, ["run"], true, env), stream: s};
         } else {
-          condaname = await runner.condainstall(client, packagepath, streamid, conda)
-        }
-      } else if (command.endsWith(".js") || command == "npm run start") {
-        const nodePath = runner.findNodePath();
-        if (nodePath == "") throw new Error("Failed locating node, is node installed and in the path? " + JSON.stringify(process.env.PATH))
-        const lockfile = path.join(packagepath, "npm.lock");
-        if(!fs.existsSync(lockfile)) {
-          await runner.npminstall(client, packagepath, streamid);
-          fs.writeFileSync(lockfile, "installed");
-        }
-      } else if (command.endsWith(".ps1")) {
-        const pwshPath = runner.findPwShPath();
-        if (pwshPath == "") throw new Error("Failed locating powershell, is powershell installed and in the path? " + JSON.stringify(process.env.PATH))
-      } else {
+          runner.runit(client, runfolder, streamid, cargo, ["run"], true, env)
+          return {exitcode: 0, stream: s};
+        }  
+      } else if(pck.language == "dotnet") {
         var dotnet = runner.findDotnetPath();
         if (dotnet == "") throw new Error("Failed locating dotnet, is dotnet installed and in the path?")
-      }
-      if (!fs.existsSync(runfolder)) fs.mkdirSync(runfolder, { recursive: true });
-      fs.cpSync(packagepath, runfolder, { recursive: true });
-      command = packagemanager.getscriptpath(runfolder)
-      if (command == "" || command == null) {
-        throw new Error("Failed locating a command to run in run folder, EXIT")
-      }
-      if(!fs.existsSync(packagepath)) {
-        throw new Error("Failed to find package: " + id);
-      }
-      if (command.endsWith(".py")) {
-        if (wait) {
-          if(condaname != null) {
-            console.log(conda)
-            console.log(["run", "-n", condaname, "python", "-u", command])
-            return {exitcode: await runner.runit(client, runfolder, streamid, conda, ["run", "-n", condaname, "python", "-u", command], true, env), stream: s}
-          }
-          console.log(python)
-          console.log(["-u", command])
-          return {exitcode: await runner.runit(client, runfolder, streamid, python, ["-u", command], true, env), stream: s}
-        }
-        if(condaname != null) {
-          console.log(conda)
-          console.log(["run", "-n", condaname, "python", "-u", command])
-          runner.runit(client, runfolder, streamid, conda, ["run", "-n", condaname, "python", "-u", command], true, env)
-          return {exitcode: 0, stream: s};
-        }
-        console.log(python)
-        console.log(["-u", command])
-        runner.runit(client, runfolder, streamid, python, ["-u", command], true, env)
-        return {exitcode: 0, stream: s};
-      } else if (command.endsWith(".js") || command == "npm run start") {
-        const nodePath = runner.findNodePath();
-        if (nodePath == "") throw new Error("Failed locating node, is node installed and in the path? " + JSON.stringify(process.env.PATH))
-        if (wait) {
-          if(command == "npm run start") {
-            const npmpath = runner.findNPMPath();
-            return {exitcode: await runner.runit(client, runfolder, streamid, npmpath, ["run", "start"], true, env), stream: s};
-          }
-          return {exitcode: await runner.runit(client, runfolder, streamid, nodePath, [command], true, env), stream: s};
-        } else {
-          if(command == "npm run start") {
-            const npmpath = runner.findNPMPath();
-            runner.runit(client, runfolder, streamid, npmpath, ["run", "start"], true, env)
-            return {exitcode: 0, stream: s};
-          }
-          runner.runit(client, runfolder, streamid, nodePath, [command], true, env)
-          return {exitcode: 0, stream: s};
-        }
-      } else if (command.endsWith(".ps1")) {
-        const pwshPath = runner.findPwShPath();
-        if (pwshPath == "") throw new Error("Failed locating powershell, is powershell installed and in the path? " + JSON.stringify(process.env.PATH))
-        if (wait) {
-          var exitcode = await runner.runit(client, runfolder, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true, env);
-          return {exitcode, stream: s};
-        } else {
-          runner.runit(client, runfolder, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true, env)
-          return {exitcode: 0, stream: s};
-        }
-      } else {
-        var dotnet = runner.findDotnetPath();
-        if (dotnet == "") throw new Error("Failed locating dotnet, is dotnet installed and in the path?")
+        if (!fs.existsSync(runfolder)) fs.mkdirSync(runfolder, { recursive: true });
+        fs.cpSync(packagepath, runfolder, { recursive: true });
         if (wait) {
           return {exitcode: await runner.runit(client, runfolder, streamid, dotnet, ["run"], true, env), stream: s};
         } else {
           runner.runit(client, runfolder, streamid, dotnet, ["run"], true, env)
           return {exitcode: 0, stream: s};
+        }
+      } else if(pck.language == "exec") {
+        if (!fs.existsSync(runfolder)) fs.mkdirSync(runfolder, { recursive: true });
+        fs.cpSync(packagepath, runfolder, { recursive: true });
+        let command = runner.getExecutablePath(packagepath, pck.main);
+        let args: string[] = [];
+        if(pck.main != null && pck.main != "" && pck.main.indexOf(" ") > 0) {
+          args = pck.main.split(" ").slice(1);
+        }
+        if (wait) {
+          return {exitcode: await runner.runit(client, runfolder, streamid, command, args, true, env), stream: s};
+        } else {
+          runner.runit(client, runfolder, streamid, command, args, true, env)
+          return {exitcode: 0, stream: s};
+        }
+      } else {
+        let command = packagemanager.getscriptpath(packagepath)
+        if (command == "" || command == null) {
+          throw new Error("Failed locating a command to run, EXIT")
+        }
+        if (command.endsWith(".py")) {
+          var python = runner.findPythonPath();
+          var conda = runner.findCondaPath();
+          if (python == "" && conda == "") throw new Error("Failed locating python or conda or micromamba, if installed is it added to the path environment variable?")
+          var condaname = null;
+          const lockfile = path.join(packagepath, "conda.lock");
+          if(!fs.existsSync(lockfile)) {
+            if(conda != null && conda != "") {
+              condaname = await runner.condainstall(client, packagepath, streamid, conda)
+            }
+            if(condaname == null && (python != null && python != "")) {
+              await runner.pipinstall(client, packagepath, streamid, python)
+            }
+            fs.writeFileSync(lockfile, "installed");
+          } else {
+            condaname = await runner.condainstall(client, packagepath, streamid, conda)
+          }
+        } else if (command.endsWith(".js") || command == "npm run start") {
+          const nodePath = runner.findNodePath();
+          if (nodePath == "") throw new Error("Failed locating node, is node installed and in the path? " + JSON.stringify(process.env.PATH))
+          const lockfile = path.join(packagepath, "npm.lock");
+          if(!fs.existsSync(lockfile)) {
+            await runner.npminstall(client, packagepath, streamid);
+            fs.writeFileSync(lockfile, "installed");
+          }
+        } else if (command.endsWith(".ps1")) {
+          const pwshPath = runner.findPwShPath();
+          if (pwshPath == "") throw new Error("Failed locating powershell, is powershell installed and in the path? " + JSON.stringify(process.env.PATH))
+        } else {
+        }
+        if (!fs.existsSync(runfolder)) fs.mkdirSync(runfolder, { recursive: true });
+        fs.cpSync(packagepath, runfolder, { recursive: true });
+        command = packagemanager.getscriptpath(runfolder)
+        if (command == "" || command == null) {
+          throw new Error("Failed locating a command to run in run folder, EXIT")
+        }
+        if(!fs.existsSync(packagepath)) {
+          throw new Error("Failed to find package: " + id);
+        }
+        if (command.endsWith(".py")) {
+          if (wait) {
+            if(condaname != null) {
+              console.log(conda)
+              console.log(["run", "-n", condaname, "python", "-u", command])
+              return {exitcode: await runner.runit(client, runfolder, streamid, conda, ["run", "-n", condaname, "python", "-u", command], true, env), stream: s}
+            }
+            console.log(python)
+            console.log(["-u", command])
+            return {exitcode: await runner.runit(client, runfolder, streamid, python, ["-u", command], true, env), stream: s}
+          }
+          if(condaname != null) {
+            console.log(conda)
+            console.log(["run", "-n", condaname, "python", "-u", command])
+            runner.runit(client, runfolder, streamid, conda, ["run", "-n", condaname, "python", "-u", command], true, env)
+            return {exitcode: 0, stream: s};
+          }
+          console.log(python)
+          console.log(["-u", command])
+          runner.runit(client, runfolder, streamid, python, ["-u", command], true, env)
+          return {exitcode: 0, stream: s};
+        } else if (command.endsWith(".js") || command == "npm run start") {
+          const nodePath = runner.findNodePath();
+          if (nodePath == "") throw new Error("Failed locating node, is node installed and in the path? " + JSON.stringify(process.env.PATH))
+          if (wait) {
+            if(command == "npm run start") {
+              const npmpath = runner.findNPMPath();
+              return {exitcode: await runner.runit(client, runfolder, streamid, npmpath, ["run", "start"], true, env), stream: s};
+            }
+            return {exitcode: await runner.runit(client, runfolder, streamid, nodePath, [command], true, env), stream: s};
+          } else {
+            if(command == "npm run start") {
+              const npmpath = runner.findNPMPath();
+              runner.runit(client, runfolder, streamid, npmpath, ["run", "start"], true, env)
+              return {exitcode: 0, stream: s};
+            }
+            runner.runit(client, runfolder, streamid, nodePath, [command], true, env)
+            return {exitcode: 0, stream: s};
+          }
+        } else if (command.endsWith(".ps1")) {
+          const pwshPath = runner.findPwShPath();
+          if (pwshPath == "") throw new Error("Failed locating powershell, is powershell installed and in the path? " + JSON.stringify(process.env.PATH))
+          if (wait) {
+            var exitcode = await runner.runit(client, runfolder, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true, env);
+            return {exitcode, stream: s};
+          } else {
+            runner.runit(client, runfolder, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true, env)
+            return {exitcode: 0, stream: s};
+          }
+        } else {
+          console.error("failed to find a command to run");
+          runner.notifyStream(client, streamid, "failed to find a command to run");
+          return {exitcode: 1, stream: s};
         }
       }
     } catch (error) {

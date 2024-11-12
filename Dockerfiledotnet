@@ -1,37 +1,30 @@
-FROM node:lts-bookworm-slim
+FROM mcr.microsoft.com/dotnet/sdk:6.0
 # procps - for access to ps command like pkill and pgrep
 RUN apt-get update && apt-get install -y \
-    nano git curl php \ 
+    nano git curl \ 
     python3-pip udev build-essential \
-    chromium-driver chromium xvfb \
     libssl-dev openssl  \
     procps \ 
     && rm -rf /var/lib/apt/lists/*
 
-# fake chrome and force parameters
-COPY bin/chromium.sh /tmp/chromium
-RUN mv /usr/bin/chromium /usr/bin/chromium-original \
-  && ln -sfv /tmp/chromium /usr/bin/chromium
-RUN chmod +x /usr/bin/chromium
-RUN ln -sf /usr/bin/chromium /usr/bin/google-chrome
-
-# Set up environment for Chromium and Chromedriver
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    CHROMIUM_PATH=/usr/bin/chromium \
-    CHROMEDRIVER_PATH=/usr/bin/chromedriver
-
-# Download and install Micromamba
-ENV MAMBA_ROOT_PREFIX=/opt/micromamba
-RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba && \
-    ./bin/micromamba shell init -s bash -r $MAMBA_ROOT_PREFIX
-RUN mkdir -p /opt/micromamba/envs && chmod 777 /opt/micromamba/envs
+ARG version=v20.15.0
+ENV PATH="/node-${version}-linux-x64/bin:${PATH}"
+RUN apt update -y && apt install curl -y \
+   && curl -fsSL https://nodejs.org/dist/$version/node-$version-linux-x64.tar.gz -o node.tar.gz \
+   && tar -xzvf node.tar.gz && rm node.tar.gz
+# RUN apt update -y && apt install nodejs npm -y
 
 # Create a non-root user
 RUN useradd -ms /bin/bash openiapuser
 RUN mkdir -p /home/openiapuser/.mamba && \
     chown -R openiapuser:openiapuser /home/openiapuser/.mamba
 
-RUN apt-get update && apt-get install -y python-is-python3 && rm -rf /var/lib/apt/lists/*
+# Download and install Micromamba
+ENV MAMBA_ROOT_PREFIX=/opt/micromamba
+RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+RUN ./bin/micromamba shell init -s bash -r $MAMBA_ROOT_PREFIX
+# RUN ./bin/micromamba shell init -s bash
+RUN mkdir -p /opt/micromamba/envs && chmod 777 /opt/micromamba/envs
 
 
 USER openiapuser
@@ -46,8 +39,9 @@ COPY --chown=openiapuser package.json package-lock.json ./
 # Install NPM packages
 RUN npm install --omit=dev --production --verbose
 # Openshift hack
-RUN chmod -R 777 /home/openiapuser
 RUN rm -r /home/openiapuser/.npm/*
+RUN chmod -R 777 /home/openiapuser
+
 
 # Copy the rest of your application
 COPY --chown=openiapuser . .

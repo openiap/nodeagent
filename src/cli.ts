@@ -5,7 +5,7 @@ import { agent } from "./agent";
 import { agenttools } from "./agenttools";
 import { packagemanager } from "./packagemanager";
 import { runner } from "./runner";
-import { ClientPortMapper, FindFreePort } from "./PortMapper";
+import { FindFreePort } from "./PortMapper";
 
 const os = require('os');
 const path = require('path');
@@ -321,8 +321,8 @@ async function main() {
     agent.reloadAndParseConfig();
     console.log("connect")
     await agent.client.connect();
-    console.log("ClientPortMapper")
-    const listener = new ClientPortMapper(agent.client, localport, portname, port, remoteagent);
+    // console.log("ClientPortMapper")
+    // const listener = new ClientPortMapper(agent.client, localport, portname, port, remoteagent);
     return;
   } else {
     console.log("Not running as service")
