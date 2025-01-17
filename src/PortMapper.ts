@@ -1,5 +1,6 @@
 import { openiap } from '@openiap/nodeapi';
 import * as net from 'net';
+import { Logger } from './Logger';
 export class CacheItem {
   public seq: number;
   public data: Buffer;
@@ -95,14 +96,14 @@ export class HostPortMapper {
     connection.lastUsed = new Date();
     connection.socket = net.connect({  host: this.host, port: this.port});
     connection.socket.on('error', (error) => {
-      console.error(id, "HostPortMapper", error.message);
+      Logger.instrumentation.error(id + " HostPortMapper " + error.message, {id});
       try {
         this.removeConnection(id);
       } catch (error) {        
       }
     });
     connection.socket.on('close', () => {
-      console.log(id, "HostPortMapper", "closed");
+      Logger.instrumentation.info(id + " HostPortMapper closed", {id});
       try {
         this.removeConnection(id);
       } catch (error) {        
@@ -114,9 +115,9 @@ export class HostPortMapper {
         while(a.length > 0) {
           const subarr = a.slice(0, 60000);
           a = a.slice(60000);
-          console.log(id, connection.sendseq, "send", subarr.length, "cunk", "port connections", this.connections.size);
+          Logger.instrumentation.info(id + " " + connection.sendseq + " " + "send" + " " + subarr.length + " " + "cunk" + " " + "port connections" + " " + this.connections.size, {id});
           this.client.QueueMessage({queuename: connection.replyqueue, data: {"command": "portdata", id, seq: connection.sendseq.toString(), "buf": subarr}}).catch((error) => {
-            console.error(id, "HostPortMapper", error.message);
+            Logger.instrumentation.error(id + " HostPortMapper " + error.message, {id});
             try {
               this.removeConnection(id);
             } catch (error) {        
@@ -125,9 +126,9 @@ export class HostPortMapper {
           connection.sendseq++;
         }
       } else {
-        console.log(id, connection.sendseq, "send", a.length, "port connections", this.connections.size);
+        Logger.instrumentation.info(id + " " + connection.sendseq + " " + "send" + " " + a.length + " " + "port connections" + " " + this.connections.size, {id});
         this.client.QueueMessage({queuename: connection.replyqueue, data: {"command": "portdata", id, seq: connection.sendseq.toString(), "buf": a}}).catch((error) => {
-          console.error(id, "HostPortMapper", error.message);
+          Logger.instrumentation.error(id + " HostPortMapper " + error.message, {id});
           try {
             this.removeConnection(id);
           } catch (error) {        
@@ -160,7 +161,7 @@ export class HostPortMapper {
     const now = new Date();
     this.connections.forEach((connection, id) => {
       if (now.getTime() - connection.lastUsed.getTime() > 1000 * 60 * 10) { // 10 minutes
-        console.log(id, "HostPortMapper", "idle timeout");
+        Logger.instrumentation.info(id + " HostPortMapper idle timeout", {id});
         this.removeConnection(id);
       }
     });
@@ -195,12 +196,12 @@ export class HostPortMapper {
         }
       });
     } catch (error) {
-      console.error("SendCache.send", error.message);
+      Logger.instrumentation.error("SendCache.send " + error.message, {});
     }
     try {
       this.RemoveOldConnections()
     } catch (error) {
-      console.error("SendCache.cleanup", error.message);
+      Logger.instrumentation.error("SendCache.cleanup " + error.message, {});
     }
     this.sendTimer = setTimeout(() => this.SendCache(), 0);
   }
@@ -218,8 +219,8 @@ export class ClientPortMapper {
     }
     this.server = net.createServer().listen(localport);
     // @ts-ignore
-    console.log("ClientPortMapper", "listening on localport", this.server.address().port, "http://127.0.0.1:" + this.server.address().port);
-    console.log("forwarded to", hostqueue, "portname:", portname, "remoteport:", remoteport || "auto");
+    Logger.instrumentation.info("ClientPortMapper" + " " + "listening on localport" + " " + this.server.address().port + " " + "http://127.0.0.1:" + this.server.address().port, {});
+    Logger.instrumentation.info("forwarded to" + " " + hostqueue + " " + "portname:" + " " + portname + " " + "remoteport:" + " " + remoteport || "auto", {});
     this.server.on('connection', async (socket) => {
       const id = Math.random().toString(36).substring(7);
       let connection = this.connections.get(id);
@@ -233,7 +234,7 @@ export class ClientPortMapper {
       connection.sendseq = 0;
       connection.replyqueue = await client.RegisterQueue({queuename: ""}, async (msg, payload, user, jwt) => {
         if(payload.error != null) {
-          console.error(id, "remote error", payload.error);
+          Logger.instrumentation.error(id + " remote error " + payload.error, {id});
           try {
             this.removeConnection(id);
           } catch (error) {        
@@ -241,7 +242,7 @@ export class ClientPortMapper {
           return;
         }
         if(payload.command === "portclose") {
-          console.log(id, "remote", "portclose");
+          Logger.instrumentation.info(id + " remote portclose", {id});
           try {
             this.removeConnection(id);
           } catch (error) {        
@@ -252,12 +253,12 @@ export class ClientPortMapper {
           if(payload.buf == null) {
             return; // confirmed
           }
-          console.log(id, payload.seq, "recv", payload.buf.length, "port connections", this.connections.size);
+          Logger.instrumentation.info(id + " " + payload.seq + " " + "recv" + " " + payload.buf.length + " " + "port connections" + " " + this.connections.size, {id});
           connection.cache.push({ seq: parseInt(payload.seq), data: Buffer.from(payload.buf) });
           return;
         }
         if(payload.seq === null || payload.seq === undefined || payload.buf == null) {
-          console.log(id, "remote", payload.command, "invalid ?");
+          Logger.instrumentation.info(id + " " + "remote" + " " + payload.command + " " + "invalid ?", {id});
           return;
         }
       });
@@ -265,14 +266,14 @@ export class ClientPortMapper {
       connection.lastUsed = new Date();
       connection.socket = socket;
       connection.socket.on('error', (error) => {
-        console.error(id, "ClientPortMapper", error.message);
+        Logger.instrumentation.error(id + " " + "ClientPortMapper" + " " + error.message, {id});
         try {
           this.removeConnection(id);
         } catch (error) {        
         }
       });
       connection.socket.on('close', () => {
-        console.log(id, "ClientPortMapper", "closed");
+        Logger.instrumentation.info(id + " " + "ClientPortMapper closed", {id});
         try {
           this.removeConnection(id);
         } catch (error) {        
@@ -284,10 +285,10 @@ export class ClientPortMapper {
           while(a.length > 0) {
             const subarr = a.slice(0, 60000);
             a = a.slice(60000);
-            console.log(id, connection.sendseq, "send", subarr.length, "cunk", "port connections", this.connections.size);
+            Logger.instrumentation.info(id + " " + connection.sendseq + " " + "send" + " " + subarr.length + " " + "cunk" + " " + "port connections" + " " + this.connections.size, {id});
             this.client.QueueMessage({queuename: hostqueue, replyto: connection.replyqueue, 
               data: {command: "portdata", id, portname: this.portname, port: this.remoteport, seq: connection.sendseq, "buf": subarr}}).catch((error) => {
-              console.error(id, "sendError", error);
+                Logger.instrumentation.error(id + "sendError " + error, {id});
               try {
                 this.removeConnection(id);
               } catch (error) {        
@@ -296,10 +297,10 @@ export class ClientPortMapper {
             connection.sendseq++;
           }
         } else {
-          console.log(id, connection.sendseq, "send", a.length, "port connections", this.connections.size);
+          Logger.instrumentation.info(id + " " + connection.sendseq + " " + "send" + " " + a.length + " " + "port connections" + " " + this.connections.size, {id});
           this.client.QueueMessage({queuename: hostqueue, replyto: connection.replyqueue, 
             data: {command: "portdata", id, portname: this.portname, port: this.remoteport, seq: connection.sendseq, "buf": a}}).catch((error) => {
-              console.error(id, "sendError", error);
+              Logger.instrumentation.info(id + " sendError " + error, {id});
               try {
                 this.removeConnection(id);
               } catch (error) {        
@@ -373,12 +374,12 @@ export class ClientPortMapper {
         }
       });
     } catch (error) {
-      console.error("SendCache.send", error.message);
+      Logger.instrumentation.error("SendCache.send " + error.message, {});
     }
     try {
       this.RemoveOldConnections()
     } catch (error) {
-      console.error("SendCache.cleanup", error.message);
+      Logger.instrumentation.error("SendCache.cleanup " + error.message, {});
     }
     this.sendTimer = setTimeout(() => this.SendCache(), 0);
   }

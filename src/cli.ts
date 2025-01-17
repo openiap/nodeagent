@@ -6,6 +6,7 @@ import { agenttools } from "./agenttools";
 import { packagemanager } from "./packagemanager";
 import { runner } from "./runner";
 import { FindFreePort } from "./PortMapper";
+import { Logger } from "./Logger";
 
 const os = require('os');
 const path = require('path');
@@ -30,14 +31,14 @@ let service = false;
 let hostport:string = null;
 let localport:string = null;
 let myproject = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
-console.log(myproject.name + "@" + myproject.version);
+Logger.instrumentation.info(myproject.name + "@" + myproject.version, {});
 
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
   if (arg === '-noop' || arg === '/noop') {
     process.exit(0);
   } else if (arg === '-v' || arg === '-verbose' || arg === '/v' || arg === '/verbose') {
-    console.log("Verbose mode enabled.");
+    Logger.instrumentation.info("Verbose mode enabled.", {});
     verbose = true;
   } else if (arg === '-svc' || arg === "-svr" || arg === '-service' || arg === '/svc' || arg === '/service') {
     service = true;
@@ -63,9 +64,9 @@ for (let i = 0; i < args.length; i++) {
 }
 function Run(cmd: string) {
   try {
-    console.log(cmd);
+    Logger.instrumentation.info(cmd, {});
     const output = childProcess.execSync(cmd).toString();
-    if (verbose) console.log(output);
+    if (verbose) Logger.instrumentation.info(output, {});
     return output
   } catch (error) {
     return error.toString();
@@ -76,13 +77,13 @@ function RunStreamed(command: string, args: string[], exit: boolean) {
   child.stdout.on('data', (data: any) => {
     if (data == null) return;
     var s = data.toString().replace(/\n$/, "");
-    console.log(s);
+    Logger.instrumentation.info(s, {});
   });
   child.stderr.on('data', (data: any) => {
-    console.error(data);
+    Logger.instrumentation.error(data, {});
   });
   child.on('close', (code: any) => {
-    console.log(`child process exited with code ${code}`);
+    Logger.instrumentation.info(`child process exited with code ${code}`, {});
     if (exit) process.exit(0);
   });
 }
@@ -93,7 +94,7 @@ function installService(svcName: string, serviceName: string, script: string): P
       scriptPath = path.join(__dirname, "dist", script);
     }
     if (!fs.existsSync(scriptPath)) {
-      console.log("Failed locating " + script)
+      Logger.instrumentation.info("Failed locating " + script, {svcName, serviceName})
       reject();
       return;
     }
@@ -106,17 +107,17 @@ function installService(svcName: string, serviceName: string, script: string): P
         script: scriptPath,
         env: [{ name: "apiurl", value: assistantConfig.apiurl }, { name: "jwt", value: assistantConfig.jwt }]
       });
-      console.log("Install using " + scriptPath)
+      Logger.instrumentation.info("Install using " + scriptPath, {svcName, serviceName})
       svc.on('alreadyinstalled', () => {
-        console.log("Service already installed");
+        Logger.instrumentation.info("Service already installed", {svcName, serviceName});
         svc.start();
       });
       svc.on('install', () => {
-        console.log(`Service "${serviceName}" installed successfully.`);
+        Logger.instrumentation.info(`Service "${serviceName}" installed successfully.`, {svcName, serviceName});
         svc.start();
       });
       svc.on('start', () => {
-        console.log(`Service "${serviceName}" started successfully.`);
+        Logger.instrumentation.info(`Service "${serviceName}" started successfully.`, {svcName, serviceName});
         resolve();
       });
       svc.on('error', () => {
@@ -125,14 +126,14 @@ function installService(svcName: string, serviceName: string, script: string): P
       svc.on('stop', () => {
         reject();
       });
-      // svc.on('install', () => { console.log("Service installed"); });
-      svc.on('alreadyinstalled', () => { console.log("Service already installed"); });
-      svc.on('invalidinstallation', () => { console.log("Service invalid installation"); });
-      svc.on('uninstall', () => { console.log("Service uninstalled"); });
-      svc.on('alreadyuninstalled', () => { console.log("Service already uninstalled"); });
-      svc.on('start', () => { console.log("Service started"); });
-      svc.on('stop', () => { console.log("Service stopped"); });
-      svc.on('error', () => { console.log("Service error"); });
+      // svc.on('install', () => { Logger.instrumentation.info("Service installed"); });
+      svc.on('alreadyinstalled', () => { Logger.instrumentation.info("Service already installed", {svcName, serviceName}); });
+      svc.on('invalidinstallation', () => { Logger.instrumentation.info("Service invalid installation", {svcName, serviceName}); });
+      svc.on('uninstall', () => { Logger.instrumentation.info("Service uninstalled", {svcName, serviceName}); });
+      svc.on('alreadyuninstalled', () => { Logger.instrumentation.info("Service already uninstalled", {svcName, serviceName}); });
+      svc.on('start', () => { Logger.instrumentation.info("Service started", {svcName, serviceName}); });
+      svc.on('stop', () => { Logger.instrumentation.info("Service stopped", {svcName, serviceName}); });
+      svc.on('error', () => { Logger.instrumentation.info("Service error", {svcName, serviceName}); });
       svc.install();
     } else if ( process.platform === 'darwin' ) {
 
@@ -175,9 +176,9 @@ function installService(svcName: string, serviceName: string, script: string): P
       fs.writeFileSync(plistPath, plist);
 
 
-      if (verbose) console.log(`Service file created at "${plistPath}".`);
+      if (verbose) Logger.instrumentation.info(`Service file created at "${plistPath}".`, {svcName, serviceName});
       Run(`launchctl load ${plistPath}`);
-      console.log(`Service "${serviceName}" installed successfully.`);
+      Logger.instrumentation.info(`Service "${serviceName}" installed successfully.`, {svcName, serviceName});
       Run(`launchctl start ${serviceName}`);
       resolve();
     } else {
@@ -205,12 +206,12 @@ function installService(svcName: string, serviceName: string, script: string): P
         WantedBy=multi-user.target
      `;
       fs.writeFileSync(svcPath, svcContent);
-      if (verbose) console.log(`Service file created at "${svcPath}".`);
+      if (verbose) Logger.instrumentation.info(`Service file created at "${svcPath}".`, {svcName, serviceName});
       Run(`systemctl enable ${serviceName}.service`)
       Run(`systemctl start ${serviceName}.service`)
 
-      console.log(`Service "${serviceName}" installed successfully.`);
-      console.log(`sudo systemctl status ${svcName}.service\nsudo journalctl -efu ${svcName}`)
+      Logger.instrumentation.info(`Service "${serviceName}" installed successfully.`, {svcName, serviceName});
+      Logger.instrumentation.info(`sudo systemctl status ${svcName}.service\nsudo journalctl -efu ${svcName}`, {svcName, serviceName})
       resolve();
     }
   });
@@ -230,15 +231,15 @@ function UninstallService(svcName: string, serviceName: string): Promise<void> {
         script: scriptPath
       });
       svc.on('uninstall', function () {
-        console.log(`Service "${serviceName}" uninstalled successfully.`);
+        Logger.instrumentation.info(`Service "${serviceName}" uninstalled successfully.`, {svcName, serviceName});
         resolve();
       });
       svc.on('alreadyuninstalled', function () {
-        console.log(`Service "${serviceName}" already uninstalled.`);
+        Logger.instrumentation.info(`Service "${serviceName}" already uninstalled.`, {svcName, serviceName});
         resolve();
       });
       svc.on('error', function () {
-        console.log(`Service "${serviceName}" uninstall failed.`);
+        Logger.instrumentation.info(`Service "${serviceName}" uninstall failed.`, {svcName, serviceName});
         reject();
       });
 
@@ -246,14 +247,14 @@ function UninstallService(svcName: string, serviceName: string): Promise<void> {
     } else if ( process.platform === 'darwin' ) {
       const plistPath = `/Library/LaunchDaemons/${serviceName}.plist`;
       if(fs.existsSync(plistPath)) {
-        console.log(`Unload service at "${plistPath}".`);
+        Logger.instrumentation.info(`Unload service at "${plistPath}".`, {svcName, serviceName});
         Run(`launchctl stop ${plistPath}`);
         Run(`launchctl unload ${plistPath}`);
         // delete plist file
         fs.unlinkSync(plistPath);  
-        console.log(`Service "${serviceName}" uninstalled successfully.`);
+        Logger.instrumentation.info(`Service "${serviceName}" uninstalled successfully.`, {svcName, serviceName});
       } else {
-        console.log(`Service "${serviceName}" already uninstalled.`);
+        Logger.instrumentation.info(`Service "${serviceName}" already uninstalled.`, {svcName, serviceName});
       }
       resolve();
   } else {
@@ -262,9 +263,9 @@ function UninstallService(svcName: string, serviceName: string): Promise<void> {
         Run(`systemctl stop ${serviceName}.service`)
         Run(`systemctl disable ${serviceName}.service`)
         fs.unlinkSync(svcPath);
-        console.log(`Service file removed at "${svcPath}".`);
+        Logger.instrumentation.info(`Service file removed at "${svcPath}".`, {svcName, serviceName});
       }
-      console.log(`Service "${serviceName}" uninstalled successfully.`);
+      Logger.instrumentation.info(`Service "${serviceName}" uninstalled successfully.`, {svcName, serviceName});
       resolve();
     }
   });
@@ -277,7 +278,7 @@ async function main() {
   if (service) {
     let nodepath = runner.findNodePath()
     let scriptPath = path.join(__dirname, "runagent.js");
-    console.log("run " + scriptPath)
+    Logger.instrumentation.info("run " + scriptPath, {serviceName})
     RunStreamed(nodepath, [scriptPath], true)
     return;
   } else if (hostport != null && hostport != "") {
@@ -296,12 +297,12 @@ async function main() {
       uselocalport = await FindFreePort(0);
     }
     if(uselocalport != localport) {
-      console.log("Port " + localport + " is in use. Using " + uselocalport + " instead.")
+      Logger.instrumentation.info("Port " + localport + " is in use. Using " + uselocalport + " instead.", {serviceName})
       localport = uselocalport;
     }
 
     if(portname === null || portname === undefined || (portname as any) === "" || remoteagent == null || remoteagent == "") {
-      console.log("Invalid proxy. Use format <remoteagent>:<remoteport or portname>")
+      Logger.instrumentation.info("Invalid proxy. Use format <remoteagent>:<remoteport or portname>", {serviceName})
       process.exit(1);
     }
     // is remoteport a number or string ?
@@ -317,28 +318,28 @@ async function main() {
     agent.client = new openiap()
     agent.client.allowconnectgiveup = true;
     agent.client.agent = "nodeagent";
-    console.log("reloadAndParseConfig")
+    Logger.instrumentation.info("reloadAndParseConfig", {serviceName})
     agent.reloadAndParseConfig();
-    console.log("connect")
+    Logger.instrumentation.info("connect", {serviceName})
     await agent.client.connect();
-    // console.log("ClientPortMapper")
+    // Logger.instrumentation.info("ClientPortMapper")
     // const listener = new ClientPortMapper(agent.client, localport, portname, port, remoteagent);
     return;
   } else {
-    console.log("Not running as service")
+    Logger.instrumentation.info("Not running as service", {serviceName})
   }
   const home_configfile = path.join(packagemanager.homedir(), ".openiap", "config.json")
   const win32_configfile = path.join("C:\\WINDOWS\\system32\\config\\systemprofile\\", ".openiap", "config.json")
   const darwin_configfile = "/var/root/.openiap/config.json"
   if (command === 'install' || command == "") {
     if (fs.existsSync(win32_configfile)) {
-      console.log("Parsing config from " + win32_configfile)
+      Logger.instrumentation.info("Parsing config from " + win32_configfile, {serviceName})
       assistantConfig = JSON.parse(fs.readFileSync(win32_configfile, "utf8"));
     } else if (fs.existsSync(darwin_configfile)) {
-      console.log("Parsing config from " + darwin_configfile)
+      Logger.instrumentation.info("Parsing config from " + darwin_configfile, {serviceName})
       assistantConfig = JSON.parse(fs.readFileSync(darwin_configfile, "utf8"));
     } else if (fs.existsSync(home_configfile)) {
-      console.log("Parsing config from " + home_configfile)
+      Logger.instrumentation.info("Parsing config from " + home_configfile, {serviceName})
       assistantConfig = JSON.parse(fs.readFileSync(home_configfile, "utf8"));
     }
     assistantConfig.apiurl = prompts(`apiurl (Enter for ${assistantConfig.apiurl})? `, assistantConfig.apiurl);
@@ -355,21 +356,21 @@ async function main() {
 
     if (assistantConfig.jwt == null || assistantConfig.jwt == "") {
       const [tokenkey, signinurl] = await agenttools.AddRequestToken(assistantConfig.apiurl)
-      console.log(`Please open ${signinurl} in your browser and login with your OpenIAP account`)
+      Logger.instrumentation.info(`Please open ${signinurl} in your browser and login with your OpenIAP account`, {serviceName})
       const jwt = await agenttools.WaitForToken(assistantConfig.apiurl, tokenkey);
       assistantConfig.jwt = jwt;
     }
     try {
       fs.writeFileSync(home_configfile, JSON.stringify(assistantConfig));
     } catch (error) {
-      console.error("Error writing config to " + home_configfile + "\n" + error.message)
+      Logger.instrumentation.error("Error writing config to " + home_configfile + "\n" + error.message, {serviceName})
       
     }
 
-    console.log(`Installing service "${serviceName}"...`);
+    Logger.instrumentation.info(`Installing service "${serviceName}"...`, {serviceName});
     await installService(serviceName, serviceName, 'runagent.js');
   } else if (command === 'uninstall') {
-    console.log(`Uninstalling service "${serviceName}"...`);
+    Logger.instrumentation.info(`Uninstalling service "${serviceName}"...`, {serviceName});
     await UninstallService(serviceName, serviceName);
   }
   process.exit(0);

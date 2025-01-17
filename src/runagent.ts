@@ -1,4 +1,5 @@
 import { agent } from "./agent";
+import { Logger } from "./Logger";
 import { runner } from "./runner";
 import { sleep } from "./util";
 async function main() {
@@ -7,10 +8,10 @@ async function main() {
     const onexit = async () => {
       for (let s = runner.streams.length - 1; s >= 0; s--) {
         const stream = runner.streams[s];
-        console.log("*** Kill stream: " + stream.id);
+        Logger.instrumentation.info("*** Kill stream: " + stream.id, { streamid: stream.id });
         await runner.kill(agent.client, stream.id);
       }
-      console.log("*** Exit");;
+      Logger.instrumentation.info("*** Exit", { });
       process.exit(0);
     };
     process.on('SIGINT', onexit)
@@ -21,7 +22,7 @@ async function main() {
       await sleep(10);
     }
   } catch (error) {
-    console.error(error);
+    Logger.instrumentation.error(error, { });
   }
 }
 

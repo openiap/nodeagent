@@ -110,7 +110,7 @@ export class agent  {
     agent.client.on('connected', agent.onConnected);
     agent.client.on('signedin', agent.onSignedIn);
     agent.client.on('disconnected', agent.onDisconnected);
-    log("Agent starting!!!")
+    log("Agent starting!!!", {agentid: agent?.agentid})
     if (process.env.maxjobs != null && process.env.maxjobs != null) {
       agent.max_workitemqueue_jobs = parseInt(process.env.maxjobs);
     }
@@ -161,7 +161,7 @@ export class agent  {
       }
       if(domain != null && domain.indexOf(".") > 0) {
         oidc_config = protocol + "://" + domain + "/oidc/.well-known/openid-configuration"
-        console.log("auto generated oidc_config: " + oidc_config)
+        Logger.instrumentation.info("auto generated oidc_config: " + oidc_config, {})
         process.env.oidc_config = oidc_config;
       }
   }
@@ -171,7 +171,7 @@ export class agent  {
       
     let myproject = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"));
     this.client.version = myproject.version;
-    log("version: " + this.client.version);
+    log("version: " + this.client.version, {agentid: agent?.agentid});
     // When injected from docker, use the injected agentid
     agent.assistantConfig = { "apiurl": "wss://app.openiap.io/ws/v2", jwt: "", agentid: "" }
     agent.dockeragent = false;
@@ -276,7 +276,7 @@ export class agent  {
       return true;
     } else {
       if (agent.assistantConfig.apiurl == null || agent.assistantConfig.apiurl == "") {
-        log("failed locating config to load from " + path.join(packagemanager.homedir(), ".openiap", "config.json"))
+        log("failed locating config to load from " + path.join(packagemanager.homedir(), ".openiap", "config.json"), {agentid: agent?.agentid})
         return false;
       }
     }
@@ -289,24 +289,25 @@ export class agent  {
     try {
       let u = new URL(client.url);
       process.env.apiurl = client.url;
+      Logger.instrumentation?.init(client);
       await agent.RegisterAgent()
       if (client.client == null || client.client.user == null) {
-        log('connected, but not signed in, close connection again');
+        log('connected, but not signed in, close connection again', {agentid: agent?.agentid});
         return client.Close();
       }
-      Logger.instrumentation?.init(client);
+      //Logger.instrumentation?.init(client);
 
-      log("registering watch on agents")
+      log("registering watch on agents", {agentid: agent?.agentid})
       let watchid = await client.Watch({ paths: [], collectionname: "agents" }, async (operation: string, document: any) => {
         try {
           if (document._type == "package") {
             if (operation == "insert") {
-              log("package " + document.name + " inserted, reload packages");
+              log("package " + document.name + " inserted, reload packages", {watchid, agentid: agent?.agentid});
               // await agent.reloadpackages(false)
             } else if (operation == "replace" || operation == "delete") {
-              log("package " + document.name + " (" +  document._id + " ) updated.");
+              log("package " + document.name + " (" +  document._id + " ) updated.", {watchid, agentid: agent?.agentid});
               if(agent.killonpackageupdate) {
-                log("Kill all instances of package " + document.name + " (" + document._id + ") if running");
+                log("Kill all instances of package " + document.name + " (" + document._id + ") if running", {watchid, agentid: agent?.agentid});
                 for (let s = runner.streams.length - 1; s >= 0; s--) {
                   const stream = runner.streams[s];
                   if (stream.packageid == document._id) {
@@ -323,41 +324,41 @@ export class agent  {
           } else if (document._type == "agent") {
             if (document._id == agent.agentid) {
               if (agent.lastreload.getTime() + 1000 > new Date().getTime()) {
-                log("agent changed, but last reload was less than 1 second ago, do nothing");
+                log("agent changed, but last reload was less than 1 second ago, do nothing", {watchid, agentid: agent?.agentid});
                 return;
               }
               agent.lastreload = new Date();
-              log("agent changed, reload config");
+              log("agent changed, reload config", {watchid, agentid: agent?.agentid});
               await agent.RegisterAgent()
             } else {
-              log("Another agent was changed, do nothing");
+              log("Another agent was changed, do nothing", {watchid, agentid: agent?.agentid});
             }
           } else {
-            log("unknown type " + document._type + " changed, do nothing");
+            log("unknown type " + document._type + " changed, do nothing", {watchid, agentid: agent?.agentid});
           }
         } catch (error) {
-          _error(error);
+          _error(error, { watchid, agentid: agent?.agentid });
         }
       });
-      log("watch registered with id " + watchid);
+      log("watch registered with id " + watchid, {watchid, agentid: agent?.agentid});
     } catch (error) {
-      _error(error);
+      _error(error, {agentid: agent?.agentid});
       await sleep(2000);
     }
   }
   private static async onDisconnected(client: openiap) {
-    log("Disconnected");
+    log("Disconnected", {agentid: agent?.agentid});
   };
   public static async localrun(packageid: string, streamid: string, payload: any, env: any, schedule: any): Promise<[number, string, any]> {
-    console.log("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin);
+    Logger.instrumentation.info("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin, {packageid, streamid});
     const pck = await packagemanager.getpackage(agent.client, packageid, true);
     if(pck == null) {
       throw new Error("Package " + packageid + " not found");
     }
     const packagepath = packagemanager.getpackagepath(path.join(packagemanager.homedir(), ".openiap", "packages", packageid));
-    console.log("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin);
+    Logger.instrumentation.info("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin, {packageid, streamid});
     if (packagepath == "") {
-      log("Package " + packageid + " not found");
+      log("Package " + packageid + " not found", {packageid, streamid, agentid: agent?.agentid});
       return [2, "Package " + packageid + " not found", payload];
     }
     if (streamid == null || streamid == "") {
@@ -385,7 +386,7 @@ export class agent  {
       let _stream = new Stream.Readable({
         read(size) { }
       });
-      log("run package " + pck.name + " (" + packageid + ")");
+      log("run package " + pck.name + " (" + packageid + ")", {packageid, streamid, agentid: agent?.agentid});
       const { exitcode, stream } = await packagemanager.runpackage(agent.client, packageid, streamid, [], _stream, true, _env, schedule);
       let wipayload = payload;
       if (fs.existsSync(wipath)) {
@@ -393,19 +394,19 @@ export class agent  {
           wipayload = JSON.parse(fs.readFileSync(wipath).toString());
           if (fs.existsSync(wipath)) { fs.unlinkSync(wipath); }
         } catch (error) {
-          log("Error loading payload from " + wipath + " " + (error.message ? error.message : error));
+          log("Error loading payload from " + wipath + " " + (error.message ? error.message : error), {packageid, streamid, agentid: agent?.agentid});
         }
       }
       return [exitcode, stream?.buffer?.toString(), wipayload];
     } catch (error) {
-      _error(error);
+      _error(error, {packageid, streamid, agentid: agent?.agentid });
       let wipayload = payload;
       if (fs.existsSync(wipath)) {
         try {
           wipayload = JSON.parse(fs.readFileSync(wipath).toString());
           if (fs.existsSync(wipath)) { fs.unlinkSync(wipath); }
         } catch (error) {
-          log("Error loading payload from " + wipath + " " + (error.message ? error.message : error));
+          log("Error loading payload from " + wipath + " " + (error.message ? error.message : error), {packageid, streamid, agentid: agent?.agentid});
         }
       }
       return [-1, error.message, wipayload];
@@ -417,15 +418,15 @@ export class agent  {
     }
   }
   public static async localrun_old(packageid: string, streamid: string, payload: any, env: any, schedule: any): Promise<[number, string, any]> {
-    console.log("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin);
+    Logger.instrumentation.info("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin, {packageid, streamid});
     const pck = await packagemanager.getpackage(agent.client, packageid, true);
     if(pck == null) {
       throw new Error("Package " + packageid + " not found");
     }
     const packagepath = packagemanager.getpackagepath(path.join(packagemanager.homedir(), ".openiap", "packages", packageid));
-    console.log("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin);
+    Logger.instrumentation.info("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin, {packageid, streamid});
     if (packagepath == "") {
-      log("Package " + packageid + " not found");
+      log("Package " + packageid + " not found", {packageid, streamid, agentid: agent?.agentid});
       return [2, "Package " + packageid + " not found", payload];
     }
     var _env = {"payloadfile": ""};
@@ -448,7 +449,7 @@ export class agent  {
       let _stream = new Stream.Readable({
         read(size) { }
       });
-      log("run package " + pck.name + " (" + packageid + ")");
+      log("run package " + pck.name + " (" + packageid + ")", {packageid, streamid, agentid: agent?.agentid});
       const ids: string[] = [];
       
       const { exitcode, stream } = await packagemanager.runpackage(agent.client, packageid, streamid, [], _stream, true, _env, schedule);
@@ -459,31 +460,31 @@ export class agent  {
           wipayload = JSON.parse(fs.readFileSync(wipath).toString());
           if (fs.existsSync(wipath)) { fs.unlinkSync(wipath); }
         } catch (error) {
-          log("Error loading payload from " + wipath + " " + (error.message ? error.message : error));
+          log("Error loading payload from " + wipath + " " + (error.message ? error.message : error), {packageid, streamid});
         }
       }
       return [exitcode, stream?.buffer.toString(), wipayload];
     } catch (error) {
-      _error(error);
+      _error(error, {packageid, streamid, agentid: agent?.agentid });
     }
   }
   public static async reloadpackages(force: boolean): Promise<ipackage[]> {
     try {
-      log("reloadpackages")
+      log("reloadpackages", {})
       if (agent.globalpackageid != "" && agent.globalpackageid != null) {
         return [await packagemanager.reloadpackage(agent.client, agent.globalpackageid, force)];
       } else {
         return await packagemanager.reloadpackages(agent.client, agent.languages, force);
       }
     } catch (error) {
-      _error(error);
+      _error(error, {agentid: agent?.agentid});
     }
   }
 
   public static async RegisterAgent() {
     try {
       let u = new URL(agent.client.url);
-      log("Registering agent with " + u.hostname + " as " + agent.client.client.user.username);
+      log("Registering agent with " + u.hostname + " as " + agent.client.client.user.username, {agentid: agent?.agentid});
       let chromium = runner.findChromiumPath() != "";
       let chrome = runner.findChromePath() != "";
       let daemon = undefined;
@@ -501,9 +502,9 @@ export class agent  {
         }
       }
       if (res != null && res.slug != "" && res._id != null && res._id != "") {
-        log("registering agent queue as " + res.slug + "agent");
+        log("registering agent queue as " + res.slug + "agent", {agentid: agent?.agentid});
         agent.localqueue = await agent.client.RegisterQueue({ queuename: res.slug + "agent" }, agent.onQueueMessage);
-        log("queue registered as " + agent.localqueue);
+        log("queue registered as " + agent.localqueue, {agentid: agent?.agentid});
         agent.agentid = res._id;
         let config = { agentid: agent.agentid, jwt: res.jwt, apiurl: agent.client.url };
         if (fs.existsSync(path.join(packagemanager.homedir(), ".openiap", "config.json"))) {
@@ -527,7 +528,7 @@ export class agent  {
             let name = process.env.forcedpackageid || "localrun";
             res.schedules.push({ id: "localrun", name, packageid: agent.globalpackageid, enabled: true, cron: "", env: { "localrun": true } });
           }
-          log("packageid is set, run package " + agent.globalpackageid);
+          log("packageid is set, run package " + agent.globalpackageid, {agentid: agent?.agentid, packageid: agent.globalpackageid});
         }
         for (let p = 0; p < res.schedules.length; p++) {
           const _schedule = res.schedules[p];
@@ -555,7 +556,7 @@ export class agent  {
                 schedule.task.lastrestart = new Date();
               }
               try {
-                log("Schedule " + _schedule.name + " (" + _schedule.id + ") updated, kill all instances of package " + _schedule.packageid + " if running");
+                log("Schedule " + _schedule.name + " (" + _schedule.id + ") updated, kill all instances of package " + _schedule.packageid + " if running", {agentid: agent?.agentid, packageid: _schedule.packageid});
                 for (let s = runner.streams.length - 1; s >= 0; s--) {
                   const stream = runner.streams[s];
                   if (stream.schedulename == _schedule.name) {
@@ -580,7 +581,7 @@ export class agent  {
                 _schedule.task.stop();
                 _schedule.task = null;
               }
-              log("Schedule " + _schedule.name + " (" + _schedule.id + ") removed, kill all instances of package " + _schedule.packageid + " if running");
+              log("Schedule " + _schedule.name + " (" + _schedule.id + ") removed, kill all instances of package " + _schedule.packageid + " if running", {agentid: agent?.agentid, packageid: _schedule.packageid});
               for (let s = runner.streams.length - 1; s >= 0; s--) {
                 const stream = runner.streams[s];
                 if (stream.schedulename == _schedule.name) {
@@ -596,7 +597,7 @@ export class agent  {
         for (let p = 0; p < agent.schedules.length; p++) {
           const schedule = agent.schedules[p];
           if (schedule.packageid == null || schedule.packageid == "") {
-            log("Schedule " + schedule.name + " has no packageid, skip");
+            log("Schedule " + schedule.name + " has no packageid, skip", {agentid: agent?.agentid, packageid: schedule.packageid});
             continue;
           }
 
@@ -606,7 +607,7 @@ export class agent  {
                 schedule.task.stop();
                 schedule.task = null;
               }
-              log("Schedule " + schedule.name + " (" + schedule.id + ") disabled, kill all instances of package " + schedule.packageid + " if running");
+              log("Schedule " + schedule.name + " (" + schedule.id + ") disabled, kill all instances of package " + schedule.packageid + " if running", {agentid: agent?.agentid, packageid: schedule.packageid});
               for (let s = runner.streams.length - 1; s >= 0; s--) {
                 const stream = runner.streams[s];
                 if (stream.schedulename == schedule.name) {
@@ -614,7 +615,7 @@ export class agent  {
                 }
               }
             } else {
-              log("Schedule " + schedule.name + " (" + schedule.id + ") running every " + schedule.cron);
+              log("Schedule " + schedule.name + " (" + schedule.id + ") running every " + schedule.cron, {agentid: agent?.agentid, packageid: schedule.packageid});
               if (schedule.task == null) {
                 schedule.task = cron.schedule(schedule.cron, async () => {
                   const kill = () => {
@@ -622,7 +623,7 @@ export class agent  {
                       const stream = runner.streams[s];
                       if (stream.schedulename == schedule.name) {
                         runner.kill(agent.client, stream.id).catch((error) => {
-                          _error(error);
+                          _error(error, {streamid: stream?.id, agentid: agent?.agentid });
                         });
                       }
                     }
@@ -638,21 +639,21 @@ export class agent  {
                   }
                   if (schedule.enabled) {
                     if(schedule.terminateIfRunning == true && isRunning() == true) {
-                      log("Schedule " + + " (" + schedule.id + ") is already running, kill all instances of package " + schedule.packageid + " and start again");
+                      log("Schedule " + + " (" + schedule.id + ") is already running, kill all instances of package " + schedule.packageid + " and start again", {agentid: agent?.agentid, packageid: schedule.packageid});
                       kill();
                     } else if(schedule.allowConcurrentRuns != true && isRunning() == true) {
-                      log("Schedule " + + " (" + schedule.id + ") is already running, do nothing");
+                      log("Schedule " + + " (" + schedule.id + ") is already running, do nothing", {agentid: agent?.agentid, packageid: schedule.packageid});
                       return;
                     }
-                    log("Schedule " + schedule.name + " (" + schedule.id + ") enabled, run now");
+                    log("Schedule " + schedule.name + " (" + schedule.id + ") enabled, run now", {agentid: agent?.agentid, packageid: schedule.packageid});
                     try {
                       agent.localrun(schedule.packageid, null, null, schedule.env, schedule);
                     } catch (error) {
-                      console.error(error);                      
+                      Logger.instrumentation.error(error, {packageid: schedule?.packageid});
                     }
                   } else {
                     if(isRunning() == true) {
-                      log("Schedule " + + " (" + schedule.id + ") disabled, kill all instances of package " + schedule.packageid);
+                      log("Schedule " + + " (" + schedule.id + ") disabled, kill all instances of package " + schedule.packageid, {agentid: agent?.agentid, packageid: schedule.packageid});
                       kill();
                     }
                   }
@@ -662,7 +663,7 @@ export class agent  {
           } else {
             if (schedule.enabled) {
               if (schedule.task == null) {
-                log("Schedule " + schedule.name + " enabled, run now");
+                log("Schedule " + schedule.name + " enabled, run now", {agentid: agent?.agentid, packageid: schedule.packageid});
                 schedule.task = {
                   timeout: null,
                   lastrestart: new Date(),
@@ -674,7 +675,7 @@ export class agent  {
                         const stream = runner.streams[s];
                         if (stream.schedulename == schedule.name) {
                           runner.kill(agent.client, stream.id).catch((error) => {
-                            _error(error);
+                            _error(error, {streamid: stream?.id, agentid: agent?.agentid });
                           });
                         }
                       }
@@ -682,18 +683,18 @@ export class agent  {
                   },
                   start() {
                     if (schedule.task.timeout != null) {
-                      log("Schedule " + schedule.name + " (" + schedule.id + ") already running");
+                      log("Schedule " + schedule.name + " (" + schedule.id + ") already running", {agentid: agent?.agentid, packageid: schedule.packageid});
                       return;
                     }
                     if (!schedule.enabled) {
-                      log("Schedule " + schedule.name + " (" + schedule.id + ") is disabled");
+                      log("Schedule " + schedule.name + " (" + schedule.id + ") is disabled", {agentid: agent?.agentid, packageid: schedule.packageid});
                       return;
                     }
                     let startinms = 100;
                     if(schedule.task.restartcounter > 0) {
                       startinms = 5000 + (1000 * schedule.task.restartcounter);
                     }
-                    log("Schedule " + schedule.name + " (" + schedule.id + ") started");
+                    log("Schedule " + schedule.name + " (" + schedule.id + ") started", {agentid: agent?.agentid, packageid: schedule.packageid});
                     schedule.task.stop()
                     schedule.task.timeout = setTimeout(async () => {
                       try {
@@ -702,14 +703,14 @@ export class agent  {
                           [exitcode, output, payload] = await agent.localrun(schedule.packageid, null, null, schedule.env, schedule);
                         } catch (error) {
                           var e = error;
-                          console.error(e);
+                          Logger.instrumentation.error(e, {packageid: schedule?.packageid});
                         }
                         if (schedule.task == null) return;
                         schedule.task.timeout = null;
                         if (exitcode != 0) {
-                          log("Schedule " + schedule.name + " (" + schedule.id + ") finished with exitcode " + exitcode + '\n' + output);
+                          log("Schedule " + schedule.name + " (" + schedule.id + ") finished with exitcode " + exitcode + '\n' + output, {agentid: agent?.agentid, packageid: schedule.packageid});
                         } else {
-                          log("Schedule " + schedule.name + " (" + schedule.id + ") finished (exitcode " + exitcode + ")");
+                          log("Schedule " + schedule.name + " (" + schedule.id + ") finished (exitcode " + exitcode + ")", {agentid: agent?.agentid, packageid: schedule.packageid});
                         }
                         const minutes = (new Date().getTime() - schedule.task.lastrestart.getTime()) / 1000 / 60;
                         if (minutes < agent.maxrestartsminutes) {
@@ -721,24 +722,24 @@ export class agent  {
                         if (schedule.task.restartcounter < agent.maxrestarts) {
                           let exists = agent.schedules.find(x => x.name == schedule.name && x.packageid == schedule.packageid);
                           if (exists != null && schedule.task != null) {
-                            log("Schedule " + schedule.name + " (" + schedule.id + ") stopped after " + minutes.toFixed(2) + " minutes (" + schedule.task.restartcounter + " of " + agent.maxrestarts + ")");
+                            log("Schedule " + schedule.name + " (" + schedule.id + ") stopped after " + minutes.toFixed(2) + " minutes (" + schedule.task.restartcounter + " of " + agent.maxrestarts + ")", {agentid: agent?.agentid, packageid: schedule.packageid});
                             schedule.task.start();
                           }
                         } else {
                           const hascronjobs = agent.schedules.find(x => x.cron != null && x.cron != "" && x.enabled == true);
                           if (hascronjobs == null && agent.exitonfailedschedule == true) {
-                            log("Schedule " + schedule.name + " (" + schedule.id + ") stopped " + schedule.task.restartcounter + " times, no cron jobs running, exit agent completly!");
+                            log("Schedule " + schedule.name + " (" + schedule.id + ") stopped " + schedule.task.restartcounter + " times, no cron jobs running, exit agent completly!", {agentid: agent?.agentid, packageid: schedule.packageid});
                             process.exit(0);
                           } else {
-                            log("Schedule " + schedule.name + " (" + schedule.id + ") stopped " + schedule.task.restartcounter + " times, stop schedule");
+                            log("Schedule " + schedule.name + " (" + schedule.id + ") stopped " + schedule.task.restartcounter + " times, stop schedule", {agentid: agent?.agentid, packageid: schedule.packageid});
                           }
                         }
                       } catch (error) {
                         try {
-                          _error(error);
+                          _error(error, {packageid: schedule?.packageid, agentid: agent?.agentid});
                           schedule.task.timeout = null;
                         } catch (e) {
-                          _error(e);
+                          _error(e, {packageid: schedule?.packageid, agentid: agent?.agentid});
                         }
 
                       }
@@ -747,10 +748,10 @@ export class agent  {
                 }
                 schedule.task.start();
               } else {
-                log("Schedule " + schedule.name + " (" + schedule.id + ") allready running");
+                log("Schedule " + schedule.name + " (" + schedule.id + ") allready running", {agentid: agent?.agentid, packageid: schedule?.packageid});
               }
             } else {
-              log("Schedule " + schedule.name + " disabled, kill all instances of package " + schedule.packageid + " if running");
+              log("Schedule " + schedule.name + " disabled, kill all instances of package " + schedule.packageid + " if running", {agentid: agent?.agentid, packageid: schedule.packageid});
               for (let s = runner.streams.length - 1; s >= 0; s--) {
                 const stream = runner.streams[s];
                 if (stream.schedulename == schedule.name) {
@@ -760,22 +761,22 @@ export class agent  {
             }
           }
         }
-        log("Registed agent as " + res.name + " (" + agent.agentid + ") and queue " + agent.localqueue + " ( from " + res.slug + " )");
+        log("Registed agent as " + res.name + " (" + agent.agentid + ") and queue " + agent.localqueue + " ( from " + res.slug + " )", {agentid: agent?.agentid});
       } else {
-        log("Registrering agent seems to have failed without an error !?!");
+        log("Registrering agent seems to have failed without an error !?!", {agentid: agent?.agentid });
         if (res == null) {
-          log("res is null");
+          log("res is null", {agentid: agent?.agentid });
         } else {
-          log(JSON.stringify(res, null, 2));
+          log(JSON.stringify(res, null, 2), {agentid: agent?.agentid });
         }
       }
       if (res.jwt != null && res.jwt != "") {
         await agent.client.Signin({ jwt: res.jwt });
-        log('Re-authenticated to ' + u.hostname + ' as ' + agent.client.client.user.username);
+        log('Re-authenticated to ' + u.hostname + ' as ' + agent.client.client.user.username, {agentid: agent?.agentid });
       }
       agent.reloadAndParseConfig();
     } catch (error) {
-      _error(error);
+      _error(error, {agentid: agent?.agentid});
       process.env["apiurl"] = "";
       process.env["jwt"] = "";
       try {
@@ -812,11 +813,11 @@ export class agent  {
             streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
           }
           if (payload.wiq == null) {
-            log("payload missing wiq " + JSON.stringify(payload, null, 2));
+            log("payload missing wiq " + JSON.stringify(payload, null, 2), {agentid: agent?.agentid, streamid });
             return { "command": payload.command, "success": false, error: "payload missing wiq" };
           }
           if (payload.packageid == null) {
-            log("payload missing packageid " + JSON.stringify(payload, null, 2));
+            log("payload missing packageid " + JSON.stringify(payload, null, 2), {agentid: agent?.agentid, streamid });
             return { "command": payload.command, "success": false, error: "payload missing packageid" };
           }
           await packagemanager.getpackage(agent.client, payload.packageid, true);
@@ -824,11 +825,11 @@ export class agent  {
 
           workitem = await agent.client.PopWorkitem({ wiq: payload.wiq, includefiles: false, compressed: false });
           if (workitem == null) {
-            log("No more workitems for " + payload.wiq);
+            log("No more workitems for " + payload.wiq, {agentid: agent?.agentid, streamid });
             try {
               if (dostream) await agent.client.QueueMessage({ queuename: streamqueue, data: { "command": "stream", "data": Buffer.from("No more workitems for " + payload.wiq) }, correlationId: streamid });
             } catch (error) {
-              log(error.message ? error.message : error);
+              log(error.message ? error.message : error, {agentid: agent?.agentid, streamid });
             }
             return { "command": "invoke", "success": false, "completed": true, error: "No more workitems for " + payload.wiq };
           }
@@ -844,7 +845,7 @@ export class agent  {
             const file = workitem.files[i];
             if (file.filename == "output.txt") continue;
             const reply = await this.client.DownloadFile({ id: file._id, folder: packagepath });
-            log("Downloaded file: " + reply.filename);
+            log("Downloaded file: " + reply.filename, {agentid: agent?.agentid, streamid });
           }
           const [exitcode, output, newpayload] = await agent.localrun(payload.packageid, streamid, workitem.payload, env, null);
           try {
@@ -860,7 +861,7 @@ export class agent  {
             files.forEach(file => {
               let filename = path.join(packagepath, file);
               if (fs.lstatSync(filename).isFile()) {
-                log("adding file: " + file);
+                log("adding file: " + file, {agentid: agent?.agentid, streamid });
                 workitem.files.push({ filename: file, file: fs.readFileSync(filename), _id: null, compressed: false })
                 fs.unlinkSync(filename);
               }
@@ -869,16 +870,16 @@ export class agent  {
             try {
               if (dostream == true && streamqueue != "") await agent.client.QueueMessage({ queuename: streamqueue, data: { "command": "invoke", "success": true, "completed": true }, correlationId: streamid });
             } catch (error) {
-              log(error.message ? error.message : error);
+              log(error.message ? error.message : error, {agentid: agent?.agentid, streamid });
             }
           } catch (error) {
-            _error(error);
+            _error(error, {agentid: agent?.agentid});
             dostream = false;
           }
           return { "command": "invoke", "success": true, "completed": false };
         } catch (error) {
-          _error(error);
-          log("!!!error: " + error.message ? error.message : error);
+          _error(error, {agentid: agent?.agentid});
+          log("!!!error: " + error.message ? error.message : error, {agentid: agent?.agentid, streamid });
 
           workitem.errormessage = (error.message != null) ? error.message : error;
           workitem.state = "retry";
@@ -891,11 +892,11 @@ export class agent  {
         }
       }
       if (user == null || jwt == null || jwt == "") {
-        _error("not authenticated");
+        _error("not authenticated", {agentid: agent?.agentid});
         return { "command": payload.command, "success": false, error: "not authenticated" };
       }
-      log("onQueueMessage " + msg.correlationId)
-      log("command: " + payload.command + " streamqueue: " + streamqueue + " dostream: " + dostream)
+      log("onQueueMessage " + msg.correlationId, {agentid: agent?.agentid, streamid })
+      log("command: " + payload.command + " streamqueue: " + streamqueue + " dostream: " + dostream, {agentid: agent?.agentid, streamid })
       if (streamqueue == null) streamqueue = "";
       if (payload.command == "runpackage") {
         if (payload.id == null || payload.id == "") throw new Error("id is required");
@@ -906,14 +907,14 @@ export class agent  {
             const success = exitcode == 0;
             if (dostream == true && streamqueue != "") agent.client.QueueMessage({ queuename: streamqueue, data: { "command": "runpackage", success, "completed": true, exitcode, output, payload }, correlationId: streamid });
           } catch (error) {
-            log(error.message ? error.message : error);
+            log(error.message ? error.message : error, {agentid: agent?.agentid, streamid });
           }
         }).catch((error) => {
           const output = error.output;
           try {
             if (dostream == true && streamqueue != "") agent.client.QueueMessage({ queuename: streamqueue, data: { "command": "runpackage", "success": false, "completed": true, "output": output, "error": error.message ? error.message : error, "payload": payload.payload }, correlationId: streamid });
           } catch (error) {
-            log(error.message ? error.message : error);
+            log(error.message ? error.message : error, {agentid: agent?.agentid, streamid });
           }
         });
 
@@ -929,8 +930,8 @@ export class agent  {
         if (payload.id == null || payload.id == "") payload.id = payload.streamid;
         if (payload.id == null || payload.id == "") throw new Error("id is required");
         
-        log("Reinstall package " + payload.id);
-        log("Kill all instances of package " + payload.id + " if running");
+        log("Reinstall package " + payload.id, {agentid: agent?.agentid, streamid });
+        log("Kill all instances of package " + payload.id + " if running", {agentid: agent?.agentid, streamid });
         for (let s = runner.streams.length - 1; s >= 0; s--) {
           const stream = runner.streams[s];
           if (stream.packageid == payload.id) {
@@ -956,7 +957,7 @@ export class agent  {
       if (payload.command == "removecommandstreamid") {
         if (payload.streamqueue == null || payload.streamqueue == "") payload.streamqueue = msg.replyto;
         if (runner.commandstreams.indexOf(payload.streamqueue) != -1) {
-          console.log("remove " + payload.streamqueue + " from commandstreams")
+          Logger.instrumentation.info("remove " + payload.streamqueue + " from commandstreams", {})
           runner.commandstreams.splice(runner.commandstreams.indexOf(payload.streamqueue), 1);
         }
       }
@@ -968,7 +969,7 @@ export class agent  {
         let processcount = runner.streams.length;
         let counter = 0;
         if (runner.commandstreams.indexOf(payload.streamqueue) == -1 && payload.streamqueue != null && payload.streamqueue != "") {
-          console.log("Add streamqueue " + payload.streamqueue + " to commandstreams")
+          Logger.instrumentation.info("Add streamqueue " + payload.streamqueue + " to commandstreams", {})
           runner.commandstreams.push(payload.streamqueue);
         }
         const s = runner.streams.find(x => x.id == streamid)
@@ -977,14 +978,14 @@ export class agent  {
           try {
             await agent.client.QueueMessage({ queuename: payload.streamqueue, data: { "command": "stream", "data": _message }, correlationId: streamid });
           } catch (error) {
-            log(error.message ? error.message : error);
+            log(error.message ? error.message : error, {agentid: agent?.agentid, streamid });
           }
         }
         return { "command": "setstreamid", "success": true, "count": counter, };
       }
       if (payload.command == "listprocesses") {
         if (runner.commandstreams.indexOf(msg.replyto) == -1 && msg.replyto != null && msg.replyto != "") {
-          console.log("Add streamqueue " + msg.replyto + " to commandstreams")
+          Logger.instrumentation.info("Add streamqueue " + msg.replyto + " to commandstreams", {})
           runner.commandstreams.push(msg.replyto);
         }
         var runner_process = runner.processs;
@@ -1086,19 +1087,19 @@ export class agent  {
       //   return null;
       // }
     } catch (error) {
-      _error(error);
-      log(JSON.stringify({ "command": payload.command, "success": false, error: JSON.stringify(error.message) }))
+      _error(error, {agentid: agent?.agentid});
+      log(JSON.stringify({ "command": payload.command, "success": false, error: JSON.stringify(error.message) }), {agentid: agent?.agentid })
       return { "command": payload.command, "success": false, error: JSON.stringify(error.message) };
     } finally {
       // const sumports = agent.portlisteners.map(x => x.connections.size).reduce((a, b) => a + b, 0);
       // log("commandstreams:" + runner.commandstreams.length + " portlisteners:" + agent.portlisteners.length + " ports: " + sumports);
-      log("commandstreams:" + runner.commandstreams.length);
+      log("commandstreams:" + runner.commandstreams.length, {agentid: agent?.agentid });
     }
   }
 
 }
-function log(message: string) {
-  console.log(message);
+function log(message: string, attributes: any) {
+  Logger.instrumentation.info(message, attributes);
   if (elog != null) {
     try {
       elog.info(message);
@@ -1107,8 +1108,8 @@ function log(message: string) {
     }
   }
 }
-function _error(message: string | Error) {
-  console.error(message);
+function _error(message: string | Error, attributes: any) {
+  Logger.instrumentation.error(message, attributes);
   if (elog != null) {
     try {
       elog.error(message.toString());

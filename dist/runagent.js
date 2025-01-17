@@ -37,6 +37,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var agent_1 = require("./agent");
+var Logger_1 = require("./Logger");
 var runner_1 = require("./runner");
 var util_1 = require("./util");
 function main() {
@@ -58,7 +59,7 @@ function main() {
                                 case 1:
                                     if (!(s >= 0)) return [3 /*break*/, 4];
                                     stream = runner_1.runner.streams[s];
-                                    console.log("*** Kill stream: " + stream.id);
+                                    Logger_1.Logger.instrumentation.info("*** Kill stream: " + stream.id, { streamid: stream.id });
                                     return [4 /*yield*/, runner_1.runner.kill(agent_1.agent.client, stream.id)];
                                 case 2:
                                     _a.sent();
@@ -67,8 +68,7 @@ function main() {
                                     s--;
                                     return [3 /*break*/, 1];
                                 case 4:
-                                    console.log("*** Exit");
-                                    ;
+                                    Logger_1.Logger.instrumentation.info("*** Exit", {});
                                     process.exit(0);
                                     return [2 /*return*/];
                             }
@@ -90,7 +90,7 @@ function main() {
                 case 4: return [3 /*break*/, 6];
                 case 5:
                     error_1 = _a.sent();
-                    console.error(error_1);
+                    Logger_1.Logger.instrumentation.error(error_1, {});
                     return [3 /*break*/, 6];
                 case 6: return [2 /*return*/];
             }
@@ -98,4 +98,4 @@ function main() {
     });
 }
 main();
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicnVuYWdlbnQuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi9zcmMvcnVuYWdlbnQudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQSxpQ0FBZ0M7QUFDaEMsbUNBQWtDO0FBQ2xDLCtCQUErQjtBQUMvQixTQUFlLElBQUk7Ozs7Ozs7O29CQUVmLGFBQUssQ0FBQyxlQUFlLEdBQUcsT0FBTyxDQUFDLEdBQUcsQ0FBQyxlQUFlLElBQUksT0FBTyxDQUFDLEdBQUcsQ0FBQyxTQUFTLElBQUksRUFBRSxDQUFDO29CQUM3RSxNQUFNLEdBQUc7Ozs7O29DQUNKLENBQUMsR0FBRyxlQUFNLENBQUMsT0FBTyxDQUFDLE1BQU0sR0FBRyxDQUFDOzs7eUNBQUUsQ0FBQSxDQUFDLElBQUksQ0FBQyxDQUFBO29DQUN0QyxNQUFNLEdBQUcsZUFBTSxDQUFDLE9BQU8sQ0FBQyxDQUFDLENBQUMsQ0FBQztvQ0FDakMsT0FBTyxDQUFDLEdBQUcsQ0FBQyxtQkFBbUIsR0FBRyxNQUFNLENBQUMsRUFBRSxDQUFDLENBQUM7b0NBQzdDLHFCQUFNLGVBQU0sQ0FBQyxJQUFJLENBQUMsYUFBSyxDQUFDLE1BQU0sRUFBRSxNQUFNLENBQUMsRUFBRSxDQUFDLEVBQUE7O29DQUExQyxTQUEwQyxDQUFDOzs7b0NBSEcsQ0FBQyxFQUFFLENBQUE7OztvQ0FLbkQsT0FBTyxDQUFDLEdBQUcsQ0FBQyxVQUFVLENBQUMsQ0FBQztvQ0FBQSxDQUFDO29DQUN6QixPQUFPLENBQUMsSUFBSSxDQUFDLENBQUMsQ0FBQyxDQUFDOzs7O3lCQUNqQixDQUFDO29CQUNGLE9BQU8sQ0FBQyxFQUFFLENBQUMsUUFBUSxFQUFFLE1BQU0sQ0FBQyxDQUFBO29CQUM1QixPQUFPLENBQUMsRUFBRSxDQUFDLFNBQVMsRUFBRSxNQUFNLENBQUMsQ0FBQTtvQkFDN0IsT0FBTyxDQUFDLEVBQUUsQ0FBQyxTQUFTLEVBQUUsTUFBTSxDQUFDLENBQUE7b0JBQzdCLHFCQUFNLGFBQUssQ0FBQyxJQUFJLEVBQUUsRUFBQTs7b0JBQWxCLFNBQWtCLENBQUE7Ozt5QkFDWCxJQUFJO29CQUNULHFCQUFNLElBQUEsWUFBSyxFQUFDLEVBQUUsQ0FBQyxFQUFBOztvQkFBZixTQUFlLENBQUM7Ozs7O29CQUdsQixPQUFPLENBQUMsS0FBSyxDQUFDLE9BQUssQ0FBQyxDQUFDOzs7Ozs7Q0FFeEI7QUFFRCxJQUFJLEVBQUUsQ0FBQyJ9
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicnVuYWdlbnQuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi9zcmMvcnVuYWdlbnQudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFBQSxpQ0FBZ0M7QUFDaEMsbUNBQWtDO0FBQ2xDLG1DQUFrQztBQUNsQywrQkFBK0I7QUFDL0IsU0FBZSxJQUFJOzs7Ozs7OztvQkFFZixhQUFLLENBQUMsZUFBZSxHQUFHLE9BQU8sQ0FBQyxHQUFHLENBQUMsZUFBZSxJQUFJLE9BQU8sQ0FBQyxHQUFHLENBQUMsU0FBUyxJQUFJLEVBQUUsQ0FBQztvQkFDN0UsTUFBTSxHQUFHOzs7OztvQ0FDSixDQUFDLEdBQUcsZUFBTSxDQUFDLE9BQU8sQ0FBQyxNQUFNLEdBQUcsQ0FBQzs7O3lDQUFFLENBQUEsQ0FBQyxJQUFJLENBQUMsQ0FBQTtvQ0FDdEMsTUFBTSxHQUFHLGVBQU0sQ0FBQyxPQUFPLENBQUMsQ0FBQyxDQUFDLENBQUM7b0NBQ2pDLGVBQU0sQ0FBQyxlQUFlLENBQUMsSUFBSSxDQUFDLG1CQUFtQixHQUFHLE1BQU0sQ0FBQyxFQUFFLEVBQUUsRUFBRSxRQUFRLEVBQUUsTUFBTSxDQUFDLEVBQUUsRUFBRSxDQUFDLENBQUM7b0NBQ3RGLHFCQUFNLGVBQU0sQ0FBQyxJQUFJLENBQUMsYUFBSyxDQUFDLE1BQU0sRUFBRSxNQUFNLENBQUMsRUFBRSxDQUFDLEVBQUE7O29DQUExQyxTQUEwQyxDQUFDOzs7b0NBSEcsQ0FBQyxFQUFFLENBQUE7OztvQ0FLbkQsZUFBTSxDQUFDLGVBQWUsQ0FBQyxJQUFJLENBQUMsVUFBVSxFQUFFLEVBQUcsQ0FBQyxDQUFDO29DQUM3QyxPQUFPLENBQUMsSUFBSSxDQUFDLENBQUMsQ0FBQyxDQUFDOzs7O3lCQUNqQixDQUFDO29CQUNGLE9BQU8sQ0FBQyxFQUFFLENBQUMsUUFBUSxFQUFFLE1BQU0sQ0FBQyxDQUFBO29CQUM1QixPQUFPLENBQUMsRUFBRSxDQUFDLFNBQVMsRUFBRSxNQUFNLENBQUMsQ0FBQTtvQkFDN0IsT0FBTyxDQUFDLEVBQUUsQ0FBQyxTQUFTLEVBQUUsTUFBTSxDQUFDLENBQUE7b0JBQzdCLHFCQUFNLGFBQUssQ0FBQyxJQUFJLEVBQUUsRUFBQTs7b0JBQWxCLFNBQWtCLENBQUE7Ozt5QkFDWCxJQUFJO29CQUNULHFCQUFNLElBQUEsWUFBSyxFQUFDLEVBQUUsQ0FBQyxFQUFBOztvQkFBZixTQUFlLENBQUM7Ozs7O29CQUdsQixlQUFNLENBQUMsZUFBZSxDQUFDLEtBQUssQ0FBQyxPQUFLLEVBQUUsRUFBRyxDQUFDLENBQUM7Ozs7OztDQUU1QztBQUVELElBQUksRUFBRSxDQUFDIn0=

@@ -2,6 +2,7 @@ import { api, node } from '@opentelemetry/sdk-node';
 import { Context } from '@opentelemetry/api';
 import { MeterProvider } from '@opentelemetry/sdk-metrics';
 import { Resource } from '@opentelemetry/resources';
+import * as logsAPI from '@opentelemetry/api-logs';
 export declare function getNetworkData(): Promise<NetworkData[]>;
 export interface NetworkData {
     iface: string;
@@ -21,13 +22,17 @@ export declare class instrumentation {
     static resource: Resource;
     static traceProvider: node.NodeTracerProvider;
     static meterProvider: MeterProvider;
+    static logger: logsAPI.Logger;
     private static firstinit;
     static spanexporter: MultiSpanExporter;
     static metricexporter: MultiMetricExporter;
+    static logexporter: MultiMetricExporter;
     static init(client: openiap): boolean;
     private static creatememorymeters;
     static setdefaultlabels(client: openiap): boolean;
     static setparent(traceId?: string, spanId?: string, traceFlags?: api.TraceFlags): Context;
+    static error(error: any, attributes?: any): void;
+    static info(message: string, attributes?: any): void;
 }
 import { InstrumentType, ResourceMetrics, PushMetricExporter, AggregationTemporality } from '@opentelemetry/sdk-metrics';
 export declare class MultiMetricExporter implements PushMetricExporter {

@@ -8,6 +8,7 @@ import { agent } from './agent';
 import * as yaml from "js-yaml";
 import { ipackageport } from './packagemanager';
 import { sleep } from './util';
+import { Logger } from './Logger';
 
 const ctrossspawn = require('cross-spawn');
 
@@ -41,11 +42,11 @@ export class runner {
         }
         s.stream.push(message);
         if(addtobuffer) agent.emit("stream", s, message);
-        if(process.env.DEBUG != null && process.env.DEBUG != "") {
+        //if(process.env.DEBUG != null && process.env.DEBUG != "") {
             if (message != null) {
-                console.log(message.toString());
+                Logger.instrumentation.info(message.toString(), {streamid});
             }
-        }
+        //}
         if(addtobuffer && message != null) {
             if(s.buffer == null) s.buffer = Buffer.from("");
             if(Buffer.isBuffer(message)) {
@@ -69,12 +70,12 @@ export class runner {
             if (streamqueue != null && streamqueue != "") {
                 if(minutes > 5) { // backwars compatibility with older builds of openflow 1.5
                     client.QueueMessage({ queuename: streamqueue, data: { "command": "ping" } }, true).catch((error) => {
-                        console.error("notifyStream: " + error.message);
+                        Logger.instrumentation.error("notifyStream: " + error.message, {streamid});
                         const index = runner.commandstreams.indexOf(streamqueue);
                         if(index > -1) runner.commandstreams.splice(index, 1);
                     }).then((result) => {
                         if (result != null && result.command == "timeout") {
-                            console.log("notifyStream, remove streamqueue " + streamqueue);
+                            Logger.instrumentation.info("notifyStream, remove streamqueue " + streamqueue, {streamid});
                             const index = runner.commandstreams.indexOf(streamqueue);
                             if(index > -1) runner.commandstreams.splice(index, 1);
                         }
@@ -87,7 +88,7 @@ export class runner {
                         await client.QueueMessage({ queuename: streamqueue, data: { "command": "stream", "data": message }, correlationId: streamid });
                     }
                 } catch (error) {
-                    console.log("notifyStream, remove streamqueue " + streamqueue);
+                    Logger.instrumentation.info("notifyStream, remove streamqueue " + streamqueue, {streamid});
                     runner.commandstreams.splice(i, 1);
                 }
             } else {
@@ -106,9 +107,9 @@ export class runner {
                 for (let i = runner.commandstreams.length - 1; i >= 0; i--) {
                     const streamqueue = runner.commandstreams[i];
                     if (streamqueue != null && streamqueue != "") {
-                        console.log("removestream streamid/correlationId: " + streamid + " streamqueue: " + streamqueue);
+                        Logger.instrumentation.info("removestream streamid/correlationId: " + streamid + " streamqueue: " + streamqueue, {streamid});
                         client.QueueMessage({ queuename: streamqueue, data, correlationId: streamid }).catch((error) => {
-                            console.log("removestream, remove streamqueue " + streamqueue);
+                            Logger.instrumentation.info("removestream, remove streamqueue " + streamqueue, {streamid});
                             const index = runner.commandstreams.indexOf(streamqueue);
                             if(index > -1) runner.commandstreams.splice(index, 1);
                         });
@@ -116,7 +117,7 @@ export class runner {
     
                 }
             } catch (error) {
-                console.error(error);
+                Logger.instrumentation.error(error, {streamid});
             }
         }
     }
@@ -200,8 +201,8 @@ export class runner {
                         usingxvf = true;
                     }
                 //}
-                console.log('Running command:', command + " " + parameters.join(" "));
-                console.log('In Working directory:', packagepath);
+                Logger.instrumentation.info('Running command:' + command + " " + parameters.join(" "), {streamid});
+                Logger.instrumentation.info('In Working directory:' + packagepath, {streamid});
                 // const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
                 const childProcess = ctrossspawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
 
@@ -326,7 +327,7 @@ export class runner {
                 try {
                     await runner.killProcessAndChildren(client, streamid, subpids[i] as any);
                     await runner.notifyStream(client, streamid, "Send SIGTERM to child process " + subpids[i] + " of process " + pid);
-                    console.log("Send SIGTERM to child process " + subpids[i] + " of process " + pid);
+                    Logger.instrumentation.info("Send SIGTERM to child process " + subpids[i] + " of process " + pid, {streamid, pid});
                     await runner._kill(subpids[i] as any);
                 } catch (error) {
                     runner.notifyStream(client, streamid, "Failed to kill sub process " + subpids[i] + " " + error.message);
@@ -343,7 +344,7 @@ export class runner {
             await runner.killProcessAndChildren(client, streamid, pid);
 
             runner.notifyStream(client, streamid, "Send SIGTERM to process " + pid);
-            console.log("Send SIGTERM to process " + pid);
+            Logger.instrumentation.info("Send SIGTERM to process " + pid, {streamid, pid});
             await sleep(10);
             p[i].forcekilled = true;
             p[i].p.kill('SIGTERM');
@@ -356,7 +357,7 @@ export class runner {
             }
             if(p[i].p.exitCode == null) {
                 runner.notifyStream(client, streamid, "Send SIGINT to process " + pid);
-                console.log("Send SIGINT to process " + pid);
+                Logger.instrumentation.info("Send SIGINT to process " + pid, {streamid, pid});
                 await sleep(10);
                 p[i].forcekilled = true;
                 p[i].p.kill('SIGINT');
@@ -370,7 +371,7 @@ export class runner {
             }
             if(p[i].p.exitCode == null) {
                 runner.notifyStream(client, streamid, "Send SIGKILL to process " + pid);
-                console.log("Send SIGKILL to process " + pid);
+                Logger.instrumentation.info("Send SIGKILL to process " + pid, {streamid, pid});
                 await sleep(10);
                 p[i].forcekilled = true;
                 p[i].p.kill('SIGKILL');
@@ -497,7 +498,7 @@ export class runner {
             if(envname == null || envname == "") {
                 data.name = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
                 envname = data.name
-                console.error("No name found in conda environment file, auto generated name: " + envname);
+                Logger.instrumentation.error("No name found in conda environment file, auto generated name: " + envname, {streamid});
                 fileContents = yaml.dump(data)
                 fs.writeFileSync(path.join(packagepath, envfile), fileContents);
             }
@@ -518,13 +519,13 @@ export class runner {
                 runner.notifyStream(client, streamid, "**** Running update environment");
                 runner.notifyStream(client, streamid, "*******************************");
     
-                console.log(condapath, param.join(" "));
+                Logger.instrumentation.info(condapath + " " + param.join(" "), {streamid});
                 if ((await runner.runit(client, packagepath, streamid, condapath, param, false)) == 0) {
                     return envname;
                 }
                 throw new Error("Failed to update environment");
             }
-            console.log(condapath, param.join(" "));
+            Logger.instrumentation.info(condapath + " " + param.join(" "), {streamid});
             runner.notifyStream(client, streamid, "*******************************");
             runner.notifyStream(client, streamid, "**** Running create environment");
             runner.notifyStream(client, streamid, "*******************************");
@@ -536,7 +537,7 @@ export class runner {
         runner.notifyStream(client, streamid, "*******************************");
         runner.notifyStream(client, streamid, "**** Running create environment");
         runner.notifyStream(client, streamid, "*******************************");
-        console.log(condapath, param.join(" "));
+        Logger.instrumentation.info(condapath + " " +  param.join(" "), {streamid});
         if ((await runner.runit(client, packagepath, streamid, condapath, param, false)) == 0) {
             return envname;
         }
@@ -547,9 +548,6 @@ export class runner {
 
         await runner.Generatenpmrc(client, packagepath, streamid);
         if (fs.existsSync(path.join(packagepath, "package.json"))) {
-            console.log("************************");
-            console.log("**** Running npm install");
-            console.log("************************");
             const nodePath = runner.findNodePath();
             runner.notifyStream(client, streamid, "************************");
             runner.notifyStream(client, streamid, "**** Running npm install");

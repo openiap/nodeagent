@@ -9,6 +9,7 @@ import { config } from '@openiap/nodeapi';
 import { runner, runner_stream } from "./runner";
 import { agent } from "./agent";
 import { FindFreePort } from "./PortMapper";
+import { Logger } from "./Logger";
 const { info, err } = config;
 export interface ipackageport {
   port: number;
@@ -40,10 +41,10 @@ export class packagemanager {
     packagemanager._homedir = os.homedir();
     if(packagemanager._homedir == "/" || packagemanager._homedir == "") {
       if(fs.existsSync("/home/openiap") == true) {
-        console.log("homedir overriden to /home/openiap from:", packagemanager._homedir)
+        Logger.instrumentation.info("homedir overriden to /home/openiap from: " + packagemanager._homedir, {})
         packagemanager._homedir = "/home/openiap"
       } else {
-        console.log("homedir overriden to /tmp from:", packagemanager._homedir)
+        Logger.instrumentation.info("homedir overriden to /tmp from: " + packagemanager._homedir, {})
         packagemanager._homedir = "/tmp"
       }
     }
@@ -54,7 +55,7 @@ export class packagemanager {
       return packagemanager._packagefolder;
     }
     packagemanager._packagefolder = path.join(packagemanager.homedir(), ".openiap", "packages")
-    console.log("packagefolder as:", packagemanager._packagefolder)
+    Logger.instrumentation.info("packagefolder as: " + packagemanager._packagefolder, {})
     return packagemanager._packagefolder;
   }
   private static _packagefolder:string = null;
@@ -106,7 +107,7 @@ export class packagemanager {
           await packagemanager.getpackage(client, packages[i]._id, false);
         }
       } catch (error) {
-        console.error(error);
+        Logger.instrumentation.error(error, {});
       }
     }
     return packages;
@@ -165,7 +166,7 @@ export class packagemanager {
         const reply = await client.DownloadFile({ id: pkg.fileid, folder: packagemanager.packagefolder() });
         filename = path.join(packagemanager.packagefolder(), reply.filename);
       } catch (error) {
-        console.log(error);
+        Logger.instrumentation.error(error, {packageid: id});
       }
       if(filename == "") {
         pkg = await client.FindOne<ipackage>({ collectionname: "agents", query: { _id: id, "_type": "package" } });
@@ -199,7 +200,7 @@ export class packagemanager {
             C: dest
           })
         } catch (error) {
-          console.error(error)
+          Logger.instrumentation.error(error, {packageid: id})
           await tar.x({
             file: filename,
             C: dest
@@ -207,7 +208,7 @@ export class packagemanager {
         }
       }
     } catch (error) {
-      console.error(error);
+      Logger.instrumentation.error(error, {packageid: id});
       throw error
     } finally {
       if(filename != "" && fs.existsSync(filename)) fs.unlinkSync(filename);
@@ -279,7 +280,7 @@ export class packagemanager {
         if(port == null || (port as any) == "") port = 0;
         let newport = await FindFreePort(port);
         if(newport != port) {
-          console.log("port " + port + " is in use, using " + newport + " instead for " + pck.ports[i].portname);
+          Logger.instrumentation.info("port " + port + " is in use, using " + newport + " instead for " + pck.ports[i].portname, {streamid});
           runner.notifyStream(client, streamid, "port " + port + " is in use, using " + newport + " instead for " + pck.ports[i].portname);
           port = newport
         }
@@ -302,7 +303,7 @@ export class packagemanager {
         if(port > 0) {
           let newport = await FindFreePort(port);
           if(port != newport) {
-            console.log("port " + port + " is in use, using " + newport + " instead for envoriment variable PORT");
+            Logger.instrumentation.info("port " + port + " is in use, using " + newport + " instead for envoriment variable PORT", {streamid});
             runner.notifyStream(client, streamid, "port " + port + " is in use, using " + newport + " instead for envoriment variable PORT");
             env.PORT = newport;
           }            
@@ -356,7 +357,7 @@ export class packagemanager {
           try {
             await client.QueueMessage({ queuename: streamqueue, data: message, correlationId: streamid });
           } catch (error) {
-            console.log("runpackage, remove streamqueue " + streamqueue);
+            Logger.instrumentation.info("runpackage, remove streamqueue " + streamqueue, {packageid: id, streamid});
             runner.commandstreams.splice(i, 1);
           }
         }
@@ -449,22 +450,22 @@ export class packagemanager {
         if (command.endsWith(".py")) {
           if (wait) {
             if(condaname != null) {
-              console.log(conda)
-              console.log(["run", "-n", condaname, "python", "-u", command])
+              Logger.instrumentation.info(conda, {packageid: id, streamid})
+              Logger.instrumentation.info(["run", "-n", condaname, "python", "-u", command].join(" "), {packageid: id, streamid})
               return {exitcode: await runner.runit(client, runfolder, streamid, conda, ["run", "-n", condaname, "python", "-u", command], true, env), stream: s}
             }
-            console.log(python)
-            console.log(["-u", command])
+            Logger.instrumentation.info(python, {packageid: id, streamid})
+            Logger.instrumentation.info(["-u", command].join(" "), {packageid: id, streamid})
             return {exitcode: await runner.runit(client, runfolder, streamid, python, ["-u", command], true, env), stream: s}
           }
           if(condaname != null) {
-            console.log(conda)
-            console.log(["run", "-n", condaname, "python", "-u", command])
+            Logger.instrumentation.info(conda, {packageid: id, streamid})
+            Logger.instrumentation.info(["run", "-n", condaname, "python", "-u", command].join(" "), {packageid: id, streamid})
             runner.runit(client, runfolder, streamid, conda, ["run", "-n", condaname, "python", "-u", command], true, env)
             return {exitcode: 0, stream: s};
           }
-          console.log(python)
-          console.log(["-u", command])
+          Logger.instrumentation.info(python, {packageid: id, streamid})
+          Logger.instrumentation.info(["-u", command].join(" "), {packageid: id, streamid})
           runner.runit(client, runfolder, streamid, python, ["-u", command], true, env)
           return {exitcode: 0, stream: s};
         } else if (command.endsWith(".js") || command == "npm run start") {
@@ -496,13 +497,13 @@ export class packagemanager {
             return {exitcode: 0, stream: s};
           }
         } else {
-          console.error("failed to find a command to run");
+          Logger.instrumentation.error("failed to find a command to run", {packageid: id, streamid});
           runner.notifyStream(client, streamid, "failed to find a command to run");
           return {exitcode: 1, stream: s};
         }
       }
     } catch (error) {
-      console.error(error.message);
+      Logger.instrumentation.error(error.message, {packageid: id, streamid});
       runner.notifyStream(client, streamid, error.message);
       runner.removestream(client, streamid, false, "");
     }
@@ -523,14 +524,14 @@ export class packagemanager {
           try {
             fs.unlinkSync(curPath);  
           } catch (error) {
-            console.log(error.message + " while unlinkSync " + curPath)
+            Logger.instrumentation.error(error.message + " while unlinkSync " + curPath, {})
           }
         }
       });
       try {
       fs.rmdirSync(dirPath);
       } catch (error) {
-        console.log(error.message + " while rmdirSync " + dirPath)
+        Logger.instrumentation.error(error.message + " while rmdirSync " + dirPath, {})
       }
     }
   }
