@@ -7,6 +7,10 @@ import { packagemanager } from "./packagemanager";
 import { runner } from "./runner";
 import { FindFreePort } from "./PortMapper";
 import { Logger } from "./Logger";
+try {
+  Logger.init();
+} catch (error) {
+}
 
 const os = require('os');
 const path = require('path');
