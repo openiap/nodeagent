@@ -221,6 +221,13 @@ export class agent  {
       }
     } catch (error) {
     }
+    try {
+      let javapath = runner.findJavaPath();
+      if (javapath != null && javapath != "") {
+        agent.languages.push("java");
+      }
+    } catch (error) {
+    }
     if (_client == null) {
       await agent.client.connect();
     }
