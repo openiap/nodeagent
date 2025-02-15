@@ -420,6 +420,10 @@ export class runner {
         const child = (process.platform === 'win32' ? 'cargo.cmd' : 'cargo')
         return runner.findInPath(child)
     }
+    public static findJavaPath() {
+        const child = (process.platform === 'win32' ? 'java.exe' : 'java')
+        return runner.findInPath(child)
+    }
     public static findChromiumPath() {
         var result = runner.findInPath("chromium-browser");
         if (result == "") result = runner.findInPath("chromium");

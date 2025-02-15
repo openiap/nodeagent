@@ -1,10 +1,12 @@
 FROM node:lts-bookworm-slim
 # procps - for access to ps command like pkill and pgrep
+# wget unzip zip - for sdkman
 RUN apt-get update && apt-get install -y \
     nano git curl \ 
     python3-pip udev build-essential \
     libssl-dev openssl  \
     procps \ 
+    wget unzip zip \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install Micromamba
@@ -51,5 +53,17 @@ RUN rm -r /home/openiapuser/.npm/*
 COPY --chown=openiapuser . .
 ENV HOME='/home/openiapuser'
 ENV USER='openiapuser'
+
+RUN curl -s "https://get.sdkman.io" | bash
+# RUN curl -s "https://get.sdkman.io" | bash
+# RUN source "$HOME/.sdkman/bin/sdkman-init.sh"
+SHELL ["/bin/bash", "-c"] 
+
+RUN source "$HOME/.sdkman/bin/sdkman-init.sh"
+RUN source /home/openiapuser/.bashrc
+# RUN curl -s "https://get.sdkman.io" | bash
+RUN /bin/bash -c "source /home/openiapuser/.sdkman/bin/sdkman-init.sh; sdk version; sdk install java 21.0.6-tem"
+# RUN sdk install java 
+# RUN sdk install java 21.0.6-tem
 
 CMD ["node", "--require", "./dist/Logger.js", "dist/runagent.js"]

@@ -42,6 +42,7 @@ export declare class runner {
     static findNodePath(): string;
     static findNPMPath(): string;
     static findCargoPath(): string;
+    static findJavaPath(): string;
     static findChromiumPath(): string;
     static findChromePath(): string;
     static Generatenpmrc(client: openiap, packagepath: string, streamid: string): Promise<void>;
