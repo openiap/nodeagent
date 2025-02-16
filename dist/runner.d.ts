@@ -37,6 +37,7 @@ export declare class runner {
     static findPythonPath(): string;
     static findCondaPath(): string;
     static findPwShPath(): string;
+    static findShellPath(): string;
     static findDotnetPath(): string;
     static findXvfbPath(): string;
     static findNodePath(): string;

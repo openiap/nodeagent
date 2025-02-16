@@ -415,6 +415,44 @@ export class packagemanager {
           runner.runit(client, runfolder, streamid, cargo, ["run"], true, env)
           return { exitcode: 0, stream: s };
         }
+      } else if (pck.language == "powershell") {
+        const pwshPath = runner.findPwShPath();
+        if (pwshPath == "") throw new Error("Failed locating powershell, is powershell installed and in the path? " + JSON.stringify(process.env.PATH))
+        let command = packagemanager.getscriptpath(packagepath)
+        if (command == "" || command == null) {
+          throw new Error("Failed locating a command to run, EXIT")
+        }
+        if (!fs.existsSync(runfolder)) fs.mkdirSync(runfolder, { recursive: true });
+        fs.cpSync(packagepath, runfolder, { recursive: true });
+        if (wait) {
+          return { exitcode: await runner.runit(client, runfolder, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true, env), stream: s };
+        } else {
+          runner.runit(client, runfolder, streamid, pwshPath, ["-ExecutionPolicy", "Bypass", "-File", command], true, env)
+          return { exitcode: 0, stream: s };
+        }
+      } else if (pck.language == "shell") {
+        const shellPath = runner.findShellPath();
+        if (shellPath == "") throw new Error("Failed locating shell, is bash or sh installed and in the path? " + JSON.stringify(process.env.PATH))
+        let command = packagemanager.getscriptpath(packagepath)
+        if (command == "" || command == null) {
+          throw new Error("Failed locating a command to run, EXIT")
+        }
+        if (!fs.existsSync(command))  {
+          throw new Error("Failed to find script: " + command);
+        }
+        // has execute permission ?
+        let stats = fs.statSync(command);
+        if ((stats.mode & 0o111) == 0) {
+          fs.chmodSync(command, 0o755);
+        }
+        if (!fs.existsSync(runfolder)) fs.mkdirSync(runfolder, { recursive: true });
+        fs.cpSync(packagepath, runfolder, { recursive: true });
+        if (wait) {
+          return { exitcode: await runner.runit(client, runfolder, streamid, shellPath, ["-c", command], true, env), stream: s };
+        } else {
+          runner.runit(client, runfolder, streamid, shellPath, ["-c", command], true, env)
+          return { exitcode: 0, stream: s };
+        }
       } else if (pck.language == "dotnet") {
         let dotnet = runner.findDotnetPath();
         if (dotnet == "") throw new Error("Failed locating dotnet, is dotnet installed and in the path?")

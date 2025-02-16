@@ -215,6 +215,14 @@ export class agent  {
 
     }
     try {
+      let pwshpath = runner.findShellPath();
+      if (pwshpath != null && pwshpath != "") {
+        agent.languages.push("shell");
+      }
+    } catch (error) {
+
+    }
+    try {
       let cargopath = runner.findCargoPath();
       if (cargopath != null && cargopath != "") {
         agent.languages.push("rust");
@@ -329,7 +337,8 @@ export class agent  {
                   }
                 }
               }
-              packagemanager.removepackage(document._id);
+              await packagemanager.removepackage(document._id);
+              await new Promise((resolve) => setTimeout(resolve, 1000));
               if (operation == "replace") {
                 if (!fs.existsSync(packagemanager.packagefolder())) fs.mkdirSync(packagemanager.packagefolder(), { recursive: true });
                 await packagemanager.getpackage(agent.client, document._id, false);

@@ -201,8 +201,10 @@ export class runner {
                         usingxvf = true;
                     }
                 //}
-                Logger.instrumentation.info('Running command:' + command + " " + parameters.join(" "), {streamid});
-                Logger.instrumentation.info('In Working directory:' + packagepath, {streamid});
+                const message = 'Running command:' + command + " " + parameters.join(" ") + "\n" +
+                    'In Working directory:' + packagepath;
+                Logger.instrumentation.info(message, {streamid});
+                runner.notifyStream(client, streamid, message);
                 // const childProcess = spawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
                 const childProcess = ctrossspawn(command, parameters, { cwd: packagepath, env: { ...process.env, ...env } })
 
@@ -399,11 +401,24 @@ export class runner {
         return result;
     }
     public static findPwShPath() {
-        var result = runner.findInPath("pwsh")
-        if (result == "") result = runner.findInPath("powershell")
+        let child = (process.platform === 'win32' ? 'pwsh.exe' : 'pwsh')
+        var result = runner.findInPath(child)
+        if (result == "") {
+            child = (process.platform === 'win32' ? 'powershell.exe' : 'powershell')
+            result = runner.findInPath("powershell")
+        }
         return result;
     }    
-    public static findDotnetPath() {
+    public static findShellPath() {
+        let shell = 'bash';
+        let result = runner.findInPath(shell);
+        if (result == "") {
+            shell = 'sh';
+            result = runner.findInPath(shell);
+        }
+        return result;
+    }
+        public static findDotnetPath() {
         return runner.findInPath("dotnet")
     }
     public static findXvfbPath() {
