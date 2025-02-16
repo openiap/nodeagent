@@ -55,15 +55,11 @@ ENV HOME='/home/openiapuser'
 ENV USER='openiapuser'
 
 RUN curl -s "https://get.sdkman.io" | bash
-# RUN curl -s "https://get.sdkman.io" | bash
-# RUN source "$HOME/.sdkman/bin/sdkman-init.sh"
-SHELL ["/bin/bash", "-c"] 
-
-RUN source "$HOME/.sdkman/bin/sdkman-init.sh"
-RUN source /home/openiapuser/.bashrc
-# RUN curl -s "https://get.sdkman.io" | bash
 RUN /bin/bash -c "source /home/openiapuser/.sdkman/bin/sdkman-init.sh; sdk version; sdk install java 21.0.6-tem"
-# RUN sdk install java 
-# RUN sdk install java 21.0.6-tem
 
-CMD ["node", "--require", "./dist/Logger.js", "dist/runagent.js"]
+COPY bin/entrypoint.sh /home/openiapuser/entrypoint.sh
+ENTRYPOINT ["/home/openiapuser/entrypoint.sh"]
+
+# CMD   ["bash", "-c", "source ~/.bashrc && node --require ./dist/Logger.js dist/runagent.js"]
+# CMD ["bash", "-lc", "node --require ./dist/Logger.js dist/runagent.js"]
+# CMD ["node", "--require", "./dist/Logger.js", "dist/runagent.js"]
