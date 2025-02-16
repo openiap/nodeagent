@@ -1,0 +1,47 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "run cli",
+            "program": "${workspaceFolder}/dist/cli.js",
+            "console": "integratedTerminal",
+            "request": "launch",
+            "preLaunchTask": "tsc: watch - tsconfig.json",
+            "killBehavior": "polite",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "type": "node",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "run agent",
+            "program": "${workspaceFolder}/dist/runagent.js",
+            "request": "launch",
+            "preLaunchTask": "tsc: watch - tsconfig.json",
+            "killBehavior": "polite",
+            "console": "integratedTerminal",
+            "runtimeArgs": [
+                "--inspect=0.0.0.0:9222",
+                "--require",
+                "./dist/Logger.js"
+            ],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "type": "node",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "NodeJS: Run ./dist/index.js",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/./dist/index.js",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
