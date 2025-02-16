@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip udev build-essential \
     libssl-dev openssl  \
     procps \ 
-    wget unzip zip php \
+    wget unzip zip php php-curl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
