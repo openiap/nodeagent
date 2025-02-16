@@ -43,6 +43,8 @@ export declare class runner {
     static findNPMPath(): string;
     static findCargoPath(): string;
     static findJavaPath(): string;
+    static findPhpPath(): string;
+    static findComposerPath(): string;
     static findChromiumPath(): string;
     static findChromePath(): string;
     static Generatenpmrc(client: openiap, packagepath: string, streamid: string): Promise<void>;
@@ -50,6 +52,7 @@ export declare class runner {
     static condaenv(packagepath: string, condapath: string): Promise<void>;
     static condainstall(client: openiap, packagepath: string, streamid: string, condapath: string): Promise<string>;
     static npminstall(client: openiap, packagepath: string, streamid: string): Promise<boolean>;
+    static composerinstall(client: openiap, packagepath: string, streamid: string): Promise<boolean>;
     static runpythonscript(script: string): Promise<string>;
     static runpythoncode(code: string): Promise<string>;
     static findChildProcesses(pid: number): string[];

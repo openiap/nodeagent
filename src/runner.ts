@@ -424,6 +424,15 @@ export class runner {
         const child = (process.platform === 'win32' ? 'java.exe' : 'java')
         return runner.findInPath(child)
     }
+    public static findPhpPath() {
+        const child = (process.platform === 'win32' ? 'php.exe' : 'php')
+        return runner.findInPath(child)
+    }
+    public static findComposerPath() {
+        const child = (process.platform === 'win32' ? 'composer.exe' : 'composer')
+        return runner.findInPath(child)
+    }
+    
     public static findChromiumPath() {
         var result = runner.findInPath("chromium-browser");
         if (result == "") result = runner.findInPath("chromium");
@@ -549,7 +558,6 @@ export class runner {
     }
     // spawn EINVAL  - https://github.com/nodejs/node/issues/52554
     public static async npminstall(client: openiap, packagepath: string, streamid: string): Promise<boolean> {
-
         await runner.Generatenpmrc(client, packagepath, streamid);
         if (fs.existsSync(path.join(packagepath, "package.json"))) {
             const nodePath = runner.findNodePath();
@@ -559,6 +567,19 @@ export class runner {
             const npmpath = runner.findNPMPath();
             if (npmpath == "") throw new Error("Failed locating NPM, is it installed and in the path?")
             if ((await runner.runit(client, packagepath, streamid, npmpath, ["install", "--omit=dev", "--production", "--verbose"], false)) == 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+    public static async composerinstall(client: openiap, packagepath: string, streamid: string): Promise<boolean> {
+        if (fs.existsSync(path.join(packagepath, "composer.json"))) {
+            runner.notifyStream(client, streamid, "*****************************");
+            runner.notifyStream(client, streamid, "**** Running composer install");
+            runner.notifyStream(client, streamid, "*****************************");
+            const npmpath = runner.findComposerPath();
+            if (npmpath == "") throw new Error("Failed locating composer, is it installed and in the path?")
+            if ((await runner.runit(client, packagepath, streamid, npmpath, ["install"], false)) == 0) {
                 return true;
             }
         }

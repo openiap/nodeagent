@@ -222,6 +222,13 @@ export class agent  {
     } catch (error) {
     }
     try {
+      let phppath = runner.findPhpPath();
+      if (phppath != null && phppath != "") {
+        agent.languages.push("php");
+      }
+    } catch (error) {
+    }
+    try {
       let javapath = runner.findJavaPath();
       if (javapath != null && javapath != "") {
         agent.languages.push("java");

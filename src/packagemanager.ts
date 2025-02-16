@@ -374,13 +374,34 @@ export class packagemanager {
         if (command == "" || command == null) {
           throw new Error("Failed locating a command to run, EXIT")
         }
-
         if (!fs.existsSync(runfolder)) fs.mkdirSync(runfolder, { recursive: true });
         fs.cpSync(packagepath, runfolder, { recursive: true });
         if (wait) {
           return { exitcode: await runner.runit(client, runfolder, streamid, java, ["-jar", command], true, env), stream: s };
         } else {
           runner.runit(client, runfolder, streamid, java, ["-jar", command], true, env)
+          return { exitcode: 0, stream: s };
+        }
+      } else if (pck.language == "php") {
+        let php = runner.findPhpPath();
+        if (php == "") throw new Error("Failed locating php, is php installed and in the path?")
+        const composefile = path.join(packagepath, "composer.json");
+        const vendorfolder = path.join(packagepath, "vendor");
+        if (fs.existsSync(composefile)) {
+          if (!fs.existsSync(vendorfolder)) {
+            await runner.composerinstall(client, packagepath, streamid);
+          }
+        }
+        let command = packagemanager.getscriptpath(packagepath)
+        if (command == "" || command == null) {
+          throw new Error("Failed locating a command to run, EXIT")
+        }
+        if (!fs.existsSync(runfolder)) fs.mkdirSync(runfolder, { recursive: true });
+        fs.cpSync(packagepath, runfolder, { recursive: true });
+        if (wait) {
+          return { exitcode: await runner.runit(client, runfolder, streamid, php, [command], true, env), stream: s };
+        } else {
+          runner.runit(client, runfolder, streamid, php, [command], true, env)
           return { exitcode: 0, stream: s };
         }
       } else if (pck.language == "rust") {
