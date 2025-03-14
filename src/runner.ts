@@ -581,7 +581,7 @@ export class runner {
             runner.notifyStream(client, streamid, "************************");
             const npmpath = runner.findNPMPath();
             if (npmpath == "") throw new Error("Failed locating NPM, is it installed and in the path?")
-            if ((await runner.runit(client, packagepath, streamid, npmpath, ["install", "--omit=dev", "--production", "--verbose"], false)) == 0) {
+            if ((await runner.runit(client, packagepath, streamid, npmpath, ["install", "--omit=dev", "--verbose"], false)) == 0) {
                 return true;
             }
         }

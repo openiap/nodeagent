@@ -48,7 +48,7 @@ COPY --chown=openiapuser package.json package-lock.json ./
 # Openshift hack
 RUN chmod -R 777 /home/openiapuser
 # Install NPM packages
-RUN npm install --omit=dev --production --verbose
+RUN npm install --omit=dev --verbose
 RUN rm -r /home/openiapuser/.npm/*
 
 # Copy the rest of your application

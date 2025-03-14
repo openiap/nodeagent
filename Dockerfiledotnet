@@ -37,7 +37,7 @@ RUN echo 'eval "$(micromamba shell hook --shell=bash)"' >> ~/.bashrc
 COPY --chown=openiapuser package.json package-lock.json ./
 
 # Install NPM packages
-RUN npm install --omit=dev --production --verbose
+RUN npm install --omit=dev --verbose
 # Openshift hack
 RUN rm -r /home/openiapuser/.npm/*
 RUN chmod -R 777 /home/openiapuser
