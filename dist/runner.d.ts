@@ -26,6 +26,7 @@ export declare class runner {
     static streams: runner_stream[];
     static commandstreams: string[];
     static notifyStream(client: openiap, streamid: string, message: Buffer | string, addtobuffer?: boolean): Promise<void>;
+    static streamexists(streamid: string): boolean;
     static removestream(client: openiap, streamid: string, success: boolean, buffer: string): void;
     static getExecutablePath(baseFolder: string, command: string): string;
     static runit(client: openiap, packagepath: string, streamid: string, command: string, parameters: string[], clearstream: boolean, env?: any): Promise<number>;

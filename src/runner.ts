@@ -96,6 +96,13 @@ export class runner {
             }
         }
     }
+    public static streamexists(streamid: string) {
+        const s = runner.streams.find(x => x.id == streamid)
+        if (s != null) {
+            return true;
+        }
+        return false;
+    }
     public static removestream(client: openiap, streamid: string, success: boolean, buffer: string) {
         let s = runner.streams.find(x => x.id == streamid)
         if (s != null) {

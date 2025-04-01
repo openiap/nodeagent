@@ -390,6 +390,24 @@ export class agent  {
     }
     packagemanager.preparepackage(agent.client, packageid, streamid);
   }
+  public static async localtestrun(packageid: string, streamid: string, kill_after_seconds: number): Promise<string> {
+    if(packageid == null || packageid == "") throw new Error("packageid is null or empty");
+    Logger.instrumentation.info("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin, {packageid});
+    const pck = await packagemanager.getpackage(agent.client, packageid, true);
+    if(pck == null) {
+      throw new Error("Package " + packageid + " not found");
+    }
+    const packagepath = packagemanager.getpackagepath(path.join(packagemanager.homedir(), ".openiap", "packages", packageid));
+    Logger.instrumentation.info("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin, {packageid});
+    if (packagepath == "") {
+      throw new Error("Package " + packageid + " not found");
+    }
+    if (streamid == null || streamid == "") {
+      streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    }
+    return await packagemanager.testrunpackage(agent.client, packageid, streamid, kill_after_seconds);
+  }
+  
   public static async localrun(packageid: string, streamid: string, payload: any, env: any, schedule: any): Promise<[number, string, any]> {
     Logger.instrumentation.info("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin, {packageid, streamid});
     const pck = await packagemanager.getpackage(agent.client, packageid, true);
@@ -849,6 +867,20 @@ export class agent  {
         }
         const output = await agent.localprepare(payload.packageid, streamid);
         return { "command": payload.command, "success": true, output };
+      } else if (payload.command == "testrunpackage") {
+          if(payload.packageid == null && payload.id != null) {
+            payload.packageid = payload.id;
+          }
+          if(payload.packageid == null || payload.packageid == "") {
+            return { "command": payload.command, "success": false, error: "packageid is null or empty" };
+          }
+          let kill_after_seconds = 10;
+          if(payload.kill_after_seconds != null && payload.kill_after_seconds > 0) {
+            kill_after_seconds = payload.kill_after_seconds;
+          }
+          const output = await agent.localtestrun(payload.packageid, streamid, kill_after_seconds);
+          return { "command": payload.command, "success": true, output };
+          
       } else if (payload.command == null || payload.command == "" || payload.command == "invoke") {
         if (agent.num_workitemqueue_jobs >= agent.max_workitemqueue_jobs) {
           return { "command": payload.command, "success": false, error: "Busy running " + agent.num_workitemqueue_jobs + " jobs ( max " + agent.max_workitemqueue_jobs + " )" };

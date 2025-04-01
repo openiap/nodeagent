@@ -35,6 +35,7 @@ export declare class packagemanager {
     static getscriptpath(packagepath: string): string;
     private static addstream;
     static preparepackage(client: openiap, packageid: string, streamid: string): Promise<void>;
+    static testrunpackage(client: openiap, packageid: string, streamid: string, kill_after_seconds: number): Promise<string>;
     static runpackage(client: openiap, packageid: string, streamid: string, streamqueues: string[], stream: Readable, wait: boolean, env?: any, schedule?: any): Promise<{
         exitcode: number;
         stream: runner_stream;

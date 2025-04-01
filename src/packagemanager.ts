@@ -10,6 +10,7 @@ import { runner, runner_stream } from "./runner";
 import { agent } from "./agent";
 import { FindFreePort } from "./PortMapper";
 import { Logger } from "./Logger";
+import { Stream } from 'stream';
 const { info, err } = config;
 export interface ipackageport {
   port: number;
@@ -427,6 +428,29 @@ export class packagemanager {
 
     }
   }
+  public static async testrunpackage(client: openiap, packageid: string, streamid: string, kill_after_seconds: number): Promise<string> {
+    let output = "";
+      let _stream = new Stream.Readable({
+        read(size) {
+          // No-op
+         }
+      });
+      _stream.on("data", (data) => {
+        output += data.toString();
+      });
+      const { exitcode, stream } = await packagemanager.runpackage(client, packageid, streamid, [], _stream, false);
+      for(let i = 0; i < stream.ports.length; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        let running = runner.streamexists(streamid);
+        if (running == false) {
+          break;
+        }
+      }
+      // await new Promise((resolve) => setTimeout(resolve, kill_after_seconds * 1000));
+      await runner.kill(agent.client, stream.id);
+      return output;
+  }
+  
   public static async runpackage(client: openiap, packageid: string, streamid: string, streamqueues: string[], stream: Readable, wait: boolean, env: any = {}, schedule: any = undefined): Promise<{ exitcode: number, stream: runner_stream }> {
     if (streamid == null || streamid == "") throw new Error("streamid is null or empty");
     if (packagemanager.packagefolder() == null || packagemanager.packagefolder() == "") throw new Error("packagemanager.packagefolder is null or empty");
