@@ -45,6 +45,7 @@ export declare class agent {
     private static onSignedIn;
     private static onConnected;
     private static onDisconnected;
+    static localprepare(packageid: string, streamid: string): Promise<void>;
     static localrun(packageid: string, streamid: string, payload: any, env: any, schedule: any): Promise<[number, string, any]>;
     static localrun_old(packageid: string, streamid: string, payload: any, env: any, schedule: any): Promise<[number, string, any]>;
     static reloadpackages(force: boolean): Promise<ipackage[]>;

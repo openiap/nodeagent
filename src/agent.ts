@@ -11,6 +11,7 @@ import { Stream } from 'stream';
 import { Logger } from "./Logger";
 // import { HostPortMapper } from "./PortMapper";
 import { sleep } from "./util";
+import { error } from "console";
 
 let elog: any = null;
 if (os.platform() === 'win32') {
@@ -372,6 +373,23 @@ export class agent  {
   private static async onDisconnected(client: openiap) {
     log("Disconnected", {agentid: agent?.agentid});
   };
+  public static async localprepare(packageid: string, streamid: string): Promise<void> {
+    if(packageid == null || packageid == "") throw new Error("packageid is null or empty");
+    Logger.instrumentation.info("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin, {packageid});
+    const pck = await packagemanager.getpackage(agent.client, packageid, true);
+    if(pck == null) {
+      throw new Error("Package " + packageid + " not found");
+    }
+    const packagepath = packagemanager.getpackagepath(path.join(packagemanager.homedir(), ".openiap", "packages", packageid));
+    Logger.instrumentation.info("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin, {packageid});
+    if (packagepath == "") {
+      throw new Error("Package " + packageid + " not found");
+    }
+    if (streamid == null || streamid == "") {
+      streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    }
+    packagemanager.preparepackage(agent.client, packageid, streamid);
+  }
   public static async localrun(packageid: string, streamid: string, payload: any, env: any, schedule: any): Promise<[number, string, any]> {
     Logger.instrumentation.info("connected: "+ agent.client.connected + " signedin: " + agent.client.signedin, {packageid, streamid});
     const pck = await packagemanager.getpackage(agent.client, packageid, true);
@@ -822,7 +840,16 @@ export class agent  {
       if (payload.stream == "false" || payload.stream == false) {
         dostream = false;
       }
-      if (payload.command == null || payload.command == "" || payload.command == "invoke") {
+      if (payload.command == "preparepackage") {
+        if(payload.packageid == null && payload.id != null) {
+          payload.packageid = payload.id;
+        }
+        if(payload.packageid == null || payload.packageid == "") {
+          return { "command": payload.command, "success": false, error: "packageid is null or empty" };
+        }
+        const output = await agent.localprepare(payload.packageid, streamid);
+        return { "command": payload.command, "success": true, output };
+      } else if (payload.command == null || payload.command == "" || payload.command == "invoke") {
         if (agent.num_workitemqueue_jobs >= agent.max_workitemqueue_jobs) {
           return { "command": payload.command, "success": false, error: "Busy running " + agent.num_workitemqueue_jobs + " jobs ( max " + agent.max_workitemqueue_jobs + " )" };
         }
